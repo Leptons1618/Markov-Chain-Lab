@@ -132,10 +132,12 @@ export default function LearnPage() {
             </div>
 
             <div className="pt-4 border-t border-border">
-              <Button variant="outline" className="w-full bg-transparent">
-                <BookOpen className="mr-2 h-4 w-4" />
-                View All Resources
-              </Button>
+              <Link href="/resources">
+                <Button variant="outline" className="w-full bg-transparent">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  View All Resources
+                </Button>
+              </Link>
             </div>
           </div>
         </aside>
@@ -198,19 +200,21 @@ export default function LearnPage() {
                           </div>
                         </div>
                       </div>
-                      <Button variant={lesson.completed ? "outline" : "default"} size="sm">
-                        {lesson.completed ? (
-                          <>
-                            <BookOpen className="mr-2 h-4 w-4" />
-                            Review
-                          </>
-                        ) : (
-                          <>
-                            <PlayCircle className="mr-2 h-4 w-4" />
-                            Start
-                          </>
-                        )}
-                      </Button>
+                      <Link href={`/learn/${selectedModule}?lesson=${lesson.id}`}>
+                        <Button variant={lesson.completed ? "outline" : "default"} size="sm" className="cursor-pointer">
+                          {lesson.completed ? (
+                            <>
+                              <BookOpen className="mr-2 h-4 w-4" />
+                              Review
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircle className="mr-2 h-4 w-4" />
+                              Start
+                            </>
+                          )}
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>

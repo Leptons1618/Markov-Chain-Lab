@@ -29,7 +29,7 @@ export default function HomePage() {
               <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
                 Practice
               </Link>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="cursor-pointer bg-transparent">
                 Get Started
               </Button>
             </div>
@@ -52,13 +52,17 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="text-lg px-8">
-                  Start Learning
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent">
-                  Try Interactive Demo
-                </Button>
+                <Link href="/learn">
+                  <Button size="lg" className="text-lg px-8 cursor-pointer">
+                    Start Learning
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link href="/examples">
+                  <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent cursor-pointer">
+                    Try Interactive Demo
+                  </Button>
+                </Link>
               </div>
               <div className="flex items-center gap-8 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -115,7 +119,7 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full bg-transparent">
+                  <Button variant="outline" className="w-full bg-transparent cursor-pointer">
                     <Calculator className="mr-2 h-4 w-4" />
                     Run Simulation
                   </Button>
@@ -190,13 +194,17 @@ export default function HomePage() {
             Join thousands of students who have mastered advanced mathematics through interactive learning.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8">
-              Begin Learning Path
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent">
-              Explore Examples
-            </Button>
+            <Link href="/learn">
+              <Button size="lg" className="text-lg px-8 cursor-pointer">
+                Begin Learning Path
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/examples">
+              <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent cursor-pointer">
+                Explore Examples
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
