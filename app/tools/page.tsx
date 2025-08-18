@@ -47,7 +47,17 @@ export default function ToolsPage() {
   const [isSimulating, setIsSimulating] = useState(false)
   const [simulationStep, setSimulationStep] = useState(0)
   const [currentState, setCurrentState] = useState<string | null>(null)
+  const [isPanning, setIsPanning] = useState(false)
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
+  const [sidebarWidth, setSidebarWidth] = useState(320)
+  const [isResizing, setIsResizing] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
+
+  const CANVAS_WIDTH = 2000
+  const CANVAS_HEIGHT = 1500
+  const MAX_PAN_X = 200
+  const MAX_PAN_Y = 200
 
   const addState = useCallback(
     (x: number, y: number) => {
@@ -104,13 +114,14 @@ export default function ToolsPage() {
 
   const handleCanvasClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isPanning || isResizing) return
+
       if (!canvasRef.current) return
 
       const rect = canvasRef.current.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
+      const x = e.clientX - rect.left - panOffset.x - rect.width / 2 + CANVAS_WIDTH / 2
+      const y = e.clientY - rect.top - panOffset.y - rect.height / 2 + CANVAS_HEIGHT / 2
 
-      // Check if clicking on existing state
       const clickedState = chain.states.find((state) => {
         const distance = Math.sqrt((state.x - x) ** 2 + (state.y - y) ** 2)
         return distance <= 30
@@ -118,7 +129,6 @@ export default function ToolsPage() {
 
       if (clickedState) {
         if (selectedState && selectedState !== clickedState.id) {
-          // Create transition between selected state and clicked state
           addTransition(selectedState, clickedState.id)
           setSelectedState(null)
         } else if (selectedState === clickedState.id) {
@@ -128,12 +138,13 @@ export default function ToolsPage() {
           setSelectedState(clickedState.id)
         }
       } else {
-        // Add new state
-        addState(x, y)
+        const boundedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, x))
+        const boundedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, y))
+        addState(boundedX, boundedY)
         setSelectedState(null)
       }
     },
-    [chain.states, selectedState, addState, addTransition],
+    [chain.states, selectedState, addState, addTransition, isPanning, isResizing, panOffset],
   )
 
   const startSimulation = useCallback(() => {
@@ -150,7 +161,6 @@ export default function ToolsPage() {
     const outgoingTransitions = chain.transitions.filter((t) => t.from === currentState)
     if (outgoingTransitions.length === 0) return
 
-    // Simple random selection based on probabilities
     const random = Math.random()
     let cumulative = 0
 
@@ -189,9 +199,61 @@ export default function ToolsPage() {
 
   const transitionMatrix = generateTransitionMatrix()
 
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1) {
+      e.preventDefault()
+      setIsPanning(true)
+      setLastPanPoint({ x: e.clientX, y: e.clientY })
+    }
+  }, [])
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isPanning) {
+        e.preventDefault()
+        const deltaX = e.clientX - lastPanPoint.x
+        const deltaY = e.clientY - lastPanPoint.y
+        setPanOffset((prev) => ({
+          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, prev.x + deltaX)),
+          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, prev.y + deltaY)),
+        }))
+        setLastPanPoint({ x: e.clientX, y: e.clientY })
+      }
+    },
+    [isPanning, lastPanPoint],
+  )
+
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1) {
+      setIsPanning(false)
+    }
+  }, [])
+
+  const handleSidebarResize = useCallback(
+    (e: React.MouseEvent) => {
+      setIsResizing(true)
+      const startX = e.clientX
+      const startWidth = sidebarWidth
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const newWidth = Math.max(280, Math.min(600, startWidth + (e.clientX - startX)))
+        setSidebarWidth(newWidth)
+      }
+
+      const handleMouseUp = () => {
+        setIsResizing(false)
+        document.removeEventListener("mousemove", handleMouseMove)
+        document.removeEventListener("mouseup", handleMouseUp)
+      }
+
+      document.addEventListener("mousemove", handleMouseMove)
+      document.addEventListener("mouseup", handleMouseUp)
+    },
+    [sidebarWidth],
+  )
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -223,8 +285,15 @@ export default function ToolsPage() {
       </nav>
 
       <div className="flex h-[calc(100vh-4rem)]">
-        {/* Sidebar */}
-        <aside className="w-80 border-r border-border bg-card/50 p-6 overflow-y-auto">
+        <aside
+          className="border-r border-border bg-card/50 p-6 overflow-y-auto relative"
+          style={{ width: `${sidebarWidth}px` }}
+        >
+          <div
+            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border hover:bg-primary/20 transition-colors"
+            onMouseDown={handleSidebarResize}
+          />
+
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold mb-2">Chain Builder</h2>
@@ -389,144 +458,197 @@ export default function ToolsPage() {
           </div>
         </aside>
 
-        {/* Main Canvas */}
         <main className="flex-1 relative">
           <div
             ref={canvasRef}
-            className="w-full h-full bg-muted/10 cursor-crosshair relative overflow-hidden"
+            className={`w-full h-full bg-muted/10 relative overflow-hidden ${isPanning ? "cursor-grabbing" : "cursor-crosshair"}`}
             onClick={handleCanvasClick}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onContextMenu={(e) => e.preventDefault()}
           >
-            {/* Grid Background */}
             <div
-              className="absolute inset-0 opacity-20"
               style={{
-                backgroundImage: `
-                  linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-                  linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
-                `,
-                backgroundSize: "20px 20px",
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT,
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                marginLeft: -CANVAS_WIDTH / 2,
+                marginTop: -CANVAS_HEIGHT / 2,
               }}
-            />
+            >
+              <div className="absolute inset-0 border-2 border-dashed border-border/30 rounded-lg" />
 
-            {/* Transitions */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-              {chain.transitions.map((transition) => {
-                const fromState = chain.states.find((s) => s.id === transition.from)
-                const toState = chain.states.find((s) => s.id === transition.to)
-                if (!fromState || !toState) return null
-
-                const isSelfLoop = fromState.id === toState.id
-
-                if (isSelfLoop) {
-                  const radius = 32 // State circle radius
-                  const loopRadius = 25
-                  const cx = fromState.x
-                  const cy = fromState.y - radius - loopRadius
-                  const startX = fromState.x - radius * 0.7
-                  const startY = fromState.y - radius * 0.7
-                  const endX = fromState.x + radius * 0.7
-                  const endY = fromState.y - radius * 0.7
-
-                  return (
-                    <g key={transition.id}>
-                      <path
-                        d={`M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`}
-                        stroke="white"
-                        strokeWidth="4"
-                        fill="none"
-                        opacity="0.8"
-                      />
-                      <path
-                        d={`M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`}
-                        stroke="#059669"
-                        strokeWidth="2"
-                        fill="none"
-                        markerEnd="url(#arrowhead)"
-                      />
-                      <text x={cx} y={cy - 8} textAnchor="middle" className="text-xs fill-foreground font-medium">
-                        {transition.probability.toFixed(2)}
-                      </text>
-                    </g>
-                  )
-                }
-
-                const radius = 32 // Half of state circle size (64px / 2)
-                const dx = toState.x - fromState.x
-                const dy = toState.y - fromState.y
-                const distance = Math.sqrt(dx * dx + dy * dy)
-
-                // Calculate edge points
-                const fromX = fromState.x + (dx / distance) * radius
-                const fromY = fromState.y + (dy / distance) * radius
-                const toX = toState.x - (dx / distance) * radius
-                const toY = toState.y - (dy / distance) * radius
-
-                return (
-                  <g key={transition.id}>
-                    <line x1={fromX} y1={fromY} x2={toX} y2={toY} stroke="white" strokeWidth="4" opacity="0.8" />
-                    <line
-                      x1={fromX}
-                      y1={fromY}
-                      x2={toX}
-                      y2={toY}
-                      stroke="#059669"
-                      strokeWidth="2"
-                      markerEnd="url(#arrowhead)"
-                    />
-                    <text
-                      x={(fromX + toX) / 2}
-                      y={(fromY + toY) / 2 - 10}
-                      textAnchor="middle"
-                      className="text-xs fill-foreground font-medium"
-                    >
-                      {transition.probability.toFixed(2)}
-                    </text>
-                  </g>
-                )
-              })}
-
-              {/* Arrow marker definition */}
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                  <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
-                </marker>
-              </defs>
-            </svg>
-
-            {/* States */}
-            {chain.states.map((state) => (
               <div
-                key={state.id}
-                className={`
-                  absolute w-16 h-16 rounded-full border-2 flex items-center justify-center
-                  text-sm font-medium cursor-pointer transition-all transform -translate-x-8 -translate-y-8
-                  ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2" : ""}
-                  ${currentState === state.id ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
-                `}
+                className="absolute inset-0 opacity-20"
                 style={{
-                  left: state.x,
-                  top: state.y,
-                  backgroundColor: state.color + "20",
-                  borderColor: state.color,
-                  color: state.color,
+                  backgroundImage: `
+                    linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
+                    linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
+                  `,
+                  backgroundSize: "20px 20px",
                 }}
-              >
-                {state.name}
-              </div>
-            ))}
+              />
 
-            {/* Instructions overlay */}
-            {chain.states.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Card className="p-6 text-center">
-                  <CardContent>
-                    <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Start Building Your Chain</h3>
-                    <p className="text-muted-foreground">Click anywhere on the canvas to add your first state</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                {chain.transitions.map((transition) => {
+                  const fromState = chain.states.find((s) => s.id === transition.from)
+                  const toState = chain.states.find((s) => s.id === transition.to)
+                  if (!fromState || !toState) return null
+
+                  const isSelfLoop = fromState.id === toState.id
+
+                  if (isSelfLoop) {
+                    const radius = 32
+                    const loopRadius = 25
+                    const cx = fromState.x
+                    const cy = fromState.y - radius - loopRadius
+                    const startX = fromState.x - radius * 0.7
+                    const startY = fromState.y - radius * 0.7
+                    const endX = fromState.x + radius * 0.7
+                    const endY = fromState.y - radius * 0.7
+
+                    return (
+                      <g key={transition.id}>
+                        <path
+                          d={`M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`}
+                          stroke="white"
+                          strokeWidth="4"
+                          fill="none"
+                          opacity="0.8"
+                        />
+                        <path
+                          d={`M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`}
+                          stroke="#059669"
+                          strokeWidth="2"
+                          fill="none"
+                          markerEnd="url(#arrowhead)"
+                        />
+                        <text x={cx} y={cy - 8} textAnchor="middle" className="text-xs fill-foreground font-medium">
+                          {transition.probability.toFixed(2)}
+                        </text>
+                      </g>
+                    )
+                  }
+
+                  const reverseTransition = chain.transitions.find(
+                    (t) => t.from === transition.to && t.to === transition.from,
+                  )
+                  const isBidirectional = !!reverseTransition
+                  const isFirstDirection = isBidirectional && transition.from < transition.to
+
+                  const radius = 32
+                  const dx = toState.x - fromState.x
+                  const dy = toState.y - fromState.y
+                  const distance = Math.sqrt(dx * dx + dy * dy)
+
+                  const fromX = fromState.x + (dx / distance) * radius
+                  const fromY = fromState.y + (dy / distance) * radius
+                  const toX = toState.x - (dx / distance) * radius
+                  const toY = toState.y - (dy / distance) * radius
+
+                  if (isBidirectional) {
+                    const midX = (fromX + toX) / 2
+                    const midY = (fromY + toY) / 2
+
+                    const perpX = (-dy / distance) * 20
+                    const perpY = (dx / distance) * 20
+
+                    const controlX = midX + (isFirstDirection ? perpX : -perpX)
+                    const controlY = midY + (isFirstDirection ? perpY : -perpY)
+
+                    const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`
+
+                    const labelX = controlX
+                    const labelY = controlY - (isFirstDirection ? 10 : -15)
+
+                    return (
+                      <g key={transition.id}>
+                        <path d={pathData} stroke="white" strokeWidth="4" fill="none" opacity="0.8" />
+                        <path
+                          d={pathData}
+                          stroke="#059669"
+                          strokeWidth="2"
+                          fill="none"
+                          markerEnd="url(#arrowhead)"
+                          opacity="1"
+                        />
+                        <text x={labelX} y={labelY} textAnchor="middle" className="text-xs fill-foreground font-medium">
+                          {transition.probability.toFixed(2)}
+                        </text>
+                      </g>
+                    )
+                  } else {
+                    return (
+                      <g key={transition.id}>
+                        <line x1={fromX} y1={fromY} x2={toX} y2={toY} stroke="white" strokeWidth="4" opacity="0.8" />
+                        <line
+                          x1={fromX}
+                          y1={fromY}
+                          x2={toX}
+                          y2={toY}
+                          stroke="#059669"
+                          strokeWidth="2"
+                          markerEnd="url(#arrowhead)"
+                          opacity="1"
+                        />
+                        <text
+                          x={(fromX + toX) / 2}
+                          y={(fromY + toY) / 2 - 10}
+                          textAnchor="middle"
+                          className="text-xs fill-foreground font-medium"
+                        >
+                          {transition.probability.toFixed(2)}
+                        </text>
+                      </g>
+                    )
+                  }
+                })}
+
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
+                  </marker>
+                </defs>
+              </svg>
+
+              {chain.states.map((state) => (
+                <div
+                  key={state.id}
+                  className={`
+                    absolute w-16 h-16 rounded-full border-2 flex items-center justify-center
+                    text-sm font-medium cursor-pointer transition-all transform -translate-x-8 -translate-y-8
+                    ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2" : ""}
+                    ${currentState === state.id ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
+                  `}
+                  style={{
+                    left: state.x,
+                    top: state.y,
+                    backgroundColor: state.color + "20",
+                    borderColor: state.color,
+                    color: state.color,
+                  }}
+                >
+                  {state.name}
+                </div>
+              ))}
+
+              {chain.states.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Card className="p-6 text-center">
+                    <CardContent>
+                      <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Start Building Your Chain</h3>
+                      <p className="text-muted-foreground">Click anywhere on the canvas to add your first state</p>
+                      <p className="text-muted-foreground text-xs mt-2">Middle-click and drag to pan the canvas</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
           </div>
         </main>
       </div>
