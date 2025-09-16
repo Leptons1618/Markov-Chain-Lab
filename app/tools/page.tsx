@@ -534,11 +534,11 @@ export default function ToolsPage() {
                     )
                   }
 
+                  // Determine if there is a reverse transition so we can draw distinct curved paths
                   const reverseTransition = chain.transitions.find(
                     (t) => t.from === transition.to && t.to === transition.from,
                   )
                   const isBidirectional = !!reverseTransition
-                  const isFirstDirection = isBidirectional && transition.from < transition.to
 
                   const radius = 32
                   const dx = toState.x - fromState.x
@@ -551,32 +551,48 @@ export default function ToolsPage() {
                   const toY = toState.y - (dy / distance) * radius
 
                   if (isBidirectional) {
+                    // Compute a canonical orientation for the pair to derive a stable perpendicular.
+                    const canonicalFrom = fromState.id < toState.id ? fromState : toState
+                    const canonicalTo = canonicalFrom.id === fromState.id ? toState : fromState
+                    const baseDx = canonicalTo.x - canonicalFrom.x
+                    const baseDy = canonicalTo.y - canonicalFrom.y
+                    const baseDist = Math.sqrt(baseDx * baseDx + baseDy * baseDy) || 1
+                    const perpXUnit = -baseDy / baseDist
+                    const perpYUnit = baseDx / baseDist
+
+                    // Current direction sign relative to canonical orientation
+                    const sign = transition.from === canonicalFrom.id ? 1 : -1
+
                     const midX = (fromX + toX) / 2
                     const midY = (fromY + toY) / 2
 
-                    const perpX = (-dy / distance) * 20
-                    const perpY = (dx / distance) * 20
+                    const CURVE_OFFSET = 60
+                    const ENDPOINT_OFFSET = 12
 
-                    const controlX = midX + (isFirstDirection ? perpX : -perpX)
-                    const controlY = midY + (isFirstDirection ? perpY : -perpY)
+                    const adjFromX = fromX + perpXUnit * ENDPOINT_OFFSET * sign
+                    const adjFromY = fromY + perpYUnit * ENDPOINT_OFFSET * sign
+                    const adjToX = toX + perpXUnit * ENDPOINT_OFFSET * sign
+                    const adjToY = toY + perpYUnit * ENDPOINT_OFFSET * sign
 
-                    const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`
+                    const controlX = midX + perpXUnit * CURVE_OFFSET * sign
+                    const controlY = midY + perpYUnit * CURVE_OFFSET * sign
 
-                    const labelX = controlX
-                    const labelY = controlY - (isFirstDirection ? 10 : -15)
+                    const pathData = `M ${adjFromX} ${adjFromY} Q ${controlX} ${controlY} ${adjToX} ${adjToY}`
+
+                    const labelX = controlX + perpXUnit * 10 * sign
+                    const labelY = controlY + perpYUnit * 10 * sign - 4
 
                     return (
                       <g key={transition.id}>
-                        <path d={pathData} stroke="white" strokeWidth="4" fill="none" opacity="0.8" />
+                        <path d={pathData} stroke="white" strokeWidth="5" fill="none" opacity="0.92" />
                         <path
                           d={pathData}
                           stroke="#059669"
-                          strokeWidth="2"
+                          strokeWidth="2.25"
                           fill="none"
                           markerEnd="url(#arrowhead)"
-                          opacity="1"
                         />
-                        <text x={labelX} y={labelY} textAnchor="middle" className="text-xs fill-foreground font-medium">
+                        <text x={labelX} y={labelY} textAnchor="middle" className="text-xs fill-foreground font-medium select-none">
                           {transition.probability.toFixed(2)}
                         </text>
                       </g>
