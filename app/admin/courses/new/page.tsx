@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -19,6 +19,8 @@ export default function NewCoursePage() {
     description: "",
     slug: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -27,13 +29,36 @@ export default function NewCoursePage() {
       [name]: value,
       ...(name === "title" && { slug: value.toLowerCase().replace(/\s+/g, "-") }),
     }))
+    setError("") // Clear error when user starts typing
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In production, this would save to a database
-    console.log("Creating course:", formData)
-    router.push("/admin/courses")
+    setIsSubmitting(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/admin/courses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        router.push("/admin/courses")
+      } else {
+        setError(result.error || "Failed to create course")
+      }
+    } catch (error) {
+      console.error("Failed to create course:", error)
+      setError("Failed to create course. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -59,6 +84,12 @@ export default function NewCoursePage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="title">Course Title</Label>
                 <Input
@@ -68,6 +99,7 @@ export default function NewCoursePage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
+                  disabled={isSubmitting}
                   className="cursor-text"
                 />
               </div>
@@ -82,6 +114,7 @@ export default function NewCoursePage() {
                   onChange={handleChange}
                   rows={4}
                   required
+                  disabled={isSubmitting}
                   className="cursor-text"
                 />
               </div>
@@ -94,17 +127,27 @@ export default function NewCoursePage() {
                   placeholder="auto-generated from title"
                   value={formData.slug}
                   onChange={handleChange}
+                  disabled={isSubmitting}
                   className="cursor-text"
                 />
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" className="cursor-pointer">
-                  <Save className="h-4 w-4 mr-2" />
-                  Create Course
+                <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Create Course
+                    </>
+                  )}
                 </Button>
                 <Link href="/admin/courses">
-                  <Button variant="outline" className="cursor-pointer bg-transparent">
+                  <Button variant="outline" disabled={isSubmitting} className="cursor-pointer bg-transparent">
                     Cancel
                   </Button>
                 </Link>

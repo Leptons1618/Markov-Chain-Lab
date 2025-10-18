@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 
@@ -22,6 +22,8 @@ export default function NewLessonPage() {
     description: "",
     content: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -29,12 +31,39 @@ export default function NewLessonPage() {
       ...prev,
       [name]: value,
     }))
+    setError("") // Clear error when user starts typing
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Creating lesson:", formData)
-    router.push(`/admin/courses/${courseId}`)
+    setIsSubmitting(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/admin/lessons", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          courseId,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        router.push(`/admin/courses/${courseId}`)
+      } else {
+        setError(result.error || "Failed to create lesson")
+      }
+    } catch (error) {
+      console.error("Failed to create lesson:", error)
+      setError("Failed to create lesson. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -63,6 +92,12 @@ export default function NewLessonPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="title">Lesson Title</Label>
                 <Input
@@ -72,6 +107,7 @@ export default function NewLessonPage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
+                  disabled={isSubmitting}
                   className="cursor-text"
                 />
               </div>
@@ -86,6 +122,7 @@ export default function NewLessonPage() {
                   onChange={handleChange}
                   rows={3}
                   required
+                  disabled={isSubmitting}
                   className="cursor-text"
                 />
               </div>
@@ -100,17 +137,27 @@ export default function NewLessonPage() {
                   onChange={handleChange}
                   rows={10}
                   required
+                  disabled={isSubmitting}
                   className="font-mono text-sm cursor-text"
                 />
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" className="cursor-pointer">
-                  <Save className="h-4 w-4 mr-2" />
-                  Create Lesson
+                <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Create Lesson
+                    </>
+                  )}
                 </Button>
                 <Link href={`/admin/courses/${courseId}`}>
-                  <Button variant="outline" className="cursor-pointer bg-transparent">
+                  <Button variant="outline" disabled={isSubmitting} className="cursor-pointer bg-transparent">
                     Cancel
                   </Button>
                 </Link>

@@ -1,23 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-// Mock lesson storage
-const mockLessons: any = {
-  "1": {
-    id: "1",
-    courseId: "chains",
-    title: "What is a Markov Chain?",
-    description: "Understanding the fundamental concept",
-    content: "# Markov Chains Explained\n\nA Markov chain is a stochastic model...",
-    status: "published",
-    order: 1,
-  },
-}
+import { lessons } from "../route"
 
 // GET single lesson
 export async function GET(request: NextRequest, { params }: { params: { lessonId: string } }) {
   try {
     const lessonId = params.lessonId
-    const lesson = mockLessons[lessonId]
+    const lesson = lessons.find(l => l.id === lessonId)
 
     if (!lesson) {
       return NextResponse.json({ success: false, error: "Lesson not found" }, { status: 404 })
@@ -35,17 +23,18 @@ export async function PUT(request: NextRequest, { params }: { params: { lessonId
     const lessonId = params.lessonId
     const body = await request.json()
 
-    if (!mockLessons[lessonId]) {
+    const lessonIndex = lessons.findIndex(l => l.id === lessonId)
+    if (lessonIndex === -1) {
       return NextResponse.json({ success: false, error: "Lesson not found" }, { status: 404 })
     }
 
     const updatedLesson = {
-      ...mockLessons[lessonId],
+      ...lessons[lessonIndex],
       ...body,
       updatedAt: new Date(),
     }
 
-    mockLessons[lessonId] = updatedLesson
+    lessons[lessonIndex] = updatedLesson
     return NextResponse.json({ success: true, data: updatedLesson })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to update lesson" }, { status: 500 })
@@ -57,11 +46,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { lesso
   try {
     const lessonId = params.lessonId
 
-    if (!mockLessons[lessonId]) {
+    const lessonIndex = lessons.findIndex(l => l.id === lessonId)
+    if (lessonIndex === -1) {
       return NextResponse.json({ success: false, error: "Lesson not found" }, { status: 404 })
     }
 
-    delete mockLessons[lessonId]
+    lessons.splice(lessonIndex, 1)
     return NextResponse.json({ success: true, message: "Lesson deleted successfully" })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to delete lesson" }, { status: 500 })

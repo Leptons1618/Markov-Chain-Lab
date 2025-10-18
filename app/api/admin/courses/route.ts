@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// In-memory storage (replace with database in production)
-const courses: any[] = [
+// Shared in-memory storage (replace with database in production)
+export const courses: any[] = [
   {
     id: "foundations",
     title: "Foundations",
