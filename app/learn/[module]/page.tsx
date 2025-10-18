@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -630,7 +630,7 @@ const lessonContent = {
   },
 }
 
-export default function LessonPage({ params }: { params: { module: string } }) {
+export default function LessonPage({ params }: { params: any }) {
   const [currentSection, setCurrentSection] = useState(0)
   const [isLessonCompleted, setIsLessonCompleted] = useState(false) // Added lesson completion state
   const [coinFlips, setCoinFlips] = useState({
@@ -642,10 +642,16 @@ export default function LessonPage({ params }: { params: { module: string } }) {
     history: [] as { flip: number; headsPercent: number; tailsPercent: number }[],
   })
 
-  const lesson = lessonContent[params.module] || lessonContent["probability-basics"]
+  // params is a Promise in newer Next.js versions when passed into client components.
+  // Unwrap it with React.use() before accessing properties to avoid warnings and
+  // future breaking behavior.
+  const resolvedParams = React.use(params as any) as { module?: string }
+  const moduleId = resolvedParams?.module ?? "probability-basics"
+
+  const lesson = lessonContent[moduleId] || lessonContent["probability-basics"]
 
   const getCurrentLessonIndex = () => {
-    return lessonOrder.findIndex((item) => item.lesson === params.module)
+    return lessonOrder.findIndex((item) => item.lesson === moduleId)
   }
 
   const getNextLesson = () => {
@@ -729,7 +735,7 @@ export default function LessonPage({ params }: { params: { module: string } }) {
 
       <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-8">
         <div className="space-y-4">
-          <Badge variant="outline">{params.module.charAt(0).toUpperCase() + params.module.slice(1)}</Badge>
+                  <Badge variant="outline">{moduleId.charAt(0).toUpperCase() + moduleId.slice(1)}</Badge>
           <h1 className="text-3xl font-bold">{lesson.title}</h1>
           <p className="text-lg text-muted-foreground">{lesson.description}</p>
         </div>
