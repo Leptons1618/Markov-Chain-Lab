@@ -53,4 +53,3 @@ Legend: [Done] [Partial] [Planned]
 - Auth and profiles — [Planned]
 - Persistence (DB or files) — [Planned]
 - CI/CD (GitHub Actions + Vercel) — [Planned]
-

@@ -36,4 +36,3 @@ A comprehensive list of gaps that block production-readiness.
 
 - Lessons include formulas and definitions without inline citations or source attributions; add references and review notation consistency.
 - Resources page contains placeholder links/domains; replace with specific URLs.
-

@@ -71,10 +71,10 @@ Key gaps (full list in `docs/GAPS.md`):
 
 Prereqs: Node 18+ recommended.
 
-```pwsh
+\`\`\`pwsh
 pnpm install
 pnpm dev
-```
+\`\`\`
 
 Then open http://localhost:3000.
 
@@ -96,4 +96,3 @@ Curated sources are listed in `docs/SOURCES.md`, and each lesson outline referen
 ## License
 
 TBD. Add an explicit LICENSE before open-sourcing.
-

@@ -58,4 +58,3 @@ Deliverables:
 - Final content review with citations; add LICENSE and CONTRIBUTING.
 
 Milestone: Production deploy (Vercel), announce, and collect feedback.
-

@@ -57,4 +57,3 @@ This project is a client-forward educational web app built on Next.js 15 (App Ro
 
 - Scripts: `dev`, `build`, `start`, `lint`.
 - No env usage; no external services.
-

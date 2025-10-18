@@ -61,7 +61,7 @@ This document maps the current prototype lessons to structured content items and
 ## Implementation notes
 
 - Convert each outline into an MDX file with frontmatter:
-  ```
+  \`\`\`
   ---
   id: probability-basics
   module: foundations
@@ -73,6 +73,6 @@ This document maps the current prototype lessons to structured content items and
       author: Grinstead & Snell
       url: http://...
   ---
-  ```
+  \`\`\`
 - Render math with KaTeX; mention sources inline where appropriate.
 - Add practice links at end of lessons and deep link to tools/examples.
