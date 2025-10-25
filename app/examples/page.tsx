@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -35,125 +35,50 @@ interface Example {
   interactiveDemo?: boolean
 }
 
-const examples: Example[] = [
-  {
-    id: "weather",
-    title: "Weather Prediction Model",
-    description: "A simple 2-state model predicting sunny and rainy days based on current weather",
-    category: "classic",
-    difficulty: "beginner",
-    icon: <Cloud className="h-5 w-5" />,
-    states: ["Sunny", "Rainy"],
-    applications: ["Meteorology", "Agriculture Planning", "Event Planning"],
-    interactiveDemo: true,
-  },
-  {
-    id: "random-walk",
-    title: "Random Walk",
-    description: "Mathematical model of a path consisting of random steps, fundamental to many processes",
-    category: "classic",
-    difficulty: "beginner",
-    icon: <TrendingUp className="h-5 w-5" />,
-    states: ["Position -2", "Position -1", "Position 0", "Position 1", "Position 2"],
-    applications: ["Stock Prices", "Brownian Motion", "Diffusion Processes"],
-    interactiveDemo: true,
-  },
-  {
-    id: "monopoly",
-    title: "Monopoly Board Game",
-    description: "Analysis of player movement around the Monopoly board using transition probabilities",
-    category: "classic",
-    difficulty: "intermediate",
-    icon: <Gamepad2 className="h-5 w-5" />,
-    states: ["Go", "Mediterranean Ave", "Community Chest", "Baltic Ave", "Income Tax", "Reading Railroad"],
-    applications: ["Game Theory", "Probability Analysis", "Strategy Optimization"],
-    interactiveDemo: false,
-  },
-  {
-    id: "queue-system",
-    title: "Queueing System",
-    description: "Customer service queue with arrival and departure rates",
-    category: "classic",
-    difficulty: "intermediate",
-    icon: <Users className="h-5 w-5" />,
-    states: ["0 customers", "1 customer", "2 customers", "3 customers", "4+ customers"],
-    applications: ["Call Centers", "Restaurant Management", "Traffic Flow"],
-    interactiveDemo: true,
-  },
-  {
-    id: "pagerank",
-    title: "Google PageRank Algorithm",
-    description: "Web page ranking based on link structure and random surfer model",
-    category: "modern",
-    difficulty: "advanced",
-    icon: <Search className="h-5 w-5" />,
-    states: ["Page A", "Page B", "Page C", "Page D"],
-    applications: ["Search Engines", "Social Network Analysis", "Citation Analysis"],
-    interactiveDemo: false,
-  },
-  {
-    id: "stock-model",
-    title: "Stock Price Modeling",
-    description: "Simplified model of stock price movements with up, down, and stable states",
-    category: "modern",
-    difficulty: "intermediate",
-    icon: <DollarSign className="h-5 w-5" />,
-    states: ["Bull Market", "Bear Market", "Stable Market"],
-    applications: ["Financial Analysis", "Risk Assessment", "Portfolio Management"],
-    interactiveDemo: true,
-  },
-  {
-    id: "dna-sequence",
-    title: "DNA Sequence Analysis",
-    description: "Modeling nucleotide sequences and gene prediction using Hidden Markov Models",
-    category: "modern",
-    difficulty: "advanced",
-    icon: <Dna className="h-5 w-5" />,
-    states: ["A (Adenine)", "T (Thymine)", "G (Guanine)", "C (Cytosine)"],
-    applications: ["Bioinformatics", "Gene Prediction", "Evolutionary Biology"],
-    interactiveDemo: false,
-  },
-  {
-    id: "nlp-model",
-    title: "Natural Language Processing",
-    description: "Text generation and language modeling using word transition probabilities",
-    category: "modern",
-    difficulty: "advanced",
-    icon: <MessageSquare className="h-5 w-5" />,
-    states: ["Noun", "Verb", "Adjective", "Adverb", "Article"],
-    applications: ["Chatbots", "Text Generation", "Language Translation"],
-    interactiveDemo: false,
-  },
-]
-
 export default function ExamplesPage() {
+  const [examples, setExamples] = useState<Example[]>([])
   const [selectedExample, setSelectedExample] = useState<Example | null>(null)
-  const [simulationRunning, setSimulationRunning] = useState(false)
-  const [currentState, setCurrentState] = useState<string>("")
-  const [simulationSteps, setSimulationSteps] = useState(0)
+  
+  // Load examples from API
+  useEffect(() => {
+    fetch("/api/examples")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Map API data to component format
+          const mapped = data.data.map((ex: any) => ({
+            id: ex.id,
+            title: ex.title,
+            description: ex.description,
+            category: ex.category,
+            difficulty: ex.difficulty,
+            icon: getIconForExample(ex.id),
+            states: ex.design.states.map((s: any) => s.name),
+            applications: ex.applications,
+            interactiveDemo: ex.interactiveDemo,
+          }))
+          setExamples(mapped)
+        }
+      })
+      .catch(err => console.error("Failed to load examples:", err))
+  }, [])
+  
+  function getIconForExample(id: string) {
+    const icons: Record<string, React.ReactNode> = {
+      weather: <Cloud className="h-5 w-5" />,
+      "random-walk": <TrendingUp className="h-5 w-5" />,
+      monopoly: <Gamepad2 className="h-5 w-5" />,
+      "queue-system": <Users className="h-5 w-5" />,
+      pagerank: <Search className="h-5 w-5" />,
+      "stock-model": <DollarSign className="h-5 w-5" />,
+      "dna-sequence": <Dna className="h-5 w-5" />,
+      "nlp-model": <MessageSquare className="h-5 w-5" />,
+    }
+    return icons[id] || <BarChart3 className="h-5 w-5" />
+  }
 
   const classicExamples = examples.filter((e) => e.category === "classic")
   const modernExamples = examples.filter((e) => e.category === "modern")
-
-  const startSimulation = (example: Example) => {
-    setSimulationRunning(true)
-    setCurrentState(example.states[0])
-    setSimulationSteps(0)
-  }
-
-  const stepSimulation = () => {
-    if (!selectedExample) return
-    // Simple random state transition for demo
-    const randomIndex = Math.floor(Math.random() * selectedExample.states.length)
-    setCurrentState(selectedExample.states[randomIndex])
-    setSimulationSteps((prev) => prev + 1)
-  }
-
-  const resetSimulation = () => {
-    setSimulationRunning(false)
-    setCurrentState("")
-    setSimulationSteps(0)
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -385,56 +310,18 @@ export default function ExamplesPage() {
               {/* State Visualization */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">State Space</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {selectedExample.states.map((state, index) => (
-                    <div
-                      key={state}
-                      className={`
-                        p-3 rounded-lg border-2 text-center transition-all
-                        ${
-                          currentState === state ? "border-primary bg-primary/10 text-primary" : "border-border bg-card"
-                        }
-                      `}
-                    >
-                      <div className="text-sm font-medium">{state}</div>
-                    </div>
-                  ))}
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    View this example in the Chain Builder to see the full state diagram and run simulations.
+                  </p>
+                  <Button asChild>
+                    <Link href={`/tools?example=${selectedExample.id}`}>
+                      Open in Chain Builder
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
               </div>
-
-              {/* Interactive Demo */}
-              {selectedExample.interactiveDemo && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Interactive Simulation</h3>
-                  <Card className="p-4 bg-muted/30">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <Button onClick={() => startSimulation(selectedExample)} disabled={simulationRunning} size="sm">
-                          <Play className="mr-2 h-4 w-4" />
-                          Start
-                        </Button>
-                        <Button onClick={stepSimulation} disabled={!simulationRunning} size="sm">
-                          Step
-                        </Button>
-                        <Button onClick={resetSimulation} variant="outline" size="sm">
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Reset
-                        </Button>
-                      </div>
-                      {simulationRunning && (
-                        <div className="text-sm text-muted-foreground">
-                          Step: {simulationSteps} | Current: {currentState}
-                        </div>
-                      )}
-                    </div>
-                    {!simulationRunning && !currentState && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Click "Start" to begin the simulation
-                      </div>
-                    )}
-                  </Card>
-                </div>
-              )}
 
               {/* Applications */}
               <div>
@@ -451,10 +338,16 @@ export default function ExamplesPage() {
                 </div>
               </div>
 
-              {/* Case Study Link */}
-              <div className="pt-4 border-t border-border">
-                <Button className="w-full sm:w-auto">
-                  View Detailed Case Study
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-border flex gap-3">
+                <Button asChild className="flex-1 sm:flex-initial">
+                  <Link href={`/tools?example=${selectedExample.id}`}>
+                    View in Chain Builder
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button variant="outline" className="flex-1 sm:flex-initial">
+                  View Case Study
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>

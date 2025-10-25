@@ -1,0 +1,1042 @@
+[
+    {
+        "id": "weather",
+        "title": "Weather Prediction Model",
+        "description": "A simple 2-state model predicting sunny and rainy days based on current weather",
+        "category": "classic",
+        "difficulty": "beginner",
+        "applications": [
+            "Meteorology",
+            "Agriculture Planning",
+            "Event Planning"
+        ],
+        "interactiveDemo": true,
+        "design": {
+            "states": [
+                {
+                    "id": "sunny",
+                    "name": "Sunny",
+                    "x": 600,
+                    "y": 400,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "rainy",
+                    "name": "Rainy",
+                    "x": 1200,
+                    "y": 400,
+                    "color": "#60a5fa"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "sunny-sunny",
+                    "from": "sunny",
+                    "to": "sunny",
+                    "probability": 0.7
+                },
+                {
+                    "id": "sunny-rainy",
+                    "from": "sunny",
+                    "to": "rainy",
+                    "probability": 0.3
+                },
+                {
+                    "id": "rainy-sunny",
+                    "from": "rainy",
+                    "to": "sunny",
+                    "probability": 0.4
+                },
+                {
+                    "id": "rainy-rainy",
+                    "from": "rainy",
+                    "to": "rainy",
+                    "probability": 0.6
+                }
+            ]
+        },
+        "explanation": "This classic example models weather patterns where sunny days tend to persist (70% probability of staying sunny), while rainy days are also somewhat persistent (60% probability of staying rainy). The model demonstrates the Markov property: tomorrow's weather depends only on today's weather, not on previous days."
+    },
+    {
+        "id": "random-walk",
+        "title": "Random Walk",
+        "description": "A simple 1D random walk with five positions and reflective boundaries.",
+        "category": "classic",
+        "difficulty": "beginner",
+        "applications": [
+            "Stock Prices",
+            "Brownian Motion",
+            "Diffusion Processes"
+        ],
+        "interactiveDemo": true,
+        "design": {
+            "states": [
+                {
+                    "id": "pos-2",
+                    "name": "Position -2",
+                    "x": 300,
+                    "y": 750,
+                    "color": "#fb923c"
+                },
+                {
+                    "id": "pos-1",
+                    "name": "Position -1",
+                    "x": 650,
+                    "y": 750,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "pos0",
+                    "name": "Position 0",
+                    "x": 1000,
+                    "y": 750,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "pos1",
+                    "name": "Position 1",
+                    "x": 1350,
+                    "y": 750,
+                    "color": "#34d399"
+                },
+                {
+                    "id": "pos2",
+                    "name": "Position 2",
+                    "x": 1700,
+                    "y": 750,
+                    "color": "#a78bfa"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "pos-2-pos-1",
+                    "from": "pos-2",
+                    "to": "pos-1",
+                    "probability": 1.0
+                },
+                {
+                    "id": "pos-1-pos-2",
+                    "from": "pos-1",
+                    "to": "pos-2",
+                    "probability": 0.5
+                },
+                {
+                    "id": "pos-1-pos0",
+                    "from": "pos-1",
+                    "to": "pos0",
+                    "probability": 0.5
+                },
+                {
+                    "id": "pos0-pos-1",
+                    "from": "pos0",
+                    "to": "pos-1",
+                    "probability": 0.5
+                },
+                {
+                    "id": "pos0-pos1",
+                    "from": "pos0",
+                    "to": "pos1",
+                    "probability": 0.5
+                },
+                {
+                    "id": "pos1-pos0",
+                    "from": "pos1",
+                    "to": "pos0",
+                    "probability": 0.5
+                },
+                {
+                    "id": "pos1-pos2",
+                    "from": "pos1",
+                    "to": "pos2",
+                    "probability": 0.5
+                },
+                {
+                    "id": "pos2-pos1",
+                    "from": "pos2",
+                    "to": "pos1",
+                    "probability": 1.0
+                }
+            ]
+        },
+        "explanation": "This 1D random-walk has five positions. Interior positions (−1, 0, 1) move left or right with equal probability 0.5. The extremes are reflective: Position −2 always moves inward to −1, and Position 2 always moves inward to 1. The model demonstrates the Markov property because the next position depends only on the current position, not the path that led there."
+    },
+    {
+        "id": "monopoly",
+        "title": "Monopoly (Simplified 6-State Board)",
+        "description": "A highly simplified 6-square Monopoly sub-board with dice-based movement probabilities.",
+        "category": "classic",
+        "difficulty": "intermediate",
+        "applications": [
+            "Game Theory",
+            "Probability Analysis",
+            "Strategy Optimization"
+        ],
+        "interactiveDemo": false,
+        "design": {
+            "states": [
+                {
+                    "id": "go",
+                    "name": "Go",
+                    "x": 1000,
+                    "y": 250,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "mediterranean",
+                    "name": "Mediterranean Ave",
+                    "x": 1300,
+                    "y": 430,
+                    "color": "#f87171"
+                },
+                {
+                    "id": "community",
+                    "name": "Community Chest",
+                    "x": 1150,
+                    "y": 760,
+                    "color": "#94a3b8"
+                },
+                {
+                    "id": "baltic",
+                    "name": "Baltic Ave",
+                    "x": 850,
+                    "y": 760,
+                    "color": "#fb923c"
+                },
+                {
+                    "id": "income-tax",
+                    "name": "Income Tax",
+                    "x": 700,
+                    "y": 430,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "reading-railroad",
+                    "name": "Reading Railroad",
+                    "x": 1000,
+                    "y": 600,
+                    "color": "#34d399"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "go-mediterranean",
+                    "from": "go",
+                    "to": "mediterranean",
+                    "probability": 0.6
+                },
+                {
+                    "id": "go-community",
+                    "from": "go",
+                    "to": "community",
+                    "probability": 0.3
+                },
+                {
+                    "id": "go-baltic",
+                    "from": "go",
+                    "to": "baltic",
+                    "probability": 0.1
+                },
+                {
+                    "id": "mediterranean-community",
+                    "from": "mediterranean",
+                    "to": "community",
+                    "probability": 0.6
+                },
+                {
+                    "id": "mediterranean-baltic",
+                    "from": "mediterranean",
+                    "to": "baltic",
+                    "probability": 0.3
+                },
+                {
+                    "id": "mediterranean-income-tax",
+                    "from": "mediterranean",
+                    "to": "income-tax",
+                    "probability": 0.1
+                },
+                {
+                    "id": "community-baltic",
+                    "from": "community",
+                    "to": "baltic",
+                    "probability": 0.6
+                },
+                {
+                    "id": "community-reading-railroad",
+                    "from": "community",
+                    "to": "reading-railroad",
+                    "probability": 0.3
+                },
+                {
+                    "id": "community-go",
+                    "from": "community",
+                    "to": "go",
+                    "probability": 0.1
+                },
+                {
+                    "id": "baltic-income-tax",
+                    "from": "baltic",
+                    "to": "income-tax",
+                    "probability": 0.6
+                },
+                {
+                    "id": "baltic-reading-railroad",
+                    "from": "baltic",
+                    "to": "reading-railroad",
+                    "probability": 0.3
+                },
+                {
+                    "id": "baltic-go",
+                    "from": "baltic",
+                    "to": "go",
+                    "probability": 0.1
+                },
+                {
+                    "id": "income-tax-reading-railroad",
+                    "from": "income-tax",
+                    "to": "reading-railroad",
+                    "probability": 0.7
+                },
+                {
+                    "id": "income-tax-go",
+                    "from": "income-tax",
+                    "to": "go",
+                    "probability": 0.2
+                },
+                {
+                    "id": "income-tax-mediterranean",
+                    "from": "income-tax",
+                    "to": "mediterranean",
+                    "probability": 0.1
+                },
+                {
+                    "id": "reading-railroad-go",
+                    "from": "reading-railroad",
+                    "to": "go",
+                    "probability": 0.5
+                },
+                {
+                    "id": "reading-railroad-mediterranean",
+                    "from": "reading-railroad",
+                    "to": "mediterranean",
+                    "probability": 0.3
+                },
+                {
+                    "id": "reading-railroad-community",
+                    "from": "reading-railroad",
+                    "to": "community",
+                    "probability": 0.2
+                }
+            ]
+        },
+        "explanation": "This simplified Monopoly chain moves a player forward by a small number of squares according to typical dice-sum likelihoods collapsed into three move sizes. From each square the next square is chosen probabilistically (here approximated by a 60/30/10 split to reflect common mid-range sums). The Markov property holds because the next location depends only on the current square, not how the player reached it. This model is useful for analysing landing frequencies and strategy."
+    },
+    {
+        "id": "queue-system",
+        "title": "Queueing System (Discrete Approximation)",
+        "description": "A small birth–death queue with an aggregate 4+ customers state to illustrate stability and blocking.",
+        "category": "classic",
+        "difficulty": "intermediate",
+        "applications": [
+            "Call Centers",
+            "Restaurant Management",
+            "Traffic Flow"
+        ],
+        "interactiveDemo": true,
+        "design": {
+            "states": [
+                {
+                    "id": "q0",
+                    "name": "0 customers",
+                    "x": 1000,
+                    "y": 250,
+                    "color": "#34d399"
+                },
+                {
+                    "id": "q1",
+                    "name": "1 customer",
+                    "x": 1000,
+                    "y": 520,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "q2",
+                    "name": "2 customers",
+                    "x": 1000,
+                    "y": 790,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "q3",
+                    "name": "3 customers",
+                    "x": 1000,
+                    "y": 1060,
+                    "color": "#fb923c"
+                },
+                {
+                    "id": "q4plus",
+                    "name": "4+ customers",
+                    "x": 1000,
+                    "y": 1320,
+                    "color": "#f87171"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "q0-q1",
+                    "from": "q0",
+                    "to": "q1",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q0-q0",
+                    "from": "q0",
+                    "to": "q0",
+                    "probability": 0.4
+                },
+                {
+                    "id": "q1-q2",
+                    "from": "q1",
+                    "to": "q2",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q1-q0",
+                    "from": "q1",
+                    "to": "q0",
+                    "probability": 0.3
+                },
+                {
+                    "id": "q1-q1",
+                    "from": "q1",
+                    "to": "q1",
+                    "probability": 0.1
+                },
+                {
+                    "id": "q2-q3",
+                    "from": "q2",
+                    "to": "q3",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q2-q1",
+                    "from": "q2",
+                    "to": "q1",
+                    "probability": 0.3
+                },
+                {
+                    "id": "q2-q2",
+                    "from": "q2",
+                    "to": "q2",
+                    "probability": 0.1
+                },
+                {
+                    "id": "q3-q4plus",
+                    "from": "q3",
+                    "to": "q4plus",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q3-q2",
+                    "from": "q3",
+                    "to": "q2",
+                    "probability": 0.3
+                },
+                {
+                    "id": "q3-q3",
+                    "from": "q3",
+                    "to": "q3",
+                    "probability": 0.1
+                },
+                {
+                    "id": "q4plus-q4plus",
+                    "from": "q4plus",
+                    "to": "q4plus",
+                    "probability": 0.7
+                },
+                {
+                    "id": "q4plus-q3",
+                    "from": "q4plus",
+                    "to": "q3",
+                    "probability": 0.3
+                }
+            ]
+        },
+        "explanation": "This birth–death-style chain approximates arrivals and services in a discrete-time setting. From states 0–3 an arrival (probability 0.6) increases queue length, a service (0.3) decreases it, and otherwise the state remains the same (0.1). The '4+' state aggregates all larger queues: arrivals keep the system in 4+ (0.7 aggregated self-loop), services reduce it to 3 (0.3). The next-state distribution depends only on the current queue length (Markov property)."
+    },
+    {
+        "id": "pagerank",
+        "title": "PageRank (4-Page Web)",
+        "description": "A four-page link graph with damping (0.85) and teleportation to model PageRank behavior.",
+        "category": "modern",
+        "difficulty": "advanced",
+        "applications": [
+            "Search Engines",
+            "Social Network Analysis",
+            "Citation Analysis"
+        ],
+        "interactiveDemo": false,
+        "design": {
+            "states": [
+                {
+                    "id": "pageA",
+                    "name": "Page A",
+                    "x": 700,
+                    "y": 450,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "pageB",
+                    "name": "Page B",
+                    "x": 1300,
+                    "y": 450,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "pageC",
+                    "name": "Page C",
+                    "x": 700,
+                    "y": 1050,
+                    "color": "#34d399"
+                },
+                {
+                    "id": "pageD",
+                    "name": "Page D",
+                    "x": 1300,
+                    "y": 1050,
+                    "color": "#a78bfa"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "pageA-pageB",
+                    "from": "pageA",
+                    "to": "pageB",
+                    "probability": 0.4625
+                },
+                {
+                    "id": "pageA-pageC",
+                    "from": "pageA",
+                    "to": "pageC",
+                    "probability": 0.4625
+                },
+                {
+                    "id": "pageA-pageA",
+                    "from": "pageA",
+                    "to": "pageA",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageA-pageD",
+                    "from": "pageA",
+                    "to": "pageD",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageB-pageC",
+                    "from": "pageB",
+                    "to": "pageC",
+                    "probability": 0.8875
+                },
+                {
+                    "id": "pageB-pageA",
+                    "from": "pageB",
+                    "to": "pageA",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageB-pageB",
+                    "from": "pageB",
+                    "to": "pageB",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageB-pageD",
+                    "from": "pageB",
+                    "to": "pageD",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageC-pageA",
+                    "from": "pageC",
+                    "to": "pageA",
+                    "probability": 0.4625
+                },
+                {
+                    "id": "pageC-pageD",
+                    "from": "pageC",
+                    "to": "pageD",
+                    "probability": 0.4625
+                },
+                {
+                    "id": "pageC-pageB",
+                    "from": "pageC",
+                    "to": "pageB",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageC-pageC",
+                    "from": "pageC",
+                    "to": "pageC",
+                    "probability": 0.0375
+                },
+                {
+                    "id": "pageD-pageA",
+                    "from": "pageD",
+                    "to": "pageA",
+                    "probability": 0.25
+                },
+                {
+                    "id": "pageD-pageB",
+                    "from": "pageD",
+                    "to": "pageB",
+                    "probability": 0.25
+                },
+                {
+                    "id": "pageD-pageC",
+                    "from": "pageD",
+                    "to": "pageC",
+                    "probability": 0.25
+                },
+                {
+                    "id": "pageD-pageD",
+                    "from": "pageD",
+                    "to": "pageD",
+                    "probability": 0.25
+                }
+            ]
+        },
+        "explanation": "Pages A, B, C link to other pages (A→{B,C}, B→{C}, C→{A,D}). Page D is a dangling page (no outgoing links), modeled here as teleporting uniformly to all pages. Using damping factor 0.85, each outgoing link receives 0.85*(1/outdegree) plus 0.15*(1/4) teleport probability; non-linked pages receive only the teleport component (0.0375). Dangling nodes distribute probability uniformly (0.25 each). The stationary distribution (PageRank) is the long-run visit frequency over pages."
+    },
+    {
+        "id": "stock-model",
+        "title": "Stock Market Regime Model",
+        "description": "A three-regime market model (Bull, Bear, Stable) with regime-switching probabilities.",
+        "category": "modern",
+        "difficulty": "intermediate",
+        "applications": [
+            "Financial Analysis",
+            "Risk Assessment",
+            "Portfolio Management"
+        ],
+        "interactiveDemo": true,
+        "design": {
+            "states": [
+                {
+                    "id": "bull",
+                    "name": "Bull Market",
+                    "x": 1000,
+                    "y": 350,
+                    "color": "#34d399"
+                },
+                {
+                    "id": "stable",
+                    "name": "Stable Market",
+                    "x": 700,
+                    "y": 900,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "bear",
+                    "name": "Bear Market",
+                    "x": 1300,
+                    "y": 900,
+                    "color": "#f87171"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "bull-bull",
+                    "from": "bull",
+                    "to": "bull",
+                    "probability": 0.75
+                },
+                {
+                    "id": "bull-stable",
+                    "from": "bull",
+                    "to": "stable",
+                    "probability": 0.15
+                },
+                {
+                    "id": "bull-bear",
+                    "from": "bull",
+                    "to": "bear",
+                    "probability": 0.1
+                },
+                {
+                    "id": "stable-stable",
+                    "from": "stable",
+                    "to": "stable",
+                    "probability": 0.6
+                },
+                {
+                    "id": "stable-bull",
+                    "from": "stable",
+                    "to": "bull",
+                    "probability": 0.2
+                },
+                {
+                    "id": "stable-bear",
+                    "from": "stable",
+                    "to": "bear",
+                    "probability": 0.2
+                },
+                {
+                    "id": "bear-bear",
+                    "from": "bear",
+                    "to": "bear",
+                    "probability": 0.7
+                },
+                {
+                    "id": "bear-stable",
+                    "from": "bear",
+                    "to": "stable",
+                    "probability": 0.2
+                },
+                {
+                    "id": "bear-bull",
+                    "from": "bear",
+                    "to": "bull",
+                    "probability": 0.1
+                }
+            ]
+        },
+        "explanation": "This three-state regime-switching model captures market behavior: Bull markets are persistent (75% stay), Bears are persistent (70% stay), and Stable periods have moderate persistence (60%). Transitions reflect realistic regime shifts: Bull→Stable (15%), Stable→Bull/Bear (20% each), Bear→Stable (20%). The Markov property means the next market regime depends only on the current regime, supporting risk models and regime-aware strategies."
+    },
+    {
+        "id": "dna-sequence",
+        "title": "DNA Sequence (4-State Nucleotide Chain)",
+        "description": "A nucleotide-level Markov chain incorporating CG island bias and AT-rich tendencies.",
+        "category": "modern",
+        "difficulty": "advanced",
+        "applications": [
+            "Bioinformatics",
+            "Gene Prediction",
+            "Evolutionary Biology"
+        ],
+        "interactiveDemo": false,
+        "design": {
+            "states": [
+                {
+                    "id": "A",
+                    "name": "Adenine (A)",
+                    "x": 600,
+                    "y": 600,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "T",
+                    "name": "Thymine (T)",
+                    "x": 1400,
+                    "y": 600,
+                    "color": "#f87171"
+                },
+                {
+                    "id": "G",
+                    "name": "Guanine (G)",
+                    "x": 600,
+                    "y": 1000,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "C",
+                    "name": "Cytosine (C)",
+                    "x": 1400,
+                    "y": 1000,
+                    "color": "#34d399"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "A-A",
+                    "from": "A",
+                    "to": "A",
+                    "probability": 0.4
+                },
+                {
+                    "id": "A-T",
+                    "from": "A",
+                    "to": "T",
+                    "probability": 0.25
+                },
+                {
+                    "id": "A-G",
+                    "from": "A",
+                    "to": "G",
+                    "probability": 0.2
+                },
+                {
+                    "id": "A-C",
+                    "from": "A",
+                    "to": "C",
+                    "probability": 0.15
+                },
+                {
+                    "id": "T-T",
+                    "from": "T",
+                    "to": "T",
+                    "probability": 0.4
+                },
+                {
+                    "id": "T-A",
+                    "from": "T",
+                    "to": "A",
+                    "probability": 0.25
+                },
+                {
+                    "id": "T-C",
+                    "from": "T",
+                    "to": "C",
+                    "probability": 0.2
+                },
+                {
+                    "id": "T-G",
+                    "from": "T",
+                    "to": "G",
+                    "probability": 0.15
+                },
+                {
+                    "id": "G-G",
+                    "from": "G",
+                    "to": "G",
+                    "probability": 0.35
+                },
+                {
+                    "id": "G-C",
+                    "from": "G",
+                    "to": "C",
+                    "probability": 0.35
+                },
+                {
+                    "id": "G-A",
+                    "from": "G",
+                    "to": "A",
+                    "probability": 0.15
+                },
+                {
+                    "id": "G-T",
+                    "from": "G",
+                    "to": "T",
+                    "probability": 0.15
+                },
+                {
+                    "id": "C-C",
+                    "from": "C",
+                    "to": "C",
+                    "probability": 0.35
+                },
+                {
+                    "id": "C-G",
+                    "from": "C",
+                    "to": "G",
+                    "probability": 0.35
+                },
+                {
+                    "id": "C-A",
+                    "from": "C",
+                    "to": "A",
+                    "probability": 0.15
+                },
+                {
+                    "id": "C-T",
+                    "from": "C",
+                    "to": "T",
+                    "probability": 0.15
+                }
+            ]
+        },
+        "explanation": "This nucleotide Markov chain models base-to-base transitions with a bias for CG pairs: G↔C transitions are elevated (35% each) to capture CG island behavior. A and T have larger self-loop probabilities reflecting AT-rich stretches. The chain satisfies the Markov property: the next nucleotide depends only on the current one. Such models are used in gene prediction and motif detection."
+    },
+    {
+        "id": "nlp-model",
+        "title": "Part-of-Speech (POS) Markov Model",
+        "description": "A small POS-tag Markov chain (Article, Adjective, Noun, Verb, Adverb) approximating English sequence tendencies.",
+        "category": "modern",
+        "difficulty": "advanced",
+        "applications": [
+            "Chatbots",
+            "Text Generation",
+            "Language Translation"
+        ],
+        "interactiveDemo": false,
+        "design": {
+            "states": [
+                {
+                    "id": "article",
+                    "name": "Article",
+                    "x": 1000,
+                    "y": 300,
+                    "color": "#94a3b8"
+                },
+                {
+                    "id": "adjective",
+                    "name": "Adjective",
+                    "x": 700,
+                    "y": 750,
+                    "color": "#fb923c"
+                },
+                {
+                    "id": "noun",
+                    "name": "Noun",
+                    "x": 1300,
+                    "y": 750,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "verb",
+                    "name": "Verb",
+                    "x": 800,
+                    "y": 1200,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "adverb",
+                    "name": "Adverb",
+                    "x": 1200,
+                    "y": 1200,
+                    "color": "#a78bfa"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "article-adjective",
+                    "from": "article",
+                    "to": "adjective",
+                    "probability": 0.4
+                },
+                {
+                    "id": "article-noun",
+                    "from": "article",
+                    "to": "noun",
+                    "probability": 0.55
+                },
+                {
+                    "id": "article-article",
+                    "from": "article",
+                    "to": "article",
+                    "probability": 0.05
+                },
+                {
+                    "id": "adjective-noun",
+                    "from": "adjective",
+                    "to": "noun",
+                    "probability": 0.6
+                },
+                {
+                    "id": "adjective-adjective",
+                    "from": "adjective",
+                    "to": "adjective",
+                    "probability": 0.1
+                },
+                {
+                    "id": "adjective-verb",
+                    "from": "adjective",
+                    "to": "verb",
+                    "probability": 0.2
+                },
+                {
+                    "id": "adjective-adverb",
+                    "from": "adjective",
+                    "to": "adverb",
+                    "probability": 0.05
+                },
+                {
+                    "id": "adjective-article",
+                    "from": "adjective",
+                    "to": "article",
+                    "probability": 0.05
+                },
+                {
+                    "id": "noun-verb",
+                    "from": "noun",
+                    "to": "verb",
+                    "probability": 0.6
+                },
+                {
+                    "id": "noun-noun",
+                    "from": "noun",
+                    "to": "noun",
+                    "probability": 0.1
+                },
+                {
+                    "id": "noun-adverb",
+                    "from": "noun",
+                    "to": "adverb",
+                    "probability": 0.15
+                },
+                {
+                    "id": "noun-article",
+                    "from": "noun",
+                    "to": "article",
+                    "probability": 0.1
+                },
+                {
+                    "id": "noun-adjective",
+                    "from": "noun",
+                    "to": "adjective",
+                    "probability": 0.05
+                },
+                {
+                    "id": "verb-noun",
+                    "from": "verb",
+                    "to": "noun",
+                    "probability": 0.5
+                },
+                {
+                    "id": "verb-adverb",
+                    "from": "verb",
+                    "to": "adverb",
+                    "probability": 0.2
+                },
+                {
+                    "id": "verb-article",
+                    "from": "verb",
+                    "to": "article",
+                    "probability": 0.15
+                },
+                {
+                    "id": "verb-adjective",
+                    "from": "verb",
+                    "to": "adjective",
+                    "probability": 0.1
+                },
+                {
+                    "id": "verb-verb",
+                    "from": "verb",
+                    "to": "verb",
+                    "probability": 0.05
+                },
+                {
+                    "id": "adverb-verb",
+                    "from": "adverb",
+                    "to": "verb",
+                    "probability": 0.5
+                },
+                {
+                    "id": "adverb-adverb",
+                    "from": "adverb",
+                    "to": "adverb",
+                    "probability": 0.1
+                },
+                {
+                    "id": "adverb-noun",
+                    "from": "adverb",
+                    "to": "noun",
+                    "probability": 0.2
+                },
+                {
+                    "id": "adverb-article",
+                    "from": "adverb",
+                    "to": "article",
+                    "probability": 0.1
+                },
+                {
+                    "id": "adverb-adjective",
+                    "from": "adverb",
+                    "to": "adjective",
+                    "probability": 0.1
+                }
+            ]
+        },
+        "explanation": "This POS-tag Markov model encodes typical English local structure: Articles usually lead to adjectives or nouns (Article→Adjective 0.4, →Noun 0.55). Adjectives often lead to nouns (0.6). Nouns commonly lead to verbs (0.6). Verbs tend to lead to nouns (objects) or adverbs. Adverbs often return to verbs. The next POS depends only on the current POS (Markov property), which makes this model useful for simple language generation and part-of-speech prediction."
+    }
+]

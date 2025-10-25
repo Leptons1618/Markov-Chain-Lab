@@ -5,7 +5,7 @@
       "title": "Foundations",
       "description": "Basic probability and mathematical concepts",
       "slug": "foundations",
-      "lessons": 4,
+      "lessons": 3,
       "status": "published",
       "createdAt": "2025-10-25T11:37:21.531Z",
       "updatedAt": "2025-10-25T11:37:21.531Z"
@@ -28,7 +28,7 @@
       "status": "published",
       "createdAt": "2025-10-25T14:00:00.000Z",
       "updatedAt": "2025-10-25T14:00:00.000Z",
-      "lessons": 1
+      "lessons": 5
     },
     {
       "id": "stochastic-advanced",
@@ -38,7 +38,7 @@
       "status": "published",
       "createdAt": "2025-10-25T14:05:00.000Z",
       "updatedAt": "2025-10-25T14:05:00.000Z",
-      "lessons": 1
+      "lessons": 5
     },
     {
       "id": "markov-simulations",
@@ -48,7 +48,7 @@
       "status": "published",
       "createdAt": "2025-10-25T14:10:00.000Z",
       "updatedAt": "2025-10-25T14:10:00.000Z",
-      "lessons": 1
+      "lessons": 5
     }
   ],
   "lessons": [
@@ -61,7 +61,7 @@
       "status": "published",
       "order": 2,
       "createdAt": "2025-10-25T12:59:00.000Z",
-      "updatedAt": "2025-10-25T12:59:00.000Z"
+      "updatedAt": "2025-10-25T18:30:53.949Z"
     },
     {
       "id": "foundations-2",
