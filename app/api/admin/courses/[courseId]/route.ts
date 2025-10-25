@@ -1,10 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { courses } from "../route"
+import { getStore, saveStore } from "@/lib/server/lms-store"
 
 // GET single course
-export async function GET(request: NextRequest, { params }: { params: { courseId: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
   try {
-    const courseId = params.courseId
+    const { courseId } = await params
+    const { courses } = getStore()
     const course = courses.find(c => c.id === courseId)
 
     if (!course) {
@@ -18,11 +22,14 @@ export async function GET(request: NextRequest, { params }: { params: { courseId
 }
 
 // PUT update course
-export async function PUT(request: NextRequest, { params }: { params: { courseId: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
   try {
-    const courseId = params.courseId
+    const { courseId } = await params
     const body = await request.json()
-
+    const { courses } = getStore()
     const courseIndex = courses.findIndex(c => c.id === courseId)
     if (courseIndex === -1) {
       return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 })
@@ -35,6 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: { courseId
     }
 
     courses[courseIndex] = updatedCourse
+    await saveStore()
     return NextResponse.json({ success: true, data: updatedCourse })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to update course" }, { status: 500 })
@@ -42,16 +50,20 @@ export async function PUT(request: NextRequest, { params }: { params: { courseId
 }
 
 // DELETE course
-export async function DELETE(request: NextRequest, { params }: { params: { courseId: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
   try {
-    const courseId = params.courseId
-
+    const { courseId } = await params
+    const { courses } = getStore()
     const courseIndex = courses.findIndex(c => c.id === courseId)
     if (courseIndex === -1) {
       return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 })
     }
 
     courses.splice(courseIndex, 1)
+    await saveStore()
     return NextResponse.json({ success: true, message: "Course deleted successfully" })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to delete course" }, { status: 500 })

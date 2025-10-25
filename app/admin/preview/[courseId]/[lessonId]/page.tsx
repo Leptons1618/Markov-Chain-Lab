@@ -1,11 +1,33 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft, Copy, Check } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import MarkdownRenderer from "@/components/markdown-renderer"
+import { fetchLesson } from "@/lib/lms"
+
+function MarkdownSection({ lessonId }: { lessonId: string }) {
+  const [content, setContent] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      const lesson = await fetchLesson(lessonId)
+      setContent(lesson?.content ?? "")
+      setLoading(false)
+    }
+    if (lessonId) load()
+  }, [lessonId])
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading content…</div>
+  }
+  return <MarkdownRenderer content={content} />
+}
 
 export default function PreviewPage() {
   const params = useParams()
@@ -13,7 +35,7 @@ export default function PreviewPage() {
   const lessonId = params.lessonId as string
   const [copied, setCopied] = useState(false)
 
-  const previewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/learn/${courseId}?lesson=${lessonId}`
+  const previewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/learn/${lessonId}`
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(previewUrl)
@@ -21,34 +43,7 @@ export default function PreviewPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const lessonContent = `# What is a Markov Chain?
-
-A Markov chain is a stochastic model describing a sequence of possible events in which the probability of each event depends only on the state attained in the previous event.
-
-## Key Properties
-
-1. **Memoryless Property**: The future state depends only on the current state, not on the sequence of events that preceded it.
-2. **State Space**: The set of all possible states the system can be in.
-3. **Transition Probabilities**: The probability of moving from one state to another.
-
-## Mathematical Definition
-
-A Markov chain is defined by:
-- A finite set of states S = {s₁, s₂, ..., sₙ}
-- A transition matrix P where P(i,j) represents the probability of transitioning from state i to state j
-- An initial state distribution
-
-## Example: Weather Model
-
-Consider a simple weather model with two states:
-- Sunny (S)
-- Rainy (R)
-
-The transition probabilities might be:
-- P(S→S) = 0.7 (70% chance sunny day follows sunny day)
-- P(S→R) = 0.3 (30% chance rainy day follows sunny day)
-- P(R→S) = 0.4 (40% chance sunny day follows rainy day)
-- P(R→R) = 0.6 (60% chance rainy day follows rainy day)`
+  // Real content is fetched below
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,49 +84,8 @@ The transition probabilities might be:
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Card className="p-8">
           <div className="prose prose-sm max-w-none dark:prose-invert">
-            <h1>What is a Markov Chain?</h1>
-            <p>
-              A Markov chain is a stochastic model describing a sequence of possible events in which the probability of
-              each event depends only on the state attained in the previous event.
-            </p>
-
-            <h2>Key Properties</h2>
-            <ol>
-              <li>
-                <strong>Memoryless Property</strong>: The future state depends only on the current state, not on the
-                sequence of events that preceded it.
-              </li>
-              <li>
-                <strong>State Space</strong>: The set of all possible states the system can be in.
-              </li>
-              <li>
-                <strong>Transition Probabilities</strong>: The probability of moving from one state to another.
-              </li>
-            </ol>
-
-            <h2>Mathematical Definition</h2>
-            <p>A Markov chain is defined by:</p>
-            <ul>
-              <li>A finite set of states S = {"{s₁, s₂, ..., sₙ}"}</li>
-              <li>
-                A transition matrix P where P(i,j) represents the probability of transitioning from state i to state j
-              </li>
-              <li>An initial state distribution</li>
-            </ul>
-
-            <h2>Example: Weather Model</h2>
-            <p>
-              Consider a simple weather model with two states:
-              <br />- Sunny (S)
-              <br />- Rainy (R)
-            </p>
-            <p>The transition probabilities might be:</p>
-            <ul>
-              <li>P(S→S) = 0.7 (70% chance sunny day follows sunny day)</li>
-              <li>P(S→R) = 0.3 (30% chance rainy day follows sunny day)</li>
-              <li>P(R→S) = 0.4 (40% chance sunny day follows rainy day)</li>
-              <li>P(R→R) = 0.6 (60% chance rainy day follows rainy day)</li>
-            </ul>
+            {/* Markdown will be rendered here */}
+            <MarkdownSection lessonId={lessonId} />
           </div>
         </Card>
 

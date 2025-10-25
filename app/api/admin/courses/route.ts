@@ -1,32 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-// Shared in-memory storage (replace with database in production)
-export const courses: any[] = [
-  {
-    id: "foundations",
-    title: "Foundations",
-    description: "Basic probability and mathematical concepts",
-    slug: "foundations",
-    lessons: 4,
-    status: "published",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "chains",
-    title: "Markov Chain Basics",
-    description: "Introduction to Markov chains and state transitions",
-    slug: "markov-chain-basics",
-    lessons: 5,
-    status: "published",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
+import { getStore, saveStore } from "@/lib/server/lms-store"
 
 // GET all courses
 export async function GET() {
   try {
+    const { courses } = getStore()
     return NextResponse.json({ success: true, data: courses })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to fetch courses" }, { status: 500 })
@@ -54,7 +32,9 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     }
 
+    const { courses } = getStore()
     courses.push(newCourse)
+    await saveStore()
     return NextResponse.json({ success: true, data: newCourse }, { status: 201 })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to create course" }, { status: 500 })

@@ -72,11 +72,24 @@ Key gaps (full list in `docs/GAPS.md`):
 Prereqs: Node 18+ recommended.
 
 \`\`\`pwsh
-pnpm install
-pnpm dev
+npm install
+npm run dev
 \`\`\`
 
 Then open http://localhost:3000.
+
+## Persistence (dev/local)
+
+Admin APIs under `app/api/admin/*` read/write course and lesson data through a centralized store. For local development, the store persists to `data/lms.json` and also lives in-memory for performance. If the JSON file is missing, it will be created automatically from seed data on first use.
+
+Notes:
+
+- Path: `data/lms.json`
+- Scope: development/local use; not suitable for multi-user production
+- On each create/update/delete via the admin routes, the store is saved to disk
+- Dates are stored as ISO strings and revived on load
+
+For production, migrate to a database (e.g., SQLite via Prisma, or Postgres/Supabase).
 
 ## Production plan (overview)
 

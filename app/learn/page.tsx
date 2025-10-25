@@ -62,18 +62,30 @@ export default function LearnPage() {
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Link href="/" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-sm">M</span>
                 </div>
                 <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
-              <div className="hidden md:block text-muted-foreground">/</div>
-              <div className="hidden md:block">
-                <Badge variant="secondary">Learn</Badge>
-              </div>
+            </div>
+            <div className="hidden md:flex items-center gap-6">
+              <Link href="/learn" className="text-foreground font-medium transition-colors">
+                Learn
+              </Link>
+              <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                Tools
+              </Link>
+              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                Examples
+              </Link>
+              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                Practice
+              </Link>
+              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                About
+              </Link>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -88,11 +100,11 @@ export default function LearnPage() {
         </div>
       </nav>
 
-      <div className="flex">
+      <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <aside
           className={`
-          fixed md:static inset-y-0 left-0 z-40 w-80 bg-card border-r border-border transform transition-transform duration-200 ease-in-out
+          fixed md:static inset-y-0 left-0 top-16 z-40 w-80 bg-card border-r border-border transform transition-transform duration-200 ease-in-out
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
         >
@@ -144,8 +156,8 @@ export default function LearnPage() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 md:p-8">
-          <div className="max-w-4xl mx-auto space-y-8">
+        <main className="flex-1 overflow-y-auto h-full">
+          <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-8">
             {/* Course Header */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">

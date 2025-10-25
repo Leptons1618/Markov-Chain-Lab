@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,4 +123,67 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Markdown prose refinements */
+.markdown.prose {
+  @apply text-base leading-7;
+}
+.markdown.prose :where(h1,h2,h3,h4){
+  @apply scroll-mt-24 font-semibold text-foreground;
+}
+.markdown.prose :where(code){
+  @apply rounded bg-muted px-1.5 py-0.5 text-sm;
+}
+.markdown.prose :where(pre){
+  @apply rounded-lg border border-border bg-card p-4 text-sm overflow-x-auto;
+}
+.markdown.prose :where(a){
+  @apply text-primary underline-offset-4 hover:underline;
+}
+.markdown.prose :where(ul>li)::marker{
+  @apply text-muted-foreground;
+}
+.markdown.prose :where(ol>li)::marker{
+  @apply text-muted-foreground;
+}
+.dark .markdown.prose{
+  @apply prose-invert;
+}
+
+/* Modern thin scrollbar styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0 0 / 0.3) transparent;
+}
+
+.dark * {
+  scrollbar-color: oklch(0.4 0 0 / 0.4) transparent;
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0 0 / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0 0 / 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0 0 / 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0 / 0.6);
 }

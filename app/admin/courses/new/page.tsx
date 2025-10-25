@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Save, Loader2 } from "lucide-react"
+import { Save, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -67,9 +67,31 @@ export default function NewCoursePage() {
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/admin/courses" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-semibold">Back to Courses</span>
+            <div className="flex items-center gap-8">
+              <Link href="/admin" className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">M</span>
+                </div>
+                <span className="font-semibold text-lg">Admin</span>
+              </Link>
+              <nav className="hidden md:flex items-center gap-2">
+                <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
+                  Dashboard
+                </Link>
+                <span className="text-muted-foreground">/</span>
+                <Link href="/admin/courses" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
+                  Courses
+                </Link>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-foreground font-medium text-sm">
+                  New Course
+                </span>
+              </nav>
+            </div>
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="cursor-pointer">
+                View Site
+              </Button>
             </Link>
           </div>
         </div>

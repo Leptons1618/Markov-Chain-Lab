@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Edit, Trash2, Plus, ArrowLeft, Loader2 } from "lucide-react"
+import { Edit, Trash2, Plus, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, type Course } from "@/lib/lms"
 
@@ -68,9 +68,32 @@ export default function CoursesPage() {
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/admin" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-semibold">Back to Dashboard</span>
+            <div className="flex items-center gap-8">
+              <Link href="/admin" className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">M</span>
+                </div>
+                <span className="font-semibold text-lg">Admin</span>
+              </Link>
+              <nav className="hidden md:flex items-center gap-6">
+                <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Dashboard
+                </Link>
+                <Link href="/admin/courses" className="text-foreground font-medium transition-colors">
+                  Courses
+                </Link>
+                <Link href="/admin/content-sync" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Sync
+                </Link>
+                <Link href="/admin/settings" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Settings
+                </Link>
+              </nav>
+            </div>
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="cursor-pointer">
+                View Site
+              </Button>
             </Link>
           </div>
         </div>

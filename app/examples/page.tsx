@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  ArrowLeft,
   Play,
   RotateCcw,
   TrendingUp,
@@ -162,18 +161,30 @@ export default function ExamplesPage() {
       <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Link href="/" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-sm">M</span>
                 </div>
                 <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
-              <div className="hidden md:block text-muted-foreground">/</div>
-              <div className="hidden md:block">
-                <Badge variant="secondary">Examples</Badge>
-              </div>
+            </div>
+            <div className="hidden md:flex items-center gap-6">
+              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                Learn
+              </Link>
+              <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                Tools
+              </Link>
+              <Link href="/examples" className="text-foreground font-medium transition-colors">
+                Examples
+              </Link>
+              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                Practice
+              </Link>
+              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                About
+              </Link>
             </div>
           </div>
         </div>

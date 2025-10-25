@@ -1,0 +1,331 @@
+{
+  "courses": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "description": "Basic probability and mathematical concepts",
+      "slug": "foundations",
+      "lessons": 4,
+      "status": "published",
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-10-25T11:37:21.531Z"
+    },
+    {
+      "id": "chains",
+      "title": "Markov Chain Basics",
+      "description": "Introduction to Markov chains and state transitions",
+      "slug": "markov-chain-basics",
+      "lessons": 7,
+      "status": "published",
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-10-25T11:37:21.531Z"
+    },
+    {
+      "id": "ctmc",
+      "title": "Continuous-Time Markov Processes",
+      "description": "CTMCs and rate-based models",
+      "slug": "continuous-time-markov-processes",
+      "status": "published",
+      "createdAt": "2025-10-25T14:00:00.000Z",
+      "updatedAt": "2025-10-25T14:00:00.000Z",
+      "lessons": 1
+    },
+    {
+      "id": "stochastic-advanced",
+      "title": "Advanced Topics in Stochastic Processes",
+      "description": "Advanced stochastic models and theory",
+      "slug": "stochastic-advanced",
+      "status": "published",
+      "createdAt": "2025-10-25T14:05:00.000Z",
+      "updatedAt": "2025-10-25T14:05:00.000Z",
+      "lessons": 1
+    },
+    {
+      "id": "markov-simulations",
+      "title": "Simulation and Applications of Markov Models",
+      "description": "Simulation and Monte Carlo for Markov models",
+      "slug": "markov-simulations",
+      "status": "published",
+      "createdAt": "2025-10-25T14:10:00.000Z",
+      "updatedAt": "2025-10-25T14:10:00.000Z",
+      "lessons": 1
+    }
+  ],
+  "lessons": [
+    {
+      "id": "foundations-1",
+      "courseId": "foundations",
+      "title": "Introduction to Probability Theory",
+      "description": "A foundational overview of probability concepts including sample spaces, events, and axioms.",
+      "content": "# Introduction to Probability Theory\n\nWelcome to the first formal lesson in **Probability Theory**! Here we establish the foundation for understanding uncertainty — the bedrock for all stochastic processes, including Markov chains.\n\n## The Idea of Probability\n\n**Probability** quantifies uncertainty. It gives us a mathematical way to express how likely an event is to occur.\n\n### Everyday Intuition\n- The probability of rolling a 6 on a fair die is $1/6$.\n- The probability of rain tomorrow might be 0.3 (30%).\n- The probability of drawing an ace from a standard deck is $4/52 = 1/13$.\n\nThese examples show that probability connects **mathematics** with **real-world randomness**.\n\n## Core Concepts\n\n### 1. Sample Space (Ω)\nThe **sample space** is the set of all possible outcomes of an experiment.\n\n```text\nExample: Rolling a fair six-sided die → Ω = {1, 2, 3, 4, 5, 6}\n```\n\n### 2. Events\nAn **event** is a subset of the sample space — a collection of outcomes of interest.\n\n```text\nExample: Event A = “rolling an even number” → A = {2, 4, 6}\n```\n\n### 3. Probability Measure\nA **probability measure** assigns each event A a value P(A) satisfying:\n1. 0 ≤ P(A) ≤ 1  \n2. P(Ω) = 1  \n3. For mutually exclusive events A and B:  P(A ∪ B) = P(A) + P(B)\n\nThese are **Kolmogorov’s Axioms** — the foundation of modern probability theory.\n\n## Worked Examples\n\n### Example 1: Tossing a Coin\nLet Ω = {H, T}.\n\n- P(H) = 0.5\n- P(T) = 0.5\n\n```math\nP(Ω) = P(H) + P(T) = 0.5 + 0.5 = 1\n```\n\n*The axioms are satisfied.*\n\n### Example 2: Rolling a Die\nFind the probability of rolling a number less than 4.\n\n**Step 1:** Define event A = {1, 2, 3}.\n\n**Step 2:** Since each outcome is equally likely,  \n$P(A) = |A| / |Ω| = 3 / 6 = 0.5$.\n\n**Answer:** 0.5 or 50%.\n\n## Visualizing Probability\nImagine a rectangle representing the sample space Ω. Events are regions inside this rectangle. The area of an event corresponds to its probability. Two disjoint events have non-overlapping areas.\n\nIn an interactive platform, this can be shown with colored Venn diagrams and adjustable sliders to visualize probabilities changing with outcomes.\n\n## Real-World Applications\n- **Weather prediction:** Probability of rain, storms, etc.\n- **Quality control:** Chance of a defective product.\n- **Finance:** Estimating risk and expected returns.\n- **Machine learning:** Probability underlies all classification and inference.\n\n## Practice Prompts\n1. A fair die is rolled. What is the probability of rolling a number greater than 4?\n2. A bag contains 3 red, 2 blue, and 5 green marbles. What is the probability of drawing a green marble?\n3. Can two mutually exclusive events be independent? Why or why not?\n\n## Key Takeaways\n- Probability models quantify uncertainty.\n- The sample space lists all possible outcomes.\n- Events are subsets of the sample space.\n- The three axioms (non-negativity, normalization, additivity) form the basis of all probability theory.\n\n**Next:** In the next lesson, we’ll learn how probabilities change when new information is introduced — through *conditional probability* and *Bayes’ Theorem*.\n",
+      "status": "published",
+      "order": 2,
+      "createdAt": "2025-10-25T12:59:00.000Z",
+      "updatedAt": "2025-10-25T12:59:00.000Z"
+    },
+    {
+      "id": "foundations-2",
+      "courseId": "foundations",
+      "title": "Conditional Probability and Bayes' Theorem",
+      "description": "Learn how probabilities change when new information is introduced, and how Bayes’ theorem connects conditional and prior probabilities.",
+      "content": "# Conditional Probability and Bayes' Theorem\n\nIn the previous lesson, we learned about sample spaces, events, and probability axioms. In this lesson, we take a step further by exploring **conditional probability** — how the probability of an event changes when we know that another event has occurred.\n\n## Why Conditional Probability Matters\n\nUncertainty often reduces when we gain more information. For example:\n\n- The probability of rain *given* we see dark clouds is higher than the probability of rain in general.\n- The chance a student passes an exam may increase *given* they studied for more than 5 hours.\n\nConditional probability helps us quantify this change rigorously.\n\n## Defining Conditional Probability\n\nThe **conditional probability** of event A given event B is defined as:\n\n```math\nP(A|B) = \\frac{P(A ∩ B)}{P(B)}, \\quad \\text{provided } P(B) > 0\n```\n\nThis reads as: “The probability of A *given* B equals the probability that both A and B occur, divided by the probability of B.”\n\n### Intuitive Interpretation\nIf we know B has occurred, the sample space shrinks to B. We then measure how much of B also satisfies A.\n\n## Worked Examples\n\n### Example 1: Drawing Cards\nA standard deck has 52 cards. What is the probability that a drawn card is an Ace given that it is a Spade?\n\n**Step 1:** Define events  \nA = {card is an Ace}, B = {card is a Spade}\n\n**Step 2:** Find the intersection  \nA ∩ B = {Ace of Spades}\n\n**Step 3:** Compute probabilities  \nP(A ∩ B) = 1/52,   P(B) = 13/52 = 1/4\n\n```math\nP(A|B) = \\frac{P(A ∩ B)}{P(B)} = \\frac{1/52}{1/4} = 1/13\n```\n\n**Answer:** The probability is 1/13.\n\n### Example 2: Medical Test Accuracy\nSuppose a disease affects 1% of a population. A test detects the disease correctly 95% of the time when it is present, but gives a false positive 2% of the time.\n\nLet D = “has disease” and T = “tests positive”. Then:\n\n- P(D) = 0.01\n- P(T|D) = 0.95\n- P(T|¬D) = 0.02\n\nWe can compute the overall probability of testing positive using the **Law of Total Probability**:\n\n```math\nP(T) = P(T|D)P(D) + P(T|¬D)P(¬D) = (0.95)(0.01) + (0.02)(0.99) = 0.0293\n```\n\nNow we can find the **posterior probability** that a person has the disease given they tested positive:\n\n```math\nP(D|T) = \\frac{P(T|D)P(D)}{P(T)} = \\frac{0.95 × 0.01}{0.0293} ≈ 0.324\n```\n\nSo even after testing positive, the probability of actually having the disease is only about **32.4%**.\n\n## The Law of Total Probability\n\nIf events B₁, B₂, ..., Bₙ form a partition of the sample space Ω, then for any event A:\n\n```math\nP(A) = ∑ P(A|Bᵢ)P(Bᵢ)\n```\n\nThis law is often used with Bayes’ theorem.\n\n## Bayes' Theorem\n\n**Definition:**  \nBayes’ theorem relates conditional probabilities in reverse:\n\n```math\nP(A|B) = \\frac{P(B|A)P(A)}{P(B)}\n```\n\nor equivalently using the total probability formula:\n\n```math\nP(A|B) = \\frac{P(B|A)P(A)}{∑ P(B|Bᵢ)P(Bᵢ)}\n```\n\n### Example 3: Revisiting the Medical Test\nWe already computed P(D|T) = 0.324. That’s exactly what Bayes’ theorem gives — it combines prior belief (P(D)) and new evidence (P(T|D)) to produce a **posterior** belief.\n\nBayes’ theorem is central to **Bayesian inference**, used in machine learning, AI, and decision theory.\n\n## Visualization\nImagine a Venn diagram where event B is known to have occurred. The conditional probability P(A|B) corresponds to the fraction of B’s area that overlaps with A.\n\nInteractive visualizations can show how changing the overlap (P(A ∩ B)) affects P(A|B).\n\n## Practical Applications\n- **Spam detection:** Estimating the probability an email is spam given certain words.\n- **Medical diagnostics:** Updating beliefs based on test results.\n- **Machine learning:** Bayesian models for adaptive learning.\n- **Reliability engineering:** Assessing failure probabilities under conditions.\n\n## Practice Prompts\n1. A coin is biased with P(H) = 0.6. If we flip it twice, what is P(first toss is H | total heads = 1)?\n2. A machine produces 5% defective items. If a test detects 90% of defectives and falsely flags 3% of good ones, find P(defective | flagged).\n3. In your own words, explain how Bayes’ theorem “reverses” conditional probabilities.\n\n## Key Takeaways\n- Conditional probability focuses on a reduced sample space.\n- The Law of Total Probability helps compute complex events from partitions.\n- Bayes’ theorem connects prior, likelihood, and posterior probabilities.\n- Bayesian reasoning is a cornerstone of modern data science and uncertainty modeling.\n\n**Next:** In the next lesson, we’ll explore *random variables* — the bridge between probability and numerical analysis.\n",
+      "status": "published",
+      "order": 3,
+      "createdAt": "2025-10-25T13:06:00.000Z",
+      "updatedAt": "2025-10-25T13:06:00.000Z"
+    },
+    {
+      "id": "foundations-3",
+      "courseId": "foundations",
+      "title": "Random Variables and Expectations",
+      "description": "An introduction to random variables, probability distributions, and the concept of expected value as the center of probability.",
+      "content": "# Random Variables and Expectations\n\nIn previous lessons, we discussed how probabilities describe uncertainty in terms of events. Now we extend these ideas to **random variables**, which assign numerical values to outcomes — enabling us to measure, compute, and model uncertainty quantitatively.\n\n## What Is a Random Variable?\n\nA **random variable (RV)** is a function that maps outcomes of a random experiment to real numbers.\n\n```math\nX: Ω → ℝ\n```\n\nFor each outcome ω ∈ Ω, X(ω) gives a number.\n\n### Types of Random Variables\n1. **Discrete random variables** — take on a countable number of values (e.g., number of heads in 3 tosses).\n2. **Continuous random variables** — take on values from an interval (e.g., height, time, temperature).\n\n## Probability Distributions\n\n### 1. Probability Mass Function (PMF)\nFor discrete X:\n\n```math\nP(X = xᵢ) = p(xᵢ), \\quad \\text{where } ∑ p(xᵢ) = 1\n```\n\n### 2. Probability Density Function (PDF)\nFor continuous X:\n\n```math\nP(a ≤ X ≤ b) = ∫ₐᵇ f(x) dx, \\quad \\text{where } ∫_{-∞}^{∞} f(x) dx = 1\n```\n\n### 3. Cumulative Distribution Function (CDF)\nFor any X:\n\n```math\nF(x) = P(X ≤ x)\n```\n\nThe CDF increases from 0 to 1 as x moves across the support of X.\n\n## Worked Examples\n\n### Example 1: Rolling a Die\nLet X = number shown when rolling a fair six-sided die.\n\nThen X takes values {1, 2, 3, 4, 5, 6} with equal probabilities:\n\n```math\np(x) = 1/6, \\quad x = 1,2,...,6\n```\n\n### Example 2: Number of Heads in 2 Tosses\nLet X = number of heads. Possible outcomes are HH, HT, TH, TT.\n\n| X | Outcome | P(X=x) |\n|---|----------|--------|\n| 0 | TT | 1/4 |\n| 1 | HT, TH | 1/2 |\n| 2 | HH | 1/4 |\n\nThe PMF satisfies ∑ P(X=x) = 1.\n\n## Expected Value\n\nThe **expected value (mean)** of X represents the long-term average if the experiment were repeated many times.\n\n- For discrete X:\n\n```math\nE[X] = ∑ x·P(X=x)\n```\n\n- For continuous X:\n\n```math\nE[X] = ∫ x f(x) dx\n```\n\n### Example 3: Expectation for a Die Roll\n\n```math\nE[X] = (1)(1/6) + (2)(1/6) + ... + (6)(1/6) = 3.5\n```\n\nOn average, you expect 3.5 from a fair die roll.\n\n## Variance and Standard Deviation\n\nThe **variance** measures spread:\n\n```math\nVar(X) = E[(X - E[X])²] = E[X²] - (E[X])²\n```\n\nThe **standard deviation** is the square root of the variance.\n\n### Example 4: Variance of a Die Roll\n\n```math\nE[X²] = (1² + 2² + 3² + 4² + 5² + 6²)/6 = 91/6\nVar(X) = 91/6 - 3.5² = 35/12 ≈ 2.92\n```\n\nSo the standard deviation is √2.92 ≈ 1.71.\n\n## Visualization\n\nImagine plotting the PMF as a bar chart — each bar’s height shows P(X=x). For a continuous variable, imagine a smooth curve (PDF) whose area under the curve equals 1.\n\nInteractive plots can help students visualize how **expected value** shifts when the distribution is skewed.\n\n## Real-World Applications\n- **Finance:** Expected return on investment.\n- **Insurance:** Expected payout and premium setting.\n- **Manufacturing:** Expected defect count.\n- **AI/ML:** Expected loss functions in optimization.\n\n## Practice Prompts\n1. A fair coin is tossed 3 times. Let X = number of heads. Find E[X] and Var(X).\n2. Suppose X can take values {0, 1, 2} with P(X=0)=0.2, P(X=1)=0.5, P(X=2)=0.3. Compute E[X] and Var(X).\n3. Explain in words why the expected value may not always be a possible outcome (e.g., E[X]=3.5 for a die).\n\n## Key Takeaways\n- Random variables connect events to numerical outcomes.\n- Discrete → PMF, Continuous → PDF.\n- Expectation represents the long-run average.\n- Variance quantifies how spread out the outcomes are.\n\n**Next:** In the next course, we’ll apply these concepts to dynamic systems — *Markov Chains*, where probabilities evolve across states over time.\n",
+      "status": "published",
+      "order": 4,
+      "createdAt": "2025-10-25T13:12:00.000Z",
+      "updatedAt": "2025-10-25T13:12:00.000Z"
+    },
+    {
+      "id": "chains-1",
+      "courseId": "chains",
+      "title": "What is a Markov Chain?",
+      "description": "Understanding the fundamental concept",
+      "content": "# Markov Chains Explained\n\nA Markov chain is a stochastic model describing a sequence of possible events in which the probability of each event depends only on the state attained in the previous event.\n\n## Key Properties\n\n1. **Memoryless Property**: The future state depends only on the current state, not on the sequence of events that preceded it.\n2. **State Space**: The set of all possible states the system can be in.\n3. **Transition Probabilities**: The probability of moving from one state to another.\n\n## Mathematical Definition\n\nA Markov chain is defined by:\n- A finite set of states S = {s₁, s₂, ..., sₙ}\n- A transition matrix P where P(i,j) represents the probability of transitioning from state i to state j\n- An initial state distribution\n\n## Example: Weather Model\n\nConsider a simple weather model with two states:\n- Sunny (S)\n- Rainy (R)\n\nThe transition probabilities might be:\n- P(S→S) = 0.7 (70% chance sunny day follows sunny day)\n- P(S→R) = 0.3 (30% chance rainy day follows sunny day)\n- P(R→S) = 0.4 (40% chance sunny day follows rainy day)\n- P(R→R) = 0.6 (60% chance rainy day follows rainy day)\n",
+      "status": "published",
+      "order": 1,
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-10-25T11:37:21.531Z"
+    },
+    {
+      "id": "chains-2",
+      "courseId": "chains",
+      "title": "State Transitions",
+      "description": "How states change over time",
+      "content": "# State Transitions\n\nState transitions are the core mechanism of Markov chains. They define how the system moves from one state to another over time.\n\n## Transition Probabilities\n\nEach transition has an associated probability that must satisfy:\n- 0 ≤ P(i,j) ≤ 1 for all i, j\n- Σ P(i,j) = 1 for all i (rows sum to 1)\n\n## Transition Matrix\n\nThe transition matrix P is a square matrix where:\n- Rows represent current states\n- Columns represent next states\n- P(i,j) = probability of transitioning from state i to state j",
+      "status": "published",
+      "order": 2,
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-10-25T11:37:21.531Z"
+    },
+    {
+      "id": "chains-3",
+      "courseId": "chains",
+      "title": "Chapman-Kolmogorov Equations",
+      "description": "Learn how multi-step transitions in Markov chains are computed using the Chapman-Kolmogorov equations.",
+      "content": "# Chapman-Kolmogorov Equations\n\nIn the last lesson, we discussed how **state transitions** describe movement from one state to another in a single step. But what about transitions over **multiple steps**? For example, what is the probability of going from state i to state j in exactly two or more steps?\n\nThe **Chapman-Kolmogorov equations** provide the mathematical framework for this.\n\n## The Big Idea\n\nMarkov chains evolve step-by-step, but longer-term transitions can be expressed as combinations of shorter ones. In other words, the probability of reaching state j from state i in two steps is obtained by summing over all possible intermediate states.\n\n## Formal Definition\n\nFor a Markov chain with transition matrix **P**, the *n-step transition probability* from state i to j is denoted by:\n\n```math\nP^{(n)}_{ij} = P(X_{t+n} = j | X_t = i)\n```\n\nThe **Chapman-Kolmogorov equation** states:\n\n```math\nP^{(n+m)}_{ij} = ∑_k P^{(n)}_{ik} · P^{(m)}_{kj}\n```\n\nThis expresses the idea that all possible intermediate paths (through state k) contribute to the total n+m-step transition probability.\n\n## Matrix Form\n\nIn matrix notation:\n\n```math\nP^{(n+m)} = P^{(n)} × P^{(m)}\n```\n\nThat is, multi-step transitions correspond to **matrix powers** of the transition matrix.\n\n## Worked Examples\n\n### Example 1: Two-Step Transition\n\nConsider the transition matrix:\n\n```matrix\n      S1   S2\nS1 [ 0.7   0.3 ]\nS2 [ 0.4   0.6 ]\n```\n\nTo find the **two-step** transition matrix P²:\n\n```math\nP² = P × P = \n[ [0.7×0.7 + 0.3×0.4, 0.7×0.3 + 0.3×0.6],\n  [0.4×0.7 + 0.6×0.4, 0.4×0.3 + 0.6×0.6] ]\n```\n\nSimplifying:\n\n```math\nP² = [ [0.61, 0.39], [0.52, 0.48] ]\n```\n\nThis matrix gives the probabilities of being in each state after two transitions.\n\n### Example 2: Three-Step Transitions via Chapman-Kolmogorov\n\nWe can find $P^{(3)}$ using:\n\n```math\nP^{(3)} = P^{(2)} × P\n```\n\nThis recursion makes it easy to compute multi-step behavior programmatically or analytically.\n\n## Visualization\n\nImagine a state diagram with nodes and arrows labeled by transition probabilities. The Chapman-Kolmogorov equations describe how probabilities propagate along **paths of length n**. In an interactive visualization, students can vary n and watch probabilities stabilize or spread.\n\n## Practical Applications\n- **Weather forecasting:** Probability of rain 3 days from now.\n- **Customer behavior modeling:** Probability of returning to a website after multiple visits.\n- **Queueing theory:** Probability of the system being full after n steps.\n\n## Practice Prompts\n1. Compute the two-step transition matrix for a 3-state chain with equal probabilities 1/3 between all states.\n2. Why does $P^{(n+m)} = P^{(n)} × P^{(m)}$ make sense intuitively?\n3. Write pseudocode to compute n-step transition probabilities iteratively.\n\n## Key Takeaways\n- Chapman-Kolmogorov equations link multi-step and single-step transitions.\n- Multi-step transitions are computed via matrix multiplication.\n- Understanding these equations helps predict long-term system behavior.\n\n**Next:** We’ll learn to classify states — identifying transient, recurrent, and absorbing states.\n",
+      "status": "published",
+      "order": 3,
+      "createdAt": "2025-10-25T13:20:00.000Z",
+      "updatedAt": "2025-10-25T13:20:00.000Z"
+    },
+    {
+      "id": "chains-4",
+      "courseId": "chains",
+      "title": "Classifying States in Markov Chains",
+      "description": "Understand how to categorize states as transient, recurrent, periodic, or absorbing, and what that means for system behavior.",
+      "content": "# Classifying States in Markov Chains\n\nNow that we can compute multi-step transitions, the next question is: **what happens in the long run?** Do we keep returning to some states, or do we leave them forever?\n\nTo answer this, we classify states into different types based on how the chain behaves.\n\n## Key State Types\n\n### 1. Transient States\nA **transient state** is one that, once left, may never be visited again.\n\nFormally, state i is transient if:\n\n```math\nP(\\text{return to i at some time}) < 1\n```\n\n### 2. Recurrent (Persistent) States\nA **recurrent state** is one that the chain will return to with probability 1.\n\n```math\nP(\\text{return to i}) = 1\n```\n\n### 3. Absorbing States\nA state is **absorbing** if, once entered, it cannot be left:\n\n```math\nP(i→i) = 1\n```\n\nExample: In a game that ends once you reach a terminal state, that terminal is absorbing.\n\n### 4. Periodic States\nA state i has **period d > 1** if returns to i occur only in multiples of d steps. If d = 1, the state is **aperiodic**.\n\n## Worked Examples\n\n### Example 1: Simple Chain\n\n```matrix\n      S1   S2   S3\nS1 [ 0.5   0.5   0.0 ]\nS2 [ 0.0   0.6   0.4 ]\nS3 [ 0.0   0.0   1.0 ]\n```\n\n- **S3** is absorbing (since P(S3→S3)=1)\n- **S1** and **S2** are transient (they eventually reach S3)\n\n### Example 2: Recurrent States\n\n```matrix\n      A    B\nA [ 0.4   0.6 ]\nB [ 0.3   0.7 ]\n```\n\nBoth A and B communicate (A→B and B→A possible), and neither is absorbing. Both are recurrent.\n\n## Communicating Classes\n\nTwo states i and j **communicate** if each is reachable from the other.\n\n- The chain’s state space is partitioned into **communicating classes**.\n- A class is **closed** if no state outside it can be reached.\n\n## Visualization\n\nIn a graph representation:\n- Nodes = states\n- Arrows = transitions\n\nAbsorbing states have no outgoing arrows.\nTransient states point toward absorbing or recurrent classes.\n\nInteractive visuals can show which states are “sticky” (recurrent) or “temporary” (transient) using color coding.\n\n## Practical Applications\n- **Game theory:** Identifying absorbing win/loss states.\n- **Markov decision processes:** Finding stable policies.\n- **Epidemiology:** Modeling disease extinction or persistence.\n\n## Practice Prompts\n1. Identify which states are absorbing in a given 3×3 matrix where one diagonal entry equals 1.\n2. Can a transient state lead to a recurrent state? Can the reverse happen?\n3. How would you test if two states communicate?\n\n## Key Takeaways\n- States are classified as transient, recurrent, or absorbing.\n- Communicating classes group mutually reachable states.\n- Absorbing states trap the chain permanently.\n- Classification reveals the long-run structure of a Markov chain.\n\n**Next:** We’ll explore how to find **stationary distributions**, which describe long-term probabilities across states.\n",
+      "status": "published",
+      "order": 4,
+      "createdAt": "2025-10-25T13:25:00.000Z",
+      "updatedAt": "2025-10-25T13:25:00.000Z"
+    },
+    {
+      "id": "chains-5",
+      "courseId": "chains",
+      "title": "Finding Stationary Distributions",
+      "description": "Learn how to compute the steady-state probabilities that describe the long-run behavior of a Markov chain.",
+      "content": "# Finding Stationary Distributions\n\nWe now understand how states behave over time and how to classify them. The next major concept is the **stationary distribution** — a probability vector that remains unchanged as the chain evolves.\n\nThis concept describes the **long-run behavior** of a Markov chain.\n\n## Definition\n\nA **stationary distribution** π satisfies:\n\n```math\nπP = π, \\quad ∑ π_i = 1, \\quad π_i ≥ 0\n```\n\nHere, π is a row vector whose entries represent the long-term probabilities of being in each state.\n\nIf the chain starts with distribution π, it will remain in π forever.\n\n## Existence and Uniqueness\n\n- For a **finite, irreducible, and aperiodic** Markov chain, there exists a **unique stationary distribution**.\n- The stationary distribution represents the limiting behavior:\n\n```math\n\\lim_{n→∞} P(X_n = j) = π_j\n```\n\n## Worked Examples\n\n### Example 1: Two-State Chain\n\n```matrix\n      S1   S2\nS1 [ 0.7   0.3 ]\nS2 [ 0.4   0.6 ]\n```\n\nLet π = [π₁, π₂]. Then from πP = π:\n\n```math\nπ₁ = 0.7π₁ + 0.4π₂\nπ₂ = 0.3π₁ + 0.6π₂\n```\n\nAnd normalization gives π₁ + π₂ = 1.\n\nSolving:\n\n```math\nπ₁ = 4/7, \\quad π₂ = 3/7\n```\n\nSo, in the long run, the chain spends 4/7 of the time in S1 and 3/7 in S2.\n\n### Example 2: 3-State System\n\n```matrix\n      A    B    C\nA [ 0.5  0.4  0.1 ]\nB [ 0.3  0.4  0.3 ]\nC [ 0.2  0.2  0.6 ]\n```\n\nWe solve πP = π with πA + πB + πC = 1. Using linear algebra methods or iterative simulation yields:\n\n```math\nπ ≈ [0.33, 0.37, 0.30]\n```\n\n## Visualization\n\nImagine an animated diagram showing the flow of probabilities between states. Over time, these flows settle into equilibrium — the stationary distribution. Interactive sliders could allow learners to modify transition probabilities and see how π changes.\n\n## Practical Applications\n- **PageRank:** Google’s algorithm uses stationary distributions of a web link Markov chain.\n- **Queueing systems:** Long-run probabilities of customer numbers.\n- **Economics:** Steady-state distributions of wealth or employment.\n\n## Practice Prompts\n1. For a chain with transition matrix `[ [0.9, 0.1], [0.5, 0.5] ]`, compute the stationary distribution.\n2. Can an absorbing Markov chain have a stationary distribution? Explain.\n3. Write pseudocode to estimate a stationary distribution via iterative multiplication.\n\n## Key Takeaways\n- A stationary distribution π satisfies πP = π.\n- It represents long-run steady-state probabilities.\n- Existence and uniqueness depend on irreducibility and aperiodicity.\n- Stationary distributions appear in major applications from PageRank to queuing theory.\n\n**Next:** Future lessons will connect these concepts to **ergodic theorems** and **real-world simulations**.\n",
+      "status": "published",
+      "order": 5,
+      "createdAt": "2025-10-25T13:30:00.000Z",
+      "updatedAt": "2025-10-25T13:30:00.000Z"
+    },
+    {
+      "id": "chains-6",
+      "courseId": "chains",
+      "title": "Ergodic Theorems and Convergence",
+      "description": "Explore how Markov chains behave in the long run and why certain chains converge to a unique steady-state distribution.",
+      "content": "# Ergodic Theorems and Convergence\n\nUp to this point, we have learned how to describe transitions, classify states, and compute stationary distributions. Now we explore **why** and **when** a Markov chain actually converges to that steady state.\n\nThis is governed by the **ergodic theorem** — a cornerstone of stochastic process theory.\n\n## What Does 'Ergodic' Mean?\n\nA **Markov chain** is said to be **ergodic** if it is:\n\n1. **Irreducible:** Every state can be reached from every other state (no isolated groups).\n2. **Aperiodic:** The chain does not get trapped in cycles.\n\nWhen both conditions hold, the chain will converge to a **unique stationary distribution** regardless of the initial state.\n\n## The Ergodic Theorem (Discrete-Time Version)\n\nIf a Markov chain is finite, irreducible, and aperiodic, then:\n\n```math\n\\lim_{n → ∞} P^{(n)}_{ij} = π_j \\quad \\text{for all } i, j\n```\n\nThat is, after many transitions, the probability of being in state j becomes independent of where we started.\n\n### Intuition\nOver time, the chain “forgets” its initial state and spends time in each state proportional to its stationary probability.\n\n## Example 1: Two-State Chain\n\n```matrix\n      S1   S2\nS1 [ 0.8   0.2 ]\nS2 [ 0.4   0.6 ]\n```\n\nThe stationary distribution is π = [2/3, 1/3]. If we start in S1, then as n increases, the rows of $P^n$ approach:\n\n```math\n[ 0.667   0.333 ]\n[ 0.667   0.333 ]\n```\n\nThus, regardless of where we start, the long-run behavior converges to π.\n\n## Example 2: Periodic Chain (Non-Ergodic)\n\n```matrix\n      A   B\nA [ 0   1 ]\nB [ 1   0 ]\n```\n\nHere, the chain alternates deterministically between A and B. It never settles — probabilities oscillate forever. This chain is **periodic**, hence **not ergodic**.\n\n## Visualization\n\nImagine simulating the chain over time. Initially, the probabilities fluctuate, but for an ergodic chain they eventually stabilize — all state probabilities flatten to their steady values. A non-ergodic chain oscillates indefinitely.\n\nAn interactive chart can show how $P^n$ changes row-by-row as n increases.\n\n## Practical Applications\n- **Monte Carlo simulations:** Convergence ensures reliable sampling from a stationary distribution.\n- **Markov Chain Monte Carlo (MCMC):** Core principle behind modern Bayesian computation.\n- **Econometrics:** Long-run equilibria of economic states.\n\n## Practice Prompts\n1. Explain why periodicity prevents convergence to a stationary distribution.\n2. For a 3-state chain with equal transition probabilities, is it ergodic? Why or why not?\n3. How might you check empirically whether a simulated chain has converged?\n\n## Key Takeaways\n- Ergodicity ensures convergence to a unique steady-state distribution.\n- Irreducibility and aperiodicity are the key conditions.\n- Long-run probabilities become independent of initial states.\n- These principles underlie many real-world stochastic algorithms.\n\n**Next:** We’ll look at how Markov chains are used in practice — from random walks to web ranking and queuing systems.\n",
+      "status": "published",
+      "order": 6,
+      "createdAt": "2025-10-25T13:40:00.000Z",
+      "updatedAt": "2025-10-25T13:40:00.000Z"
+    },
+    {
+      "id": "chains-7",
+      "courseId": "chains",
+      "title": "Applications of Markov Chains",
+      "description": "Discover how Markov chains power real-world systems, from random walks and PageRank to queuing and reliability models.",
+      "content": "# Applications of Markov Chains\n\nNow that we have developed a complete understanding of Markov chains — their transitions, classifications, and steady-state behavior — it’s time to see how these models shape real-world systems.\n\nMarkov chains are everywhere: in search engines, finance, biology, and computer networks.\n\n## 1. Random Walks\n\nA **random walk** is one of the simplest yet most powerful Markov processes.\n\n### Definition\nA random walk moves step-by-step according to probabilistic rules. For example, on a line:\n\n```math\nP(X_{t+1} = i+1 | X_t = i) = p, \\quad P(X_{t+1} = i-1 | X_t = i) = 1-p\n```\n\nWhen p = 0.5, the walk is symmetric.\n\n### Example: One-Dimensional Random Walk\nA particle starts at position 0 and moves ±1 at each step. Over time, its position distribution spreads out symmetrically.\n\n### Applications\n- **Stock prices:** Simplified models of price movement.\n- **Physics:** Brownian motion and diffusion models.\n- **Network routing:** Modeling packet hops.\n\n## 2. PageRank Algorithm (Google Search)\n\nGoogle’s **PageRank** is based on a Markov chain where:\n- Each webpage is a state.\n- Links are transitions.\n- A damping factor (typically 0.85) represents a random “teleport” to any page.\n\n### Transition Model\nIf a page has k outgoing links, each gets probability 1/k × 0.85, plus 0.15 distributed uniformly across all pages.\n\nThe stationary distribution π gives the **PageRank score** — the steady-state probability of visiting each page.\n\n### Matrix Example\n\n```matrix\n      A    B    C\nA [ 0.05  0.90  0.05 ]\nB [ 0.10  0.05  0.85 ]\nC [ 0.80  0.10  0.10 ]\n```\n\nAfter many iterations, π converges to the long-run visitation frequencies.\n\n## 3. Queuing Systems\n\nIn service systems (banks, call centers, servers), states represent the **number of customers** in the queue.\n\n### Example\nA queue with arrival rate λ and service rate μ can be modeled as a birth-death process (a special Markov chain).\n\n- Transitions: n → n+1 with rate λ,  n → n−1 with rate μ.\n- The stationary distribution gives the long-run probability of having n customers waiting.\n\n### Applications\n- **Server optimization**\n- **Network traffic modeling**\n- **Customer service systems**\n\n## 4. Reliability and Survival Models\n\nMarkov chains are used to model systems that degrade or fail over time.\n\nExample: States = {Working, Degraded, Failed}\n\n```matrix\n      W    D    F\nW [ 0.85  0.10  0.05 ]\nD [ 0.00  0.80  0.20 ]\nF [ 0.00  0.00  1.00 ]\n```\n\nHere, the “Failed” state is absorbing, representing system failure. The stationary distribution gives the long-run probability of failure.\n\n## Visualization\n\nInteractive simulations can demonstrate:\n- Random walk paths over time.\n- PageRank convergence as probabilities stabilize.\n- Queue length fluctuations.\n\nThese visuals help students connect abstract theory to tangible phenomena.\n\n## Practice Prompts\n1. Model a simplified 3-page web as a Markov chain. Compute the PageRank distribution.\n2. For a queue with λ = 0.2 and μ = 0.25, what fraction of time is the system empty?\n3. Design a small reliability model (3–4 states) and identify its absorbing state.\n\n## Key Takeaways\n- Markov chains model dynamic systems across disciplines.\n- Stationary distributions underpin PageRank, queues, and reliability models.\n- Random walks link probability to physics and networks.\n- Understanding transitions, classifications, and convergence enables modeling of real-world stochastic systems.\n\n**End of Course:** Congratulations! You now have the foundational tools to analyze and simulate stochastic systems — paving the way for deeper study in advanced Markov models, continuous-time processes, and Monte Carlo methods.\n",
+      "status": "published",
+      "order": 7,
+      "createdAt": "2025-10-25T13:50:00.000Z",
+      "updatedAt": "2025-10-25T13:50:00.000Z"
+    },
+    {
+      "id": "ctmc-1",
+      "courseId": "ctmc",
+      "title": "Introduction to Continuous-Time Markov Chains",
+      "description": "Understand how continuous-time Markov processes generalize discrete models using exponential waiting times.",
+      "content": "# Introduction to Continuous-Time Markov Chains\n\nWe’ve explored Markov chains that evolve in discrete steps — transitions happen at fixed intervals (t = 0, 1, 2, ...). But many real systems change at **random, continuous times** — think of customers arriving at a store or components failing in a machine.\n\nSuch systems are modeled by **Continuous-Time Markov Chains (CTMCs)**.\n\n## The Core Idea\nA CTMC extends the discrete-time Markov chain by introducing **sojourn times** — the time spent in a state before a transition occurs. The next state depends only on the current state, and the time spent there follows an **exponential distribution**.\n\n## Definition\n\nA process {X(t), t ≥ 0} is a **continuous-time Markov chain** if:\n\n```math\nP(X(t+s) = j | X(s) = i, \\text{history up to } s) = P(X(t+s) = j | X(s) = i)\n```\n\nThe **Markov property** still holds — the future depends only on the present.\n\n### Transition Rates and Generator Matrix\n\nInstead of a transition probability matrix, CTMCs use a **rate matrix** (also called the **generator matrix** Q):\n\n```math\nQ = [q_{ij}], \\quad i ≠ j\n```\n\nwhere:\n\n- qᵢⱼ ≥ 0 = rate of moving from i to j\n- qᵢᵢ = −∑_{j ≠ i} qᵢⱼ (so each row sums to 0)\n\nThe **transition probability matrix** at time t is given by the **matrix exponential**:\n\n```math\nP(t) = e^{Qt} = ∑_{k=0}^{∞} \\frac{(Qt)^k}{k!}\n```\n\n## Example 1: Two-State System\n\nConsider states A (working) and B (failed):\n\n```matrix\n      A     B\nA [ -0.1   0.1 ]\nB [  0.5  -0.5 ]\n```\n\n- Mean time in A: 1/0.1 = 10 units\n- Mean time in B: 1/0.5 = 2 units\n\nAfter a long time, the system alternates between working and failed according to these rates.\n\n## Visualization\n\nImagine a state diagram with exponential clocks attached to each transition. Each clock runs independently, and the first to “ring” determines the next transition.\n\nIn an interactive tool, learners could adjust the rates qᵢⱼ and observe how faster rates increase transition frequency.\n\n## Applications\n- **Queueing systems** (arrival and service rates)\n- **Reliability engineering** (failure/repair cycles)\n- **Epidemiology** (infection/recovery processes)\n- **Biochemical networks** (molecular transitions)\n\n## Practice Prompts\n1. Explain how CTMCs differ from DTMCs in terms of timing.\n2. If q₁₂ = 0.3 and q₂₁ = 0.2, what is the average time before leaving each state?\n3. Describe a real system that could be modeled as a CTMC.\n\n## Key Takeaways\n- CTMCs model continuous-time stochastic behavior.\n- Transition rates replace transition probabilities.\n- Sojourn times are exponentially distributed.\n- The matrix exponential e^{Qt} governs state evolution.\n\n**Next:** We’ll study **exponential holding times** and how the **Poisson process** connects to CTMCs.\n",
+      "status": "published",
+      "order": 1,
+      "createdAt": "2025-10-25T14:00:00.000Z",
+      "updatedAt": "2025-10-25T14:00:00.000Z"
+    },
+    {
+      "id": "stochastic-advanced-1",
+      "courseId": "stochastic-advanced",
+      "title": "Renewal Processes and Regenerative Phenomena",
+      "description": "Learn how stochastic systems 'renew' themselves over time, forming the backbone of reliability and queueing theory.",
+      "content": "# Renewal Processes and Regenerative Phenomena\n\nMany real-world systems experience **repeated cycles** — machines break and get repaired, customers arrive and are served, or insurance claims occur over time. These systems can be modeled using **renewal processes**.\n\n## Intuition\nA **renewal process** counts how many events have occurred up to time t, assuming the time between events is random and independent.\n\n## Definition\nLet {X₁, X₂, …} be independent, identically distributed non-negative random variables representing interarrival times.\n\nThen the **renewal process** {N(t), t ≥ 0} is defined as:\n\n```math\nN(t) = max{n : X₁ + X₂ + ... + X_n ≤ t}\n```\n\nThat is, N(t) counts how many renewals (or events) have occurred by time t.\n\n### Example: Poisson Process\nIf Xᵢ ∼ Exp(λ), then N(t) is a **Poisson process** with rate λ.\n\n### Renewal Function\nThe expected number of renewals up to time t is given by:\n\n```math\nm(t) = E[N(t)] = ∑_{n=1}^{∞} F^{*n}(t)\n```\n\nwhere F^{*n} is the n-fold convolution of the interarrival time distribution.\n\n## Worked Example\n\n### Example 1: Machine Replacement Model\nMachines fail after random times Xᵢ ∼ Exp(0.2). What is the expected number of failures in 10 hours?\n\n```math\nE[N(10)] = λt = 0.2 × 10 = 2\n```\n\nSo, on average, two renewals (failures and replacements) occur in 10 hours.\n\n## Regenerative Processes\nA **regenerative process** is one that probabilistically “starts over” at certain points, allowing analysis via renewal theory.\n\nExample: A queue is empty — from that point forward, system evolution is independent of the past.\n\n## Applications\n- **Reliability engineering:** Predicting failures and replacements.\n- **Inventory systems:** Restocking cycles.\n- **Queueing theory:** Arrival-service regeneration points.\n\n## Practice Prompts\n1. Explain how the renewal process generalizes the Poisson process.\n2. A component has mean lifetime 5 hours. Estimate the expected number of replacements in 20 hours.\n3. Give an example of a regenerative point in a real-world process.\n\n## Key Takeaways\n- Renewal processes model systems that restart randomly over time.\n- The Poisson process is a special exponential case.\n- Regenerative structure simplifies long-term analysis.\n\n**Next:** We’ll examine **semi-Markov** and **non-Markov** processes — systems that retain limited memory between transitions.\n",
+      "status": "published",
+      "order": 1,
+      "createdAt": "2025-10-25T14:05:00.000Z",
+      "updatedAt": "2025-10-25T14:05:00.000Z"
+    },
+    {
+      "id": "markov-simulations-1",
+      "courseId": "markov-simulations",
+      "title": "Simulating Discrete Markov Chains in Python",
+      "description": "Implement and experiment with discrete-time Markov chains through simulation and visualization in Python.",
+      "content": "# Simulating Discrete Markov Chains in Python\n\nWe’ve learned the theory behind Markov chains — now it’s time to bring them to life through simulation.\n\nSimulating a Markov chain helps visualize transitions, estimate steady states, and experiment with stochastic dynamics computationally.\n\n## Algorithm Overview\n\n### Step 1: Define the State Space and Transition Matrix\n```python\nimport numpy as np\nstates = ['Sunny', 'Rainy']\nP = np.array([[0.7, 0.3], [0.4, 0.6]])\n```\n\n### Step 2: Choose an Initial State\n```python\nstate = 0  # Start at 'Sunny'\n```\n\n### Step 3: Simulate Transitions\n```python\ndef simulate_markov(P, state, n_steps):\n    states_visited = [state]\n    for _ in range(n_steps):\n        state = np.random.choice(len(P), p=P[state])\n        states_visited.append(state)\n    return states_visited\n```\n\n### Step 4: Run the Simulation\n```python\nnp.random.seed(42)\ntrajectory = simulate_markov(P, state=0, n_steps=20)\nprint(trajectory)\n```\n\nThis outputs a sequence of states visited, such as `[0, 0, 1, 1, 0, 1, …]`.\n\n### Step 5: Estimate Stationary Distribution\n```python\nfrom collections import Counter\ncounts = Counter(trajectory)\npi_est = np.array([counts[i] for i in range(len(P))]) / len(trajectory)\nprint(pi_est)\n```\n\nThe estimated π should approach the theoretical stationary distribution.\n\n## Visualization Idea\nAn interactive chart could show:\n- A timeline of visited states.\n- A histogram of empirical state frequencies.\n\n## Practical Applications\n- Verifying analytical results via simulation.\n- Teaching stochastic intuition through experimentation.\n- Estimating equilibrium probabilities for complex systems.\n\n## Practice Prompts\n1. Modify the code for a 3-state weather model (Sunny, Cloudy, Rainy).\n2. Estimate how many steps are needed for convergence to the stationary distribution.\n3. What happens if you start from different initial states?\n\n## Key Takeaways\n- Markov chains can be simulated using random sampling.\n- Simulation verifies theoretical properties like convergence.\n- Computational models are crucial in applied stochastic analysis.\n\n**Next:** We’ll explore **Monte Carlo methods** and how Markov chains enable powerful sampling algorithms.\n",
+      "status": "published",
+      "order": 1,
+      "createdAt": "2025-10-25T14:10:00.000Z",
+      "updatedAt": "2025-10-25T14:10:00.000Z"
+    },
+    {
+      "id": "ctmc-2",
+      "courseId": "ctmc",
+      "title": "Exponential Holding Times and the Poisson Process",
+      "description": "Explore exponential waiting times and how Poisson processes arise in CTMCs.",
+      "content": "# Exponential Holding Times and the Poisson Process\n\nThis lesson examines the timing mechanism that makes many continuous-time models tractable: the **exponential distribution** and its connection to the **Poisson process**.\n\n## Introduction and Intuition\nA defining property of many CTMCs is that the sojourn time (time spent in a state before a jump) is exponentially distributed. The exponential distribution is memoryless: knowing that you have waited (t) units gives no information about additional waiting time.\n\n**Definition (Exponential):** If T ~ Exp(lambda), then\n\n```math\nP(T > t) = e^{-lambda t},  E[T] = 1/lambda.\n```\n\nMemorylessness:\n\n```math\nP(T > s+t | T > s) = P(T > t).\n```\n\nThis property aligns perfectly with the Markov property in time.\n\n## Poisson Process\nIf inter-arrival times are i.i.d. exponential with rate lambda, then the counting process N(t) (number of events by time t) is a Poisson process with rate lambda:\n\n```math\nP(N(t)=k) = e^{-lambda t} (lambda t)^k / k!.\n```\n\nConnections:\n- The Poisson process has independent increments.\n- It is the continuous-time analog of repeated Bernoulli trials with rare events.\n\n## Worked Examples\n\n### Example 1: Call Center\nCalls arrive as a Poisson process with rate 6/hour. Expected calls in 2 hours: E[N(2)] = 6 × 2 = 12.\n\n### Example 2: Memorylessness check\nIf mean interarrival time is 5 minutes (lambda = 0.2), the probability the next event occurs in the next 3 minutes does not depend on how long we have already waited.\n\n## Visualization\nImagine exponential clocks attached to each possible outgoing transition from a state. The first clock to ring determines the next jump. For a single Poisson process, visualize tick marks on a timeline with exponentially spaced intervals (on average).\n\n## Practice Prompts\n1. Show that the sum of two independent Exp(lambda) RVs is not exponential but has an Erlang distribution.\n2. If arrivals are Poisson(lambda), what is the distribution of the waiting time until the 3rd arrival? (Hint: Erlang/Gamma)\n\n## Key Takeaways\n- Exponential holding times are memoryless and consistent with Markov dynamics.\n- Poisson processes count events when interarrival times are exponential.\n- These two ideas underpin much of CTMC modeling.\n",
+      "status": "published",
+      "order": 2,
+      "createdAt": "2025-10-25T14:20:00.000Z",
+      "updatedAt": "2025-10-25T14:20:00.000Z"
+    },
+    {
+      "id": "ctmc-3",
+      "courseId": "ctmc",
+      "title": "Generator Matrices and Solving CTMCs",
+      "description": "Learn to construct the generator (Q) matrix and compute transition probabilities via matrix exponentials and ODEs.",
+      "content": "# Generator Matrices and Solving CTMCs\n\nThis lesson shows how to build the **generator matrix** (Q), interpret its entries, and compute time-dependent transition probabilities P(t)=e^{Qt}.\n\n## Generator Matrix (Q)\nFor a CTMC with states (1,...,n), the generator matrix Q=[q_{ij}] satisfies:\n\n- (q_{ij} >= 0) for i != j (rate of jumping i->j)\n- q_{ii} = -sum_{j != i} q_{ij} (row sums zero)\n\nInterpretation: for small Delta t,\n\n```math\nP(X(t+Delta t)=j | X(t)=i) approx q_{ij} Delta t,  j != i.\n```\n\n## Computing P(t)=e^{Qt}\nThe fundamental solution to the Kolmogorov forward (and backward) equations is the matrix exponential:\n\n```math\nd/dt P(t) = P(t) Q = Q P(t),  P(0)=I\n```\n\nand\n\n```math\nP(t) = e^{Qt} = sum_{k=0}^{infty} (Qt)^k / k!.\n```\n\nIn practice: use eigen-decomposition (if diagonalizable) or numerical ODE solvers for large systems.\n\n## Worked Examples\n\n### Example 1: Two-state generator\n\n```matrix\nQ = [ [-alpha, alpha], [beta, -beta] ]\n```\n\nClosed-form P(t) can be computed; it decays/exchanges mass between states with exponentials.\n\n### Example 2: Solve by ODE\nWrite p_i(t) = P(X(t)=i) and integrate p'(t)=p(t) Q numerically for initial condition p(0).\n\n## Visualization\nPlot entries of P(t) over time; watch rows converge (if ergodic) toward stationary probabilities.\n\n## Practice Prompts\n1. Build Q for a 3-state CTMC where from state 1 you go to 2 at rate 0.5 and to 3 at rate 0.5, and other rates are symmetric.\n2. Compute P(t) numerically for the above using small-step Euler integration.\n\n## Key Takeaways\n- The generator matrix encodes instantaneous rates.\n- Matrix exponentials give finite-time transition probabilities.\n- Numerical methods are essential for nontrivial CTMCs.\n",
+      "status": "published",
+      "order": 3,
+      "createdAt": "2025-10-25T14:25:00.000Z",
+      "updatedAt": "2025-10-25T14:25:00.000Z"
+    },
+    {
+      "id": "ctmc-4",
+      "courseId": "ctmc",
+      "title": "Birth–Death Processes",
+      "description": "Study birth–death (queue-like) CTMCs and methods for computing steady-state probabilities.",
+      "content": "# Birth–Death Processes\n\nBirth–death processes are CTMCs with transitions only between neighboring states (n→n+1 or n→n-1). They model queues, populations, and many service systems.\n\n## Model specification\nLet λn be the birth rate from state n to n+1 and μn the death rate from n to n-1. The generator has nonzero entries only on the sub- and super-diagonals.\n\n## Steady-state equations\nIf a stationary distribution πn exists, it satisfies the detailed balance relations (when reversible) or global balance:\n\n```math\n\\pi_n \\lambda_n = \\pi_{n+1} \\mu_{n+1}\n```\n\nRecursive solution:\n\n```math\n\\pi_{n+1} = \\pi_n \\frac{\\lambda_n}{\\mu_{n+1}}.\n```\n\nNormalization gives \\(\\sum_n \\pi_n = 1\\).\n\n## Worked Examples\n\n### M/M/1 queue\nConstant rates λn=λ, μn=μ. For ρ=λ/μ <1:\n\n```math\n\\pi_n = (1-\\rho) \\rho^n.\n```\n\nThis gives the geometric stationary distribution of queue length.\n\n## Visualization\nPlot πn vs n to see tail behavior; inspect how ρ affects mean queue length.\n\n## Practice Prompts\n1. Derive πn for M/M/1 and compute expected number in system.\n2. Consider an M/M/c system (multiple servers). How do steady-state formulas change qualitatively?\n\n## Key Takeaways\n- Birth–death processes have tractable recursive steady-state formulas.\n- M/M/1 queue is a canonical example with a geometric stationary law when stable.\n- These models are core to queueing theory and applied probability.\n",
+      "status": "published",
+      "order": 4,
+      "createdAt": "2025-10-25T14:30:00.000Z",
+      "updatedAt": "2025-10-25T14:30:00.000Z"
+    },
+    {
+      "id": "ctmc-5",
+      "courseId": "ctmc",
+      "title": "Steady-State and Limiting Behavior in CTMCs",
+      "description": "Compute steady states for CTMCs and relate long-run time averages to stationary measures.",
+      "content": "# Steady-State and Limiting Behavior in CTMCs\n\nThis lesson ties the CTMC machinery to long-run behavior: when and how CTMCs approach steady-state distributions and how time averages relate to stationary probabilities.\n\n## Stationary Distribution for CTMCs\nA probability vector π is stationary if\n\n```math\n\\pi Q = 0, \\quad \\sum_i \\pi_i = 1.\n```\n\nThis linear system replaces the discrete-time equation \\(\\pi P=\\pi\\).\n\n## Ergodic theorem for CTMCs\nIf a CTMC is irreducible and positive recurrent, then\n\n```math\n\\lim_{t\\to\\infty} P(X(t)=j) = \\pi_j,\n```\n\nand time averages converge:\n\n```math\n\\frac{1}{T} \\int_0^T 1_{\\{X(t)=j\\}}\\,dt \\to \\pi_j \\quad a.s.\n```\n\n## Worked Example\nFind \\(\\pi\\) for a two-state CTMC with rates \\(q_{12}=\\alpha, q_{21}=\\beta\\). Solve \\(\\pi Q=0\\) to obtain \\(\\pi_1=\\beta/(\\alpha+\\beta)\\), \\(\\pi_2=\\alpha/(\\alpha+\\beta)\\).\n\n## Practical notes\n- For large CTMCs, numerical linear algebra (sparse solvers) is used to solve \\(\\pi Q=0\\).\n- Time averages from simulation provide an empirical check on computed stationary measures.\n\n## Practice Prompts\n1. For M/M/1 with \\(\\rho<1\\), compute steady-state probabilities and mean queue length.\n2. Simulate a small CTMC and estimate time-average occupation; compare to computed \\(\\pi\\).\n\n## Key Takeaways\n- Stationary measures for CTMCs solve \\(\\pi Q=0\\).\n- Under recurrence, CTMCs converge in distribution; time averages converge a.s.\n- Numerical and simulation tools validate theoretical results.\n",
+      "status": "published",
+      "order": 5,
+      "createdAt": "2025-10-25T14:35:00.000Z",
+      "updatedAt": "2025-10-25T14:35:00.000Z"
+    },
+    {
+      "id": "stochastic-advanced-2",
+      "courseId": "stochastic-advanced",
+      "title": "Semi-Markov and Non-Markov Processes",
+      "description": "Extend Markov models: semi-Markov processes and models with memory between transitions.",
+      "content": "# Semi-Markov and Non-Markov Processes\n\nNot all stochastic systems satisfy the Markov property exactly. This lesson explores **semi-Markov** processes and other models that retain a limited memory of past events.\n\n## Semi-Markov Processes\nA semi-Markov process allows the transition *probabilities* to depend on the current state and the *sojourn time* distribution to be non-exponential. It generalizes CTMCs by decoupling holding-time distribution from the transition kernel.\n\nConstruction:\n- Embedded Markov chain \\(\\{Y_n\\}\\) gives jump destinations.\n- Holding times \\(S_n\\) between jumps follow distributions depending on the state (and possibly destination).\n\nRenewal and regenerative methods are used for long-run analysis.\n\n## Non-Markov Examples\n- Processes with deterministic delays.\n- Systems where next jump depends on the time since last event.\n\n## Worked Examples\n\n### Example: Semi-Markov reliability\nA machine switches among modes; repair times depend on mode and are not exponential. Use embedded chain plus renewal theory to compute availability.\n\n## Visualization and Intuition\nPlot embedded jumps and varying sojourn times; compare with CTMC behavior where holding times are exponential.\n\n## Practice Prompts\n1. Show how to derive the long-run fraction of time in a state using embedded chain stationary distribution and mean holding times.\n2. Give a real system where exponential assumption fails and explain consequences.\n\n## Key Takeaways\n- Semi-Markov processes generalize CTMCs by allowing arbitrary holding-time distributions.\n- Embedded chains + renewal theory are central tools.\n- Non-Markov behavior requires different analytical techniques.\n",
+      "status": "published",
+      "order": 2,
+      "createdAt": "2025-10-25T14:40:00.000Z",
+      "updatedAt": "2025-10-25T14:40:00.000Z"
+    },
+    {
+      "id": "stochastic-advanced-3",
+      "courseId": "stochastic-advanced",
+      "title": "Martingales: Basics and Applications",
+      "description": "Introduce martingales, key inequalities, and how they are used in stochastic analysis.",
+      "content": "# Martingales: Basics and Applications\n\nMartingales are stochastic processes that model 'fair' games and are fundamental in modern probability theory.\n\n## Definition\nA process \\(M_n\\) adapted to a filtration \\(\\mathcal{F}_n\\) is a **martingale** if\n\n```math\nE[|M_n|] < \\infty, \\quad E[M_{n+1} \\mid \\mathcal{F}_n] = M_n.\n```\n\nSub/supermartingales relax equality to ≤ or ≥.\n\n## Key Results\n- Optional stopping theorem (under conditions): expected value at a stopping time equals starting value.\n- Doob's inequalities: bound maximum of martingale in terms of final value.\n\n## Worked Examples\n\n### Example 1: Simple random walk\nLet \\(S_n\\) be sum of i.i.d. zero-mean increments; \\(S_n\\) is a martingale. Use optional stopping to reason about gambler's ruin (carefully, checking conditions).\n\n## Applications\n- Proving convergence results.\n- Stochastic integration and finance (fair pricing).\n- Stopping rules in algorithms (e.g., sequential tests).\n\n## Practice Prompts\n1. Show that discounted price process in a no-arbitrage market is a martingale under risk-neutral measure.\n2. State conditions under which optional stopping theorem applies.\n\n## Key Takeaways\n- Martingales formalize 'no predictable gain'.\n- Powerful inequalities and stopping results support analysis of stochastic algorithms.\n",
+      "status": "published",
+      "order": 3,
+      "createdAt": "2025-10-25T14:45:00.000Z",
+      "updatedAt": "2025-10-25T14:45:00.000Z"
+    },
+    {
+      "id": "stochastic-advanced-4",
+      "courseId": "stochastic-advanced",
+      "title": "Markov Decision Processes (MDPs)",
+      "description": "Introduce MDPs: decision-making under uncertainty with rewards, policies, and value functions.",
+      "content": "# Markov Decision Processes (MDPs)\n\nMDPs add decisions and rewards to Markov models: at each state an agent picks an action, yielding rewards and probabilistic next states.\n\n## Formalism\nAn MDP is specified by \\((S,A,P,R,\\gamma)\\): states, actions, transition probabilities \\(P(s'\\mid s,a)\\), reward function \\(R(s,a)\\), and discount factor \\(\\gamma\\).\n\nObjective: find a **policy** \\(\\pi(a\\mid s)\\) maximizing cumulative expected reward (discounted or average).\n\n## Key Equations\nBellman optimality (discounted):\n\n```math\nV^*(s) = \\max_a \\big\\{ R(s,a) + \\gamma \\sum_{s'} P(s'\\mid s,a) V^*(s') \\big\\}.\n```\n\nAlgorithms: value iteration, policy iteration, Q-learning (model-free).\n\n## Worked Example\nSmall gridworld: compute value iteration updates and show convergence to optimal policy.\n\n## Practice Prompts\n1. Implement one step of value iteration for 3×3 grid with terminal rewards.\n2. Explain exploration vs exploitation in reinforcement learning.\n\n## Key Takeaways\n- MDPs combine stochastic dynamics with control and optimization.\n- Bellman equations lead to practical algorithms used in RL.\n",
+      "status": "published",
+      "order": 4,
+      "createdAt": "2025-10-25T14:50:00.000Z",
+      "updatedAt": "2025-10-25T14:50:00.000Z"
+    },
+    {
+      "id": "stochastic-advanced-5",
+      "courseId": "stochastic-advanced",
+      "title": "Queueing Networks and Applications",
+      "description": "Study networks of queues, product-form solutions, and performance metrics for service systems.",
+      "content": "# Queueing Networks and Applications\n\nQueueing networks model interconnected service stations (call centers, servers). This lesson introduces open and closed networks and key performance measures.\n\n## Model types\n- **Open networks:** external arrivals and departures.\n- **Closed networks:** fixed population circulating among among nodes.\n\nJackson networks (open, exponential) have product-form stationary distributions allowing tractable analysis.\n\n## Performance metrics\n- Throughput, utilization, mean queue length, mean waiting time (Little's Law: \\(L=\\lambda W\\)).\n\n## Worked Example\nJackson network with two M/M/1 stations: write balance equations and solve for stationary distribution using product-form solution.\n\n## Practice Prompts\n1. Apply Little's Law to compute average delay if average number in system is 5 and arrival rate is 2/min.\n2. Model a simple web service with load balancer and two servers as a network; compute utilization.\n\n## Key Takeaways\n- Queueing networks extend single-server models to realistic systems.\n- Product-form solutions exist under exponential assumptions; more complex models require approximation or simulation.\n",
+      "status": "published",
+      "order": 5,
+      "createdAt": "2025-10-25T14:55:00.000Z",
+      "updatedAt": "2025-10-25T14:55:00.000Z"
+    },
+    {
+      "id": "markov-simulations-2",
+      "courseId": "markov-simulations",
+      "title": "Monte Carlo Methods and Random Walks",
+      "description": "Learn Monte Carlo basics, importance sampling, and the role of random walks in simulation.",
+      "content": "# Monte Carlo Methods and Random Walks\n\nMonte Carlo methods use randomness to approximate quantities that are difficult to compute analytically. Random walks are both a modeling tool and a core Monte Carlo primitive.\n\n## Monte Carlo basics\nEstimate an expectation \\(E[f(X)]\\) by sampling \\(X^{(i)}\\) and computing \\(\\hat{\\mu} = \\frac{1}{N}\\sum f(X^{(i)})\\). Error decays as \\(1/\\sqrt{N}\\).\n\n## Importance sampling\nChange sampling distribution to reduce variance when estimating rare-event probabilities.\n\n## Random Walks in Simulation\nRandom walks simulate diffusion, mixing, and exploration in state space. They underpin many MCMC schemes.\n\n## Worked Example\nEstimate \\(\\int_0^1 e^{-x^2} dx\\) by sampling uniform points and averaging \\(e^{-x^2}\\).\n\n## Practice Prompts\n1. Implement a Monte Carlo estimator for a simple integral.\n2. Design an importance sampling scheme for estimating tail probability of a Normal.\n\n## Key Takeaways\n- Monte Carlo is broadly applicable and simple to implement.\n- Variance reduction (importance sampling, control variates) is crucial for efficiency.\n",
+      "status": "published",
+      "order": 2,
+      "createdAt": "2025-10-25T15:00:00.000Z",
+      "updatedAt": "2025-10-25T15:00:00.000Z"
+    },
+    {
+      "id": "markov-simulations-3",
+      "courseId": "markov-simulations",
+      "title": "Markov Chain Monte Carlo (MCMC) Fundamentals",
+      "description": "Introduce MCMC: Metropolis–Hastings, Gibbs sampling, and practical implementation tips.",
+      "content": "# Markov Chain Monte Carlo (MCMC) Fundamentals\n\nMCMC builds a Markov chain whose stationary distribution is a target distribution \\(\\pi\\). After burn-in, samples approximate \\(\\pi\\).\n\n## Metropolis–Hastings\nGiven current state \\(x\\), propose \\(y\\) from proposal \\(q(y\\mid x)\\), accept with probability\n\n```math\n\\alpha = \\min\\left(1, \\frac{\\pi(y)q(x\\mid y)}{\\pi(x)q(y\\mid x)}\\right).\n```\n\n## Gibbs sampling\nBlockwise sampling by conditioning on other coordinates; useful when conditional distributions are easy to sample.\n\n## Practical tips\n- Tune proposal variance to get reasonable acceptance rates (~20–50% depending on dimension).\n- Use multiple chains and diagnostics (next lesson).\n\n## Worked Example\nImplement simple Metropolis sampler for a univariate target \\(\\pi(x)\\propto e^{-x^4 + x^2}\\).\n\n## Practice Prompts\n1. Implement Metropolis–Hastings with Gaussian proposal and plot trace plots.\n2. Explain why detailed balance ensures stationarity.\n\n## Key Takeaways\n- MCMC converts sampling into constructing an ergodic Markov chain with target stationary distribution.\n- Choice of proposal governs efficiency and mixing.\n",
+      "status": "published",
+      "order": 3,
+      "createdAt": "2025-10-25T15:05:00.000Z",
+      "updatedAt": "2025-10-25T15:05:00.000Z"
+    },
+    {
+      "id": "markov-simulations-4",
+      "courseId": "markov-simulations",
+      "title": "Convergence Diagnostics and Sampling Strategies",
+      "description": "Learn diagnostics for MCMC convergence, effective sample size, and strategies to improve mixing.",
+      "content": "# Convergence Diagnostics and Sampling Strategies\n\nRunning an MCMC chain is only half the battle; you must assess whether it has converged and how reliable the samples are.\n\n## Diagnostics\n- Trace plots: visual inspection of chains.\n- Autocorrelation function (ACF): assesses dependence between samples.\n- Effective sample size (ESS): \\(N_{eff} = N/(1+2\\sum \\rho_k)\\).\n- Gelman–Rubin \\(\\hat{R}\\) statistic for multiple chains.\n\n## Strategies to improve mixing\n- Reparameterization\n- Adaptive proposals (with care)\n- Block sampling and tempering\n\n## Worked Example\nCompute ACF for a simulated chain and estimate ESS.\n\n## Practice Prompts\n1. Run two independent chains and compute \\(\\hat{R}\\).\n2. Compare ESS before and after tuning proposal variance.\n\n## Key Takeaways\n- Diagnostics quantify convergence and sampling efficiency.\n- Effective sampling requires iteration, tuning, and multiple diagnostics.\n",
+      "status": "published",
+      "order": 4,
+      "createdAt": "2025-10-25T15:10:00.000Z",
+      "updatedAt": "2025-10-25T15:10:00.000Z"
+    },
+    {
+      "id": "markov-simulations-5",
+      "courseId": "markov-simulations",
+      "title": "Case Study: PageRank and Network Analysis",
+      "description": "A hands-on PageRank case study: build the web link chain, compute stationary vector, and analyze results.",
+      "content": "# Case Study: PageRank and Network Analysis\n\nThis lesson applies Markov chain simulation and linear-algebra tools to compute PageRank on a small web graph.\n\n## Model recap\nPages = states, link structure defines transition probabilities; teleportation (damping) ensures irreducibility and aperiodicity.\n\n## Steps\n1. Build adjacency and transition matrix with damping factor \\(d\\) (e.g., 0.85).\n2. Compute stationary vector by power iteration: repeatedly multiply a probability vector by the transition matrix until convergence.\n\n```math\n\\pi^{(k+1)} = \\pi^{(k)} P.\n```\n\n## Worked Example\nConstruct a 4-page graph, compute the transition matrix with teleportation, run 50 iterations of power method, and compare to direct solve \\(\\pi(I-P)=0\\) with normalization.\n\n## Practice Prompts\n1. Implement the power method for a small graph and plot convergence of \\(\\lVert\\pi^{(k+1)}-\\pi^{(k)}\\rVert\\).\n2. Explore how changing damping factor affects ranking.\n\n## Key Takeaways\n- PageRank is a practical stationary-distribution computation on a large Markov chain.\n- Power iteration is scalable and commonly used.\n- Teleportation fixes reducibility and periodicity issues in raw link graphs.\n",
+      "status": "published",
+      "order": 5,
+      "createdAt": "2025-10-25T15:15:00.000Z",
+      "updatedAt": "2025-10-25T15:15:00.000Z"
+    }
+  ]
+}
