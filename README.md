@@ -34,6 +34,8 @@ See docs for deeper details:
 - `docs/ROADMAP.md`
 - `docs/SOURCES.md`
 - `docs/LESSON_OUTLINES.md`
+ - `docs/PERFORMANCE_PREDEPLOY.md` – pre-deployment performance, reliability, and security plan
+ - `docs/DEPLOYMENT_AZURE.md` – step-by-step production deployment to Azure with CI/CD
 
 ## Sample and markup data inventory
 

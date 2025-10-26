@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,7 +66,7 @@ const defaultColors = [
   "#ec4899", // chart-5
 ]
 
-export default function ToolsPage() {
+function ToolsContent() {
   const searchParams = useSearchParams()
   const [chain, setChain] = useState<MarkovChain>({ states: [], transitions: [] })
   const [selectedState, setSelectedState] = useState<string | null>(null)
@@ -1675,5 +1675,13 @@ export default function ToolsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function ToolsPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading…</div>}>
+      <ToolsContent />
+    </Suspense>
   )
 }
