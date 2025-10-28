@@ -14,7 +14,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import * as Popover from "@radix-ui/react-popover"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Play, RotateCcw, Download, Upload, Trash2, ArrowRight, Info, Pause, Save, FolderOpen, ChevronLeft, ChevronRight, FileText, FilePlus } from "lucide-react"
+import {
+  Plus,
+  Play,
+  RotateCcw,
+  Download,
+  Upload,
+  Trash2,
+  ArrowRight,
+  Info,
+  Pause,
+  Save,
+  FolderOpen,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  FilePlus,
+  Menu,
+} from "lucide-react"
 import Link from "next/link"
 import {
   Dialog,
@@ -24,6 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 interface State {
   id: string
@@ -75,7 +93,7 @@ function ToolsContent() {
   const [isAutoRunning, setIsAutoRunning] = useState(false)
   const [simulationStep, setSimulationStep] = useState(0)
   const [currentState, setCurrentState] = useState<string | null>(null)
-  const [simulationSpeed, setSimulationSpeed] = useState(500) // milliseconds
+  const [simulationSpeed, setSimulationSpeed] = useState(500)
   const [simulationMetrics, setSimulationMetrics] = useState<SimulationMetrics>({
     stateVisits: {},
     transitionUsage: {},
@@ -87,6 +105,8 @@ function ToolsContent() {
   const [sidebarWidth, setSidebarWidth] = useState(550)
   const [isResizing, setIsResizing] = useState(false)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const autoRunIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [draggingStateId, setDraggingStateId] = useState<string | null>(null)
@@ -111,13 +131,13 @@ function ToolsContent() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault()
-        e.returnValue = ''
+        e.returnValue = ""
       }
     }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [hasUnsavedChanges])
-  
+
   // Load from example URL parameter on mount and fetch saved designs from API
   useEffect(() => {
     // Check if loading from example
@@ -125,29 +145,29 @@ function ToolsContent() {
     if (exampleId) {
       // Load example from API
       fetch(`/api/examples`)
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           if (data.success) {
             const example = data.data.find((ex: any) => ex.id === exampleId)
             if (example?.design) {
               setChain(example.design)
-                            setHasUnsavedChanges(false)
+              setHasUnsavedChanges(false)
               return
             }
           }
         })
-        .catch(err => console.error("Failed to load example:", err))
+        .catch((err) => console.error("Failed to load example:", err))
     }
-    
+
     // Load saved designs from API
     fetch("/api/designs")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setSavedDesigns(data.data)
         }
       })
-      .catch(err => console.error("Failed to load designs:", err))
+      .catch((err) => console.error("Failed to load designs:", err))
   }, [searchParams])
 
   // Helpers: probability normalization
@@ -242,23 +262,26 @@ function ToolsContent() {
     setSelectedState(null)
   }, [])
 
-  const deleteTransition = useCallback((transitionId: string) => {
-    setChain((prev) => {
-      const target = prev.transitions.find((t) => t.id === transitionId)
-      const filtered = prev.transitions.filter((t) => t.id !== transitionId)
-      const balanced = target ? equalizeOutgoing(filtered, target.from) : filtered
-      return { ...prev, transitions: balanced }
-    })
-    setSelectedTransition(null)
-  }, [equalizeOutgoing])
+  const deleteTransition = useCallback(
+    (transitionId: string) => {
+      setChain((prev) => {
+        const target = prev.transitions.find((t) => t.id === transitionId)
+        const filtered = prev.transitions.filter((t) => t.id !== transitionId)
+        const balanced = target ? equalizeOutgoing(filtered, target.from) : filtered
+        return { ...prev, transitions: balanced }
+      })
+      setSelectedTransition(null)
+    },
+    [equalizeOutgoing],
+  )
 
   const handleCanvasClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (isPanning || isResizing) return
-      
+
       // Don't add nodes if clicking on a state node (they have their own click handlers)
       const target = e.target as HTMLElement
-      if (target.closest('[data-node-id]')) return
+      if (target.closest("[data-node-id]")) return
 
       if (!canvasRef.current) return
 
@@ -303,7 +326,7 @@ function ToolsContent() {
         const nextState = transition.to
         setCurrentState(nextState)
         setSimulationStep((prev) => prev + 1)
-        
+
         // Update metrics
         setSimulationMetrics((prev) => ({
           stateVisits: {
@@ -356,18 +379,18 @@ function ToolsContent() {
       const response = await fetch("/api/designs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          name: saveName.trim(), 
+        body: JSON.stringify({
+          name: saveName.trim(),
           chain: {
             states: chain.states,
             transitions: chain.transitions,
-          }
+          },
         }),
       })
       const data = await response.json()
       if (data.success) {
-        setSavedDesigns(prev => [...prev, data.data])
-          setHasUnsavedChanges(false)
+        setSavedDesigns((prev) => [...prev, data.data])
+        setHasUnsavedChanges(false)
         setSaveDialogOpen(false)
         setSaveName("")
       } else {
@@ -382,7 +405,7 @@ function ToolsContent() {
   const loadDesign = useCallback(
     (design: SavedDesign) => {
       setChain(design.chain)
-        setHasUnsavedChanges(false)
+      setHasUnsavedChanges(false)
       setSelectedState(null)
       setSelectedTransition(null)
       resetSimulation()
@@ -396,7 +419,7 @@ function ToolsContent() {
       const response = await fetch(`/api/designs/${id}`, { method: "DELETE" })
       const data = await response.json()
       if (data.success) {
-        setSavedDesigns(prev => prev.filter((d) => d.id !== id))
+        setSavedDesigns((prev) => prev.filter((d) => d.id !== id))
       }
     } catch (error) {
       console.error("Failed to delete design:", error)
@@ -406,9 +429,7 @@ function ToolsContent() {
 
   const newDesign = useCallback(() => {
     if (hasUnsavedChanges) {
-      const confirmed = window.confirm(
-        "You have unsaved changes. Do you want to save before creating a new design?"
-      )
+      const confirmed = window.confirm("You have unsaved changes. Do you want to save before creating a new design?")
       if (confirmed) {
         // Open save dialog
         setSaveDialogOpen(true)
@@ -416,7 +437,7 @@ function ToolsContent() {
       }
     }
     setChain({ states: [], transitions: [] })
-      setHasUnsavedChanges(false)
+    setHasUnsavedChanges(false)
     setSelectedState(null)
     setSelectedTransition(null)
     resetSimulation()
@@ -501,21 +522,23 @@ function ToolsContent() {
           matrix,
         },
       },
-      simulation: isSimulating ? {
-        currentStep: simulationStep,
-        currentState: currentState,
-        metrics: {
-          stateVisits: simulationMetrics.stateVisits,
-          transitionUsage: simulationMetrics.transitionUsage,
-          pathHistory: simulationMetrics.pathHistory,
-        },
-        statistics: {
-          totalVisits: simulationStep + 1,
-          uniqueStatesVisited: Object.keys(simulationMetrics.stateVisits).length,
-          mostVisitedState: Object.entries(simulationMetrics.stateVisits)
-            .sort((a, b) => b[1] - a[1])[0]?.[0] || null,
-        },
-      } : null,
+      simulation: isSimulating
+        ? {
+            currentStep: simulationStep,
+            currentState: currentState,
+            metrics: {
+              stateVisits: simulationMetrics.stateVisits,
+              transitionUsage: simulationMetrics.transitionUsage,
+              pathHistory: simulationMetrics.pathHistory,
+            },
+            statistics: {
+              totalVisits: simulationStep + 1,
+              uniqueStatesVisited: Object.keys(simulationMetrics.stateVisits).length,
+              mostVisitedState:
+                Object.entries(simulationMetrics.stateVisits).sort((a, b) => b[1] - a[1])[0]?.[0] || null,
+            },
+          }
+        : null,
     }
 
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" })
@@ -645,18 +668,21 @@ function ToolsContent() {
     [isPanning, lastPanPoint, draggingStateId, panOffset],
   )
 
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1) {
-      setIsPanning(false)
-    }
-    if (e.button === 0 && draggingStateId) {
-      setDraggingStateId(null)
-      // Defer reset so any click event following mouseup gets ignored
-      setTimeout(() => {
-        didDragRef.current = false
-      }, 0)
-    }
-  }, [draggingStateId])
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button === 1) {
+        setIsPanning(false)
+      }
+      if (e.button === 0 && draggingStateId) {
+        setDraggingStateId(null)
+        // Defer reset so any click event following mouseup gets ignored
+        setTimeout(() => {
+          didDragRef.current = false
+        }, 0)
+      }
+    },
+    [draggingStateId],
+  )
 
   const handleSidebarResize = useCallback(
     (e: React.MouseEvent) => {
@@ -696,100 +722,271 @@ function ToolsContent() {
   )
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <nav className="border-b border-border/40 bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/" className="flex items-center gap-2 group">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-primary/25 transition-all duration-300 group-hover:scale-105">
+                  <span className="text-primary-foreground font-bold text-sm sm:text-base">M</span>
                 </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
+                <span className="font-semibold text-base sm:text-lg bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  MarkovLearn
+                </span>
               </Link>
             </div>
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center gap-6">
+              <Link
+                href="/learn"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+              >
                 Learn
               </Link>
-              <Link href="/tools" className="text-foreground font-medium transition-colors">
+              <Link
+                href="/tools"
+                className="text-sm text-foreground font-medium transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary"
+              >
                 Tools
               </Link>
-              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="/examples"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+              >
                 Examples
               </Link>
-              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="/practice"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+              >
                 Practice
               </Link>
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="/about"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+              >
                 About
               </Link>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <Button variant="outline" size="sm" onClick={newDesign}>
+
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-2">
+              <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={newDesign}
+                className="transition-all duration-200 hover:scale-105 bg-transparent"
+              >
                 <FilePlus className="mr-2 h-4 w-4" />
-                New Design
+                <span className="hidden xl:inline">New</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={saveDesign}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={saveDesign}
+                className="transition-all duration-200 hover:scale-105 bg-transparent"
+              >
                 <Save className="mr-2 h-4 w-4" />
-                Save
+                <span className="hidden xl:inline">Save</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setLibraryOpen(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLibraryOpen(true)}
+                className="transition-all duration-200 hover:scale-105"
+              >
                 <FolderOpen className="mr-2 h-4 w-4" />
-                Library
+                <span className="hidden xl:inline">Library</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handleImportClick}>
-                <Upload className="mr-2 h-4 w-4" />
-                Import
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportClick}
+                className="transition-all duration-200 hover:scale-105 bg-transparent"
+              >
+                <Upload className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={exportChain}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportChain}
+                className="transition-all duration-200 hover:scale-105 bg-transparent"
+              >
+                <Download className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={exportReport}>
-                <FileText className="mr-2 h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportReport}
+                className="transition-all duration-200 hover:scale-105 bg-transparent"
+              >
+                <FileText className="h-4 w-4" />
                 Export Report
               </Button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72">
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                  <SheetDescription>Navigation and actions</SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 mt-6">
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/learn"
+                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                      Learn
+                    </Link>
+                    <Link href="/tools" className="px-4 py-2 text-sm text-foreground font-medium bg-muted rounded-lg">
+                      Tools
+                    </Link>
+                    <Link
+                      href="/examples"
+                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                      Examples
+                    </Link>
+                    <Link
+                      href="/practice"
+                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                      Practice
+                    </Link>
+                    <Link
+                      href="/about"
+                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                      About
+                    </Link>
+                  </div>
+                  <div className="border-t pt-4 flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        newDesign()
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <FilePlus className="mr-2 h-4 w-4" />
+                      New Design
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        saveDesign()
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setLibraryOpen(true)
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      Library
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleImportClick()
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        exportChain()
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Export
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        exportReport()
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Export Report
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)]">
         <aside
-          className={`border-r border-border bg-card/50 p-6 overflow-y-auto relative transition-all duration-300 ease-in-out ${isResizing ? "select-none" : ""}`}
-          style={{ 
-            width: isSidebarMinimized ? '0px' : `${sidebarWidth}px`,
-            padding: isSidebarMinimized ? '0' : undefined,
+          className={`hidden lg:block border-r border-border/40 bg-card/50 backdrop-blur-sm p-6 overflow-y-auto relative transition-all duration-300 ease-in-out ${isResizing ? "select-none" : ""}`}
+          style={{
+            width: isSidebarMinimized ? "0px" : `${sidebarWidth}px`,
+            padding: isSidebarMinimized ? "0" : undefined,
             opacity: isSidebarMinimized ? 0 : 1,
           }}
         >
           <div
-            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border hover:bg-primary/20 transition-colors"
+            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border/50 hover:bg-primary/30 transition-colors duration-200"
             onMouseDown={handleSidebarResize}
-            style={{ display: isSidebarMinimized ? 'none' : 'block' }}
+            style={{ display: isSidebarMinimized ? "none" : "block" }}
           />
 
           <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Chain Builder</h2>
+            <div className="animate-in fade-in-0 slide-in-from-top-2 duration-500">
+              <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Chain Builder
+              </h2>
               <p className="text-sm text-muted-foreground">
                 Create your own Markov chain by adding states and transitions
               </p>
             </div>
 
             <Tabs defaultValue="build" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="build">Build</TabsTrigger>
-                <TabsTrigger value="simulate">Simulate</TabsTrigger>
-                <TabsTrigger value="analyze">Analyze</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+                <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200">
+                  Build
+                </TabsTrigger>
+                <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200">
+                  Simulate
+                </TabsTrigger>
+                <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200">
+                  Analyze
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="build" className="space-y-4">
@@ -798,7 +995,11 @@ function ToolsContent() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-transparent focus-visible:ring-0"
+                        >
                           <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
                         </Button>
                       </TooltipTrigger>
@@ -839,9 +1040,9 @@ function ToolsContent() {
                           className="transition-all duration-150"
                         />
                       </div>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         onClick={() => deleteState(selectedState)}
                         className="transition-all duration-150 hover:scale-105"
                       >
@@ -862,8 +1063,8 @@ function ToolsContent() {
                         const fromState = chain.states.find((s) => s.id === transition.from)
                         const toState = chain.states.find((s) => s.id === transition.to)
                         return (
-                          <div 
-                            key={transition.id} 
+                          <div
+                            key={transition.id}
                             className="flex items-center gap-2 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150"
                           >
                             <span className="font-medium w-10 truncate">{fromState?.name}</span>
@@ -890,9 +1091,9 @@ function ToolsContent() {
                                 className="w-20 h-7 text-xs transition-all duration-150 focus:ring-2"
                               />
                             </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => deleteTransition(transition.id)}
                               className="transition-all duration-150 hover:bg-destructive/10"
                             >
@@ -913,26 +1114,26 @@ function ToolsContent() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-2">
-                      <Button 
-                        onClick={startSimulation} 
-                        disabled={chain.states.length === 0 || isSimulating} 
+                      <Button
+                        onClick={startSimulation}
+                        disabled={chain.states.length === 0 || isSimulating}
                         size="sm"
                         className="transition-all duration-150"
                       >
                         <Play className="mr-2 h-4 w-4" />
                         Start
                       </Button>
-                      <Button 
-                        onClick={stepSimulation} 
-                        disabled={!isSimulating || isAutoRunning} 
+                      <Button
+                        onClick={stepSimulation}
+                        disabled={!isSimulating || isAutoRunning}
                         size="sm"
                         className="transition-all duration-150"
                       >
                         Step
                       </Button>
-                      <Button 
-                        onClick={toggleAutoRun} 
-                        disabled={chain.states.length === 0} 
+                      <Button
+                        onClick={toggleAutoRun}
+                        disabled={chain.states.length === 0}
                         variant={isAutoRunning ? "default" : "secondary"}
                         size="sm"
                         className="transition-all duration-150"
@@ -949,11 +1150,11 @@ function ToolsContent() {
                           </>
                         )}
                       </Button>
-                      <Button 
-                        onClick={resetSimulation} 
-                        variant="outline" 
+                      <Button
+                        onClick={resetSimulation}
+                        variant="outline"
                         size="sm"
-                        className="transition-all duration-150"
+                        className="transition-all duration-150 bg-transparent"
                       >
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Reset
@@ -1028,7 +1229,9 @@ function ToolsContent() {
                           <Label className="text-xs text-muted-foreground">Recent Path</Label>
                           <Select
                             value={pathHistoryLimit.toString()}
-                            onValueChange={(value) => setPathHistoryLimit(value === "all" ? "all" : Number.parseInt(value))}
+                            onValueChange={(value) =>
+                              setPathHistoryLimit(value === "all" ? "all" : Number.parseInt(value))
+                            }
                           >
                             <SelectTrigger className="w-24 h-7 text-xs">
                               <SelectValue />
@@ -1091,16 +1294,14 @@ function ToolsContent() {
                                 {transitionMatrix[i].map((prob, j) => {
                                   // Color intensity based on probability
                                   const intensity = prob > 0 ? Math.max(0.15, prob) : 0
-                                  const bgColor = prob > 0 
-                                    ? `rgba(5, 150, 105, ${intensity})`
-                                    : 'transparent'
+                                  const bgColor = prob > 0 ? `rgba(5, 150, 105, ${intensity})` : "transparent"
                                   return (
-                                    <td 
-                                      key={j} 
+                                    <td
+                                      key={j}
                                       className="border border-border p-2 text-center font-medium transition-all duration-200 hover:scale-105"
                                       style={{ backgroundColor: bgColor }}
                                     >
-                                      {prob > 0 ? prob.toFixed(2) : '—'}
+                                      {prob > 0 ? prob.toFixed(2) : "—"}
                                     </td>
                                   )
                                 })}
@@ -1110,15 +1311,15 @@ function ToolsContent() {
                         </table>
                         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(5, 150, 105, 0.2)' }} />
+                            <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 0.2)" }} />
                             <span>Low</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(5, 150, 105, 0.6)' }} />
+                            <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 0.6)" }} />
                             <span>Medium</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(5, 150, 105, 1)' }} />
+                            <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 1)" }} />
                             <span>High</span>
                           </div>
                         </div>
@@ -1161,9 +1362,7 @@ function ToolsContent() {
                                 <Badge variant={isValid ? "secondary" : "destructive"} className="text-xs">
                                   {outgoing} ({totalProb.toFixed(2)})
                                 </Badge>
-                                {!isValid && (
-                                  <span className="text-xs text-destructive">⚠ Invalid</span>
-                                )}
+                                {!isValid && <span className="text-xs text-destructive">⚠ Invalid</span>}
                               </div>
                             </div>
                           )
@@ -1205,27 +1404,54 @@ function ToolsContent() {
           </div>
         </aside>
 
-        {/* Minimize/Maximize Toggle Button */}
+        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button
+              size="icon"
+              className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-all duration-200 hover:scale-110"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Chain Builder</SheetTitle>
+              <SheetDescription>Create and manage your Markov chain</SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              {/* ... existing sidebar content for mobile ... */}
+              <Tabs defaultValue="build" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="build">Build</TabsTrigger>
+                  <TabsTrigger value="simulate">Simulate</TabsTrigger>
+                  <TabsTrigger value="analyze">Analyze</TabsTrigger>
+                </TabsList>
+                {/* ... rest of tabs content ... */}
+              </Tabs>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         <button
           onClick={() => setIsSidebarMinimized(!isSidebarMinimized)}
-          className="absolute left-0 top-20 z-50 bg-card border border-border rounded-r-lg p-2 hover:bg-muted transition-all duration-200 shadow-md"
+          className="hidden lg:block absolute left-0 top-20 z-50 bg-card/80 backdrop-blur-sm border border-border/40 rounded-r-xl p-2 hover:bg-muted transition-all duration-200 shadow-lg hover:shadow-xl group"
           style={{
-            transform: isSidebarMinimized ? 'translateX(0)' : `translateX(${sidebarWidth}px)`,
-            transition: 'transform 0.3s ease-in-out',
+            transform: isSidebarMinimized ? "translateX(0)" : `translateX(${sidebarWidth}px)`,
+            transition: "transform 0.3s ease-in-out",
           }}
-          title={isSidebarMinimized ? 'Show sidebar' : 'Hide sidebar'}
+          title={isSidebarMinimized ? "Show sidebar" : "Hide sidebar"}
         >
           {isSidebarMinimized ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 group-hover:scale-110 transition-transform" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 group-hover:scale-110 transition-transform" />
           )}
         </button>
 
-        <main className="flex-1 relative">
+        <main className="flex-1 relative overflow-hidden">
           <div
             ref={canvasRef}
-            className={`w-full h-full bg-muted/10 relative overflow-hidden select-none ${
+            className={`w-full h-full bg-gradient-to-br from-muted/5 via-background to-muted/10 relative overflow-hidden select-none ${
               isPanning ? "cursor-grabbing" : draggingStateId ? "cursor-move" : "cursor-crosshair"
             }`}
             onClick={handleCanvasClick}
@@ -1246,14 +1472,14 @@ function ToolsContent() {
                 marginTop: -CANVAS_HEIGHT / 2,
               }}
             >
-              <div className="absolute inset-0 border-2 border-dashed border-border/30 rounded-lg" />
+              <div className="absolute inset-0 border-2 border-dashed border-primary/20 rounded-2xl shadow-inner" />
 
               <div
-                className="absolute inset-0 opacity-20"
+                className="absolute inset-0 opacity-10"
                 style={{
                   backgroundImage: `
-                    linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-                    linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
+                    linear-gradient(to right, hsl(var(--primary) / 0.3) 1px, transparent 1px),
+                    linear-gradient(to bottom, hsl(var(--primary) / 0.3) 1px, transparent 1px)
                   `,
                   backgroundSize: "20px 20px",
                 }}
@@ -1294,33 +1520,31 @@ function ToolsContent() {
                     }
 
                     // Preferred orientation based on position (push outward)
-                    let preferred: 'top' | 'right' | 'bottom' | 'left' = 'top'
+                    let preferred: "top" | "right" | "bottom" | "left" = "top"
                     const centerX = CANVAS_WIDTH / 2
                     const centerY = CANVAS_HEIGHT / 2
                     const dxC = s.x - centerX
                     const dyC = s.y - centerY
-                    if (Math.abs(dyC) > Math.abs(dxC)) preferred = dyC > 0 ? 'bottom' : 'top'
-                    else preferred = dxC > 0 ? 'right' : 'left'
+                    if (Math.abs(dyC) > Math.abs(dxC)) preferred = dyC > 0 ? "bottom" : "top"
+                    else preferred = dxC > 0 ? "right" : "left"
 
                     // Avoid edges
                     const avoid = new Set<string>()
-                    if (s.y < margin) avoid.add('top')
-                    if (s.y > CANVAS_HEIGHT - margin) avoid.add('bottom')
-                    if (s.x < margin) avoid.add('left')
-                    if (s.x > CANVAS_WIDTH - margin) avoid.add('right')
+                    if (s.y < margin) avoid.add("top")
+                    if (s.y > CANVAS_HEIGHT - margin) avoid.add("bottom")
+                    if (s.x < margin) avoid.add("left")
+                    if (s.x > CANVAS_WIDTH - margin) avoid.add("right")
 
-                    const orientations: Array<'top' | 'right' | 'bottom' | 'left'> = ['top', 'right', 'bottom', 'left']
+                    const orientations: Array<"top" | "right" | "bottom" | "left"> = ["top", "right", "bottom", "left"]
                     // Start from preferred, then choose least busy not avoided
                     const ordered = [preferred, ...orientations.filter((o) => o !== preferred)]
-                    let orientation = ordered
-                      .filter((o) => !avoid.has(o))
-                      .sort((a, b) => counts[a] - counts[b])[0]
+                    let orientation = ordered.filter((o) => !avoid.has(o)).sort((a, b) => counts[a] - counts[b])[0]
                     if (!orientation) orientation = preferred
 
-                    let pathData = ''
+                    let pathData = ""
                     let labelX = s.x
                     let labelY = s.y
-                    if (orientation === 'top') {
+                    if (orientation === "top") {
                       const cx = s.x
                       const cy = s.y - radius - loopRadius
                       const startX = s.x - radius * 0.7
@@ -1330,7 +1554,7 @@ function ToolsContent() {
                       pathData = `M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`
                       labelX = cx
                       labelY = cy - 8
-                    } else if (orientation === 'bottom') {
+                    } else if (orientation === "bottom") {
                       const cx = s.x
                       const cy = s.y + radius + loopRadius
                       const startX = s.x + radius * 0.7
@@ -1340,7 +1564,7 @@ function ToolsContent() {
                       pathData = `M ${startX} ${startY} Q ${cx + loopRadius} ${cy} ${cx} ${cy} Q ${cx - loopRadius} ${cy} ${endX} ${endY}`
                       labelX = cx
                       labelY = cy + 12
-                    } else if (orientation === 'right') {
+                    } else if (orientation === "right") {
                       const cx = s.x + radius + loopRadius
                       const cy = s.y
                       const startX = s.x + radius * 0.7
@@ -1350,7 +1574,7 @@ function ToolsContent() {
                       pathData = `M ${startX} ${startY} Q ${cx} ${cy - loopRadius} ${cx} ${cy} Q ${cx} ${cy + loopRadius} ${endX} ${endY}`
                       labelX = cx + 10
                       labelY = cy
-                    } else if (orientation === 'left') {
+                    } else if (orientation === "left") {
                       const cx = s.x - radius - loopRadius
                       const cy = s.y
                       const startX = s.x - radius * 0.7
@@ -1365,8 +1589,19 @@ function ToolsContent() {
                     return (
                       <g key={transition.id}>
                         <path d={pathData} stroke="white" strokeWidth="5" fill="none" opacity="0.92" />
-                        <path d={pathData} stroke="#059669" strokeWidth="2.25" fill="none" markerEnd="url(#arrowhead)" />
-                        <text x={labelX} y={labelY} textAnchor="middle" className="text-xs fill-foreground font-medium select-none">
+                        <path
+                          d={pathData}
+                          stroke="#059669"
+                          strokeWidth="2.25"
+                          fill="none"
+                          markerEnd="url(#arrowhead)"
+                        />
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          textAnchor="middle"
+                          className="text-xs fill-foreground font-medium select-none"
+                        >
                           {transition.probability.toFixed(2)}
                         </text>
                       </g>
@@ -1431,7 +1666,12 @@ function ToolsContent() {
                           fill="none"
                           markerEnd="url(#arrowhead)"
                         />
-                        <text x={labelX} y={labelY} textAnchor="middle" className="text-xs fill-foreground font-medium select-none">
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          textAnchor="middle"
+                          className="text-xs fill-foreground font-medium select-none"
+                        >
                           {transition.probability.toFixed(2)}
                         </text>
                       </g>
@@ -1520,7 +1760,14 @@ function ToolsContent() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{state.name}</span>
-                        <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); deleteState(state.id) }}>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteState(state.id)
+                          }}
+                        >
                           <Trash2 className="h-3 w-3 mr-1" /> Delete
                         </Button>
                       </div>
@@ -1560,13 +1807,21 @@ function ToolsContent() {
               ))}
 
               {chain.states.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Card className="p-6 text-center">
+                <div className="absolute inset-0 flex items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500">
+                  <Card className="p-6 sm:p-8 text-center max-w-md mx-4 shadow-xl border-primary/20 bg-card/80 backdrop-blur-sm">
                     <CardContent>
-                      <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Start Building Your Chain</h3>
-                      <p className="text-muted-foreground">Click anywhere on the canvas to add your first state</p>
-                      <p className="text-muted-foreground text-xs mt-2">Middle-click and drag to pan the canvas</p>
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                        <Plus className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-semibold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                        Start Building Your Chain
+                      </h3>
+                      <p className="text-muted-foreground text-sm sm:text-base">
+                        Click anywhere on the canvas to add your first state
+                      </p>
+                      <p className="text-muted-foreground text-xs sm:text-sm mt-2 opacity-75">
+                        Middle-click and drag to pan • Touch and drag on mobile
+                      </p>
                     </CardContent>
                   </Card>
                 </div>
@@ -1640,11 +1895,7 @@ function ToolsContent() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => loadDesign(design)}
-                            className="transition-all duration-150"
-                          >
+                          <Button size="sm" onClick={() => loadDesign(design)} className="transition-all duration-150">
                             Load
                           </Button>
                           <Button

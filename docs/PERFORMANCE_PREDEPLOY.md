@@ -18,7 +18,7 @@ This checklist captures concrete improvements to apply before production. It’s
 2) Image optimization
 - In `next.config.mjs`, `images.unoptimized: true` disables Next’s image pipeline. For production, remove this or scope remote patterns explicitly.
 
-```js
+\`\`\`js
 // next.config.mjs (production-ready)
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -30,49 +30,49 @@ const nextConfig = {
   },
 };
 export default nextConfig;
-```
+\`\`\`
 
 3) Don’t ignore type and lint errors in prod builds
 - `ignoreDuringBuilds` and `ignoreBuildErrors` hide real problems.
 - Remove these tolerances and run lint/typecheck in CI (fail on error).
 
-```js
+\`\`\`js
 // next.config.mjs: remove these in production
 eslint: { /* ignoreDuringBuilds: true */ },
 typescript: { /* ignoreBuildErrors: true */ },
-```
+\`\`\`
 
 4) Prefer Static Generation and ISR where possible
 - App Router: default to static/ISR for pages that don’t need per-request data.
 - For dynamic segments like `app/admin/courses/[courseId]`, generate params if content is known ahead of time.
 
-```ts
+\`\`\`ts
 // app/examples/[id]/page.tsx (example)
 export const revalidate = 60; // ISR every 60s (tune per freshness)
 
 export async function generateStaticParams() {
   // return [{ id: 'weather' }, { id: 'queueing' }];
 }
-```
+\`\`\`
 
 - If a route must always be dynamic, mark it explicitly to avoid partial prerender surprises:
 
-```ts
+\`\`\`ts
 export const dynamic = 'force-dynamic';
-```
+\`\`\`
 
 5) Dynamic imports for heavy client components
 - Charts (Recharts), large editors, or admin tools should load on demand.
 
-```tsx
+\`\`\`tsx
 import dynamic from 'next/dynamic';
 const Chart = dynamic(() => import('recharts').then(m => m.LineChart), { ssr: false });
-```
+\`\`\`
 
 6) Cache control for route handlers
 - For GET APIs that are pure and cacheable, add `Cache-Control` headers.
 
-```ts
+\`\`\`ts
 // app/api/examples/route.ts
 export async function GET() {
   const data = /* fetch or compute */ [];
@@ -83,22 +83,22 @@ export async function GET() {
     },
   });
 }
-```
+\`\`\`
 
 7) Bundle analysis and trimming
 - Add `next-bundle-analyzer` to identify heavy modules; replace or split where needed.
 - Remove unused dependencies from `package.json`.
 
-```bash
+\`\`\`bash
 # optional, dev-only
 pnpm add -D @next/bundle-analyzer
-```
+\`\`\`
 
-```js
+\`\`\`js
 // next.config.mjs
 import bundleAnalyzer from '@next/bundle-analyzer';
 export default bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })({});
-```
+\`\`\`
 
 ## Additional improvements
 
@@ -112,7 +112,7 @@ export default bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })({});
 - Security headers (via middleware)
   - Add a strict Content Security Policy (CSP), `X-Frame-Options`, `Referrer-Policy`, HSTS.
 
-```ts
+\`\`\`ts
 // middleware.ts (example)
 import { NextResponse } from 'next/server';
 export function middleware(req: Request) {
@@ -123,7 +123,7 @@ export function middleware(req: Request) {
   // Consider a CSP tailored to your asset domains
   return res;
 }
-```
+\`\`\`
 
 - SEO and sitemaps
   - Add `sitemap.xml`, `robots.txt`, and per-page metadata using App Router metadata APIs.

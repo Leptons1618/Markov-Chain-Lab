@@ -9,3 +9,8 @@ declare module "remark-gfm" {
   const gfm: any
   export default gfm
 }
+
+declare module "rehype-sanitize" {
+  const sanitize: any
+  export default sanitize
+}

@@ -55,7 +55,7 @@ You can authenticate with Azure in two common ways. OIDC (federated credentials)
 
 `/.github/workflows/deploy-azure-webapp.yml` (pnpm, build in CI, deploy artifact):
 
-```yaml
+\`\`\`yaml
 name: Deploy – Azure App Service
 
 on:
@@ -112,7 +112,7 @@ jobs:
         with:
           app-name: YOUR_APP_SERVICE_NAME
           package: app.zip
-```
+\`\`\`
 
 Replace `YOUR_APP_SERVICE_NAME` with your App Service name. Add any needed env vars in App Service > Configuration.
 
@@ -123,14 +123,14 @@ Replace `YOUR_APP_SERVICE_NAME` with your App Service name. Add any needed env v
 
 Use the same workflow as above, but replace the login step with:
 
-```yaml
+\`\`\`yaml
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: YOUR_APP_SERVICE_NAME
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: app.zip
-```
+\`\`\`
 
 ### 3) Post-deploy
 
@@ -161,7 +161,7 @@ SWA can host Next.js with SSR via Azure Functions and runs a GitHub Actions work
 
 Replace the build steps with pnpm if needed:
 
-```yaml
+\`\`\`yaml
 - uses: pnpm/action-setup@v4
   with:
     version: 9
@@ -171,7 +171,7 @@ Replace the build steps with pnpm if needed:
     cache: pnpm
 - run: pnpm install --frozen-lockfile
 - run: pnpm build
-```
+\`\`\`
 
 Set app/environment variables in SWA configuration (portal) or via SWA CLI.
 

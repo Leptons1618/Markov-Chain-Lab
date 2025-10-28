@@ -25,7 +25,7 @@ Amplify Hosting supports Next.js SSR/ISR, API routes, image optimization, and au
 
 Example `amplify.yml` (added to repo root):
 
-```yaml
+\`\`\`yaml
 version: 1
 frontend:
   phases:
@@ -47,7 +47,7 @@ frontend:
     paths:
       - node_modules/**/*
       - .next/cache/**/*
-```
+\`\`\`
 
 > Note: Amplify auto-detects Next.js projects and configures CloudFront + Lambda@Edge under the hood for SSR.
 
