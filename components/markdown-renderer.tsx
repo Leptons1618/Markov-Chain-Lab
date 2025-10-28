@@ -1,14 +1,15 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
-// Lightweight, defers loading of react-markdown & plugins until needed.
-// Supports custom components for charts, videos, and interactive elements.
 export default function MarkdownRenderer({ content }: { content: string }) {
-  const [MD, setMD] = useState<null | ((props: any) => React.ReactNode)>(null)
-  const [gfm, setGfm] = useState<any>(null)
-  const [rehypeHl, setRehypeHl] = useState<any>(null)
-  const [rehypeSanitize, setRehypeSanitize] = useState<any>(null)
+  const [components, setComponents] = useState<{
+    ReactMarkdown: any
+    remarkGfm: any
+    rehypeHighlight: any
+    rehypeSanitize: any
+  } | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -26,13 +27,18 @@ export default function MarkdownRenderer({ content }: { content: string }) {
           import("rehype-sanitize"),
         ])
         if (mounted) {
-          setMD(() => (props: any) => React.createElement(ReactMarkdown as any, props))
-          setGfm(() => remarkGfm)
-          setRehypeHl(() => rehypeHighlight)
-          setRehypeSanitize(() => rehypeSanitize)
+          setComponents({
+            ReactMarkdown,
+            remarkGfm,
+            rehypeHighlight,
+            rehypeSanitize,
+          })
         }
-      } catch {
-        // If dynamic import fails, keep plain fallback
+      } catch (error) {
+        console.error("[v0] Failed to load markdown components:", error)
+        if (mounted) {
+          setLoadError(true)
+        }
       }
     })()
     return () => {
@@ -42,7 +48,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
 
   const sanitized = useMemo(() => content ?? "", [content])
 
-  const components = useMemo(
+  const customComponents = useMemo(
     () => ({
       // Custom code block handler for interactive elements
       code: ({ node, inline, className, children, ...props }: any) => {
@@ -76,18 +82,35 @@ export default function MarkdownRenderer({ content }: { content: string }) {
     [],
   )
 
-  if (!MD) {
-    return <pre className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">{sanitized}</pre>
+  // Loading state
+  if (!components && !loadError) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-sm text-muted-foreground">Loading content...</div>
+      </div>
+    )
   }
 
+  // Error state - still try to show content
+  if (loadError || !components) {
+    return (
+      <div className="prose max-w-none dark:prose-invert">
+        <div className="whitespace-pre-wrap leading-relaxed">{sanitized}</div>
+      </div>
+    )
+  }
+
+  const { ReactMarkdown, remarkGfm, rehypeHighlight, rehypeSanitize } = components
+
   return (
-    <div className="markdown prose max-w-none prose-headings:scroll-mt-24 dark:prose-invert">
-      {MD({
-        children: sanitized,
-        remarkPlugins: gfm ? [gfm] : [],
-        rehypePlugins: rehypeHl && rehypeSanitize ? [rehypeHl, rehypeSanitize] : [],
-        components,
-      })}
+    <div className="prose max-w-none prose-headings:scroll-mt-24 dark:prose-invert">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight, rehypeSanitize]}
+        components={customComponents}
+      >
+        {sanitized}
+      </ReactMarkdown>
     </div>
   )
 }
