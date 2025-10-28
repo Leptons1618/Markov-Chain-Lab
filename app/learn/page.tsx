@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { BookOpen, ChevronRight, Clock, CheckCircle, PlayCircle, ArrowLeft, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 export default function LearnPage() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -86,6 +87,10 @@ export default function LearnPage() {
               <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
                 About
               </Link>
+              <ThemeSwitcher />
+            </div>
+            <div className="flex md:hidden items-center gap-2">
+              <ThemeSwitcher />
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>

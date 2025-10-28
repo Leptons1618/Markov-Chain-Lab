@@ -24,6 +24,7 @@ import {
   BookOpen,
 } from "lucide-react"
 import Link from "next/link"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 interface Question {
   id: string
@@ -248,6 +249,10 @@ export default function PracticePage() {
               <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
                 About
               </Link>
+              <ThemeSwitcher />
+            </div>
+            <div className="flex md:hidden items-center gap-2">
+              <ThemeSwitcher />
             </div>
             {!quizState.completed && totalQuestions > 0 && (
               <div className="flex items-center gap-4">

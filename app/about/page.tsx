@@ -13,6 +13,8 @@ import {
   Globe,
 } from "lucide-react"
 import Link from "next/link"
+import { ThemeSwitcher } from "@/components/theme-switcher"
+import React from "react"
 
 export default function AboutPage() {
   return (
@@ -45,6 +47,10 @@ export default function AboutPage() {
               <Link href="/about" className="text-foreground font-medium transition-colors">
                 About
               </Link>
+              <ThemeSwitcher />
+            </div>
+            <div className="flex md:hidden items-center gap-2">
+              <ThemeSwitcher />
             </div>
           </div>
         </div>

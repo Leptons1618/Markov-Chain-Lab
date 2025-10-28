@@ -22,6 +22,7 @@ import {
   BarChart3,
 } from "lucide-react"
 import Link from "next/link"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 interface Example {
   id: string
@@ -110,6 +111,10 @@ export default function ExamplesPage() {
               <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
                 About
               </Link>
+              <ThemeSwitcher />
+            </div>
+            <div className="flex md:hidden items-center gap-2">
+              <ThemeSwitcher />
             </div>
           </div>
         </div>

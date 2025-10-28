@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 interface State {
   id: string
@@ -738,7 +739,7 @@ function ToolsContent() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-6">
+            {/* <div className="hidden lg:flex items-center gap-6">
               <Link
                 href="/learn"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
@@ -769,6 +770,27 @@ function ToolsContent() {
               >
                 About
               </Link>
+            </div> */}
+            <div className="hidden md:flex items-center gap-6">
+              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                Learn
+              </Link>
+              <Link href="/tools" className="text-foreground font-medium transition-colors">
+                Tools
+              </Link>
+              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                Examples
+              </Link>
+              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                Practice
+              </Link>
+              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                About
+              </Link>
+              <ThemeSwitcher />
+            </div>
+            <div className="flex md:hidden items-center gap-2">
+              <ThemeSwitcher />
             </div>
 
             {/* Desktop Actions */}
