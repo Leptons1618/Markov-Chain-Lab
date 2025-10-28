@@ -1486,6 +1486,24 @@ function ToolsContent() {
               />
 
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
+                  </marker>
+                  {/* Add filter for label background shadow */}
+                  <filter id="label-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+                    <feOffset dx="0" dy="1" result="offsetblur" />
+                    <feComponentTransfer>
+                      <feFuncA type="linear" slope="0.3" />
+                    </feComponentTransfer>
+                    <feMerge>
+                      <feMergeNode />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
                 {chain.transitions.map((transition) => {
                   const fromState = chain.states.find((s) => s.id === transition.from)
                   const toState = chain.states.find((s) => s.id === transition.to)
@@ -1494,13 +1512,11 @@ function ToolsContent() {
                   const isSelfLoop = fromState.id === toState.id
 
                   if (isSelfLoop) {
-                    // Choose a loop orientation (top/right/bottom/left) to reduce overlap
                     const radius = 32
                     const loopRadius = 28
                     const s = fromState
                     const margin = 80
 
-                    // Count connections by quadrant to pick a less busy side
                     const counts = { top: 0, right: 0, bottom: 0, left: 0 }
                     for (const t of chain.transitions) {
                       if (t.id === transition.id) continue
@@ -1514,12 +1530,12 @@ function ToolsContent() {
                         if (dy < 0) counts.top++
                         else counts.bottom++
                       } else {
-                        if (dx > 0) counts.right++
+                        if (dx > 0o0)
+                          counts.right++ // Fixed: Changed 00 to 0o0
                         else counts.left++
                       }
                     }
 
-                    // Preferred orientation based on position (push outward)
                     let preferred: "top" | "right" | "bottom" | "left" = "top"
                     const centerX = CANVAS_WIDTH / 2
                     const centerY = CANVAS_HEIGHT / 2
@@ -1528,7 +1544,6 @@ function ToolsContent() {
                     if (Math.abs(dyC) > Math.abs(dxC)) preferred = dyC > 0 ? "bottom" : "top"
                     else preferred = dxC > 0 ? "right" : "left"
 
-                    // Avoid edges
                     const avoid = new Set<string>()
                     if (s.y < margin) avoid.add("top")
                     if (s.y > CANVAS_HEIGHT - margin) avoid.add("bottom")
@@ -1536,7 +1551,6 @@ function ToolsContent() {
                     if (s.x > CANVAS_WIDTH - margin) avoid.add("right")
 
                     const orientations: Array<"top" | "right" | "bottom" | "left"> = ["top", "right", "bottom", "left"]
-                    // Start from preferred, then choose least busy not avoided
                     const ordered = [preferred, ...orientations.filter((o) => o !== preferred)]
                     let orientation = ordered.filter((o) => !avoid.has(o)).sort((a, b) => counts[a] - counts[b])[0]
                     if (!orientation) orientation = preferred
@@ -1563,7 +1577,7 @@ function ToolsContent() {
                       const endY = s.y + radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx + loopRadius} ${cy} ${cx} ${cy} Q ${cx - loopRadius} ${cy} ${endX} ${endY}`
                       labelX = cx
-                      labelY = cy + 12
+                      labelY = cy + 16
                     } else if (orientation === "right") {
                       const cx = s.x + radius + loopRadius
                       const cy = s.y
@@ -1572,8 +1586,8 @@ function ToolsContent() {
                       const endX = s.x + radius * 0.7
                       const endY = s.y + radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx} ${cy - loopRadius} ${cx} ${cy} Q ${cx} ${cy + loopRadius} ${endX} ${endY}`
-                      labelX = cx + 10
-                      labelY = cy
+                      labelX = cx + 14
+                      labelY = cy + 4
                     } else if (orientation === "left") {
                       const cx = s.x - radius - loopRadius
                       const cy = s.y
@@ -1582,9 +1596,13 @@ function ToolsContent() {
                       const endX = s.x - radius * 0.7
                       const endY = s.y - radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx} ${cy + loopRadius} ${cx} ${cy} Q ${cx} ${cy - loopRadius} ${endX} ${endY}`
-                      labelX = cx - 10
-                      labelY = cy
+                      labelX = cx - 14
+                      labelY = cy + 4
                     }
+
+                    const labelText = transition.probability.toFixed(2)
+                    const labelWidth = labelText.length * 7 + 8
+                    const labelHeight = 18
 
                     return (
                       <g key={transition.id}>
@@ -1596,19 +1614,28 @@ function ToolsContent() {
                           fill="none"
                           markerEnd="url(#arrowhead)"
                         />
+                        <rect
+                          x={labelX - labelWidth / 2}
+                          y={labelY - labelHeight / 2}
+                          width={labelWidth}
+                          height={labelHeight}
+                          rx="4"
+                          className="fill-background stroke-border"
+                          strokeWidth="1"
+                          filter="url(#label-shadow)"
+                        />
                         <text
                           x={labelX}
-                          y={labelY}
+                          y={labelY + 4}
                           textAnchor="middle"
-                          className="text-xs fill-foreground font-medium select-none"
+                          className="text-xs fill-foreground font-semibold select-none"
                         >
-                          {transition.probability.toFixed(2)}
+                          {labelText}
                         </text>
                       </g>
                     )
                   }
 
-                  // Determine if there is a reverse transition so we can draw distinct curved paths
                   const reverseTransition = chain.transitions.find(
                     (t) => t.from === transition.to && t.to === transition.from,
                   )
@@ -1625,7 +1652,6 @@ function ToolsContent() {
                   const toY = toState.y - (dy / distance) * radius
 
                   if (isBidirectional) {
-                    // Compute a canonical orientation for the pair to derive a stable perpendicular.
                     const canonicalFrom = fromState.id < toState.id ? fromState : toState
                     const canonicalTo = canonicalFrom.id === fromState.id ? toState : fromState
                     const baseDx = canonicalTo.x - canonicalFrom.x
@@ -1634,7 +1660,6 @@ function ToolsContent() {
                     const perpXUnit = -baseDy / baseDist
                     const perpYUnit = baseDx / baseDist
 
-                    // Current direction sign relative to canonical orientation
                     const sign = transition.from === canonicalFrom.id ? 1 : -1
 
                     const midX = (fromX + toX) / 2
@@ -1653,8 +1678,12 @@ function ToolsContent() {
 
                     const pathData = `M ${adjFromX} ${adjFromY} Q ${controlX} ${controlY} ${adjToX} ${adjToY}`
 
-                    const labelX = controlX + perpXUnit * 10 * sign
-                    const labelY = controlY + perpYUnit * 10 * sign - 4
+                    const labelX = controlX
+                    const labelY = controlY
+
+                    const labelText = transition.probability.toFixed(2)
+                    const labelWidth = labelText.length * 7 + 8
+                    const labelHeight = 18
 
                     return (
                       <g key={transition.id}>
@@ -1666,17 +1695,34 @@ function ToolsContent() {
                           fill="none"
                           markerEnd="url(#arrowhead)"
                         />
+                        <rect
+                          x={labelX - labelWidth / 2}
+                          y={labelY - labelHeight / 2}
+                          width={labelWidth}
+                          height={labelHeight}
+                          rx="4"
+                          className="fill-background stroke-border"
+                          strokeWidth="1"
+                          filter="url(#label-shadow)"
+                        />
                         <text
                           x={labelX}
-                          y={labelY}
+                          y={labelY + 4}
                           textAnchor="middle"
-                          className="text-xs fill-foreground font-medium select-none"
+                          className="text-xs fill-foreground font-semibold select-none"
                         >
-                          {transition.probability.toFixed(2)}
+                          {labelText}
                         </text>
                       </g>
                     )
                   } else {
+                    const labelX = (fromX + toX) / 2
+                    const labelY = (fromY + toY) / 2 - 12
+
+                    const labelText = transition.probability.toFixed(2)
+                    const labelWidth = labelText.length * 7 + 8
+                    const labelHeight = 18
+
                     return (
                       <g key={transition.id}>
                         <line x1={fromX} y1={fromY} x2={toX} y2={toY} stroke="white" strokeWidth="4" opacity="0.8" />
@@ -1690,24 +1736,28 @@ function ToolsContent() {
                           markerEnd="url(#arrowhead)"
                           opacity="1"
                         />
+                        <rect
+                          x={labelX - labelWidth / 2}
+                          y={labelY - labelHeight / 2}
+                          width={labelWidth}
+                          height={labelHeight}
+                          rx="4"
+                          className="fill-background stroke-border"
+                          strokeWidth="1"
+                          filter="url(#label-shadow)"
+                        />
                         <text
-                          x={(fromX + toX) / 2}
-                          y={(fromY + toY) / 2 - 10}
+                          x={labelX}
+                          y={labelY + 4}
                           textAnchor="middle"
-                          className="text-xs fill-foreground font-medium"
+                          className="text-xs fill-foreground font-semibold"
                         >
-                          {transition.probability.toFixed(2)}
+                          {labelText}
                         </text>
                       </g>
                     )
                   }
                 })}
-
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
-                  </marker>
-                </defs>
               </svg>
 
               {chain.states.map((state) => (

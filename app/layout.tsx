@@ -30,6 +30,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`antialiased`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const colorTheme = localStorage.getItem('color-theme');
+                  if (colorTheme && colorTheme !== 'emerald') {
+                    document.documentElement.setAttribute('data-theme', colorTheme);
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={`font-sans ${inter.variable} ${jetbrainsMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
