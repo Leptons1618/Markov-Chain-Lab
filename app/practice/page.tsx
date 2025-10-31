@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { MobileNav } from "@/components/mobile-nav"
 
 interface Question {
   id: string
@@ -233,26 +234,26 @@ export default function PracticePage() {
                 <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
             </div>
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                Learn
-              </Link>
-              <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                Tools
-              </Link>
-              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                Examples
-              </Link>
-              <Link href="/practice" className="text-foreground font-medium transition-colors">
-                Practice
-              </Link>
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                About
-              </Link>
-              <ThemeSwitcher />
-            </div>
-            <div className="flex md:hidden items-center gap-2">
-              <ThemeSwitcher />
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-6">
+                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Learn
+                </Link>
+                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Tools
+                </Link>
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Examples
+                </Link>
+                <Link href="/practice" className="text-foreground font-medium transition-colors">
+                  Practice
+                </Link>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                  About
+                </Link>
+                <ThemeSwitcher />
+              </div>
+              <MobileNav currentPath="/practice" />
             </div>
             {!quizState.completed && totalQuestions > 0 && (
               <div className="flex items-center gap-4">
