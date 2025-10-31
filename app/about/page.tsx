@@ -13,6 +13,9 @@ import {
   Globe,
 } from "lucide-react"
 import Link from "next/link"
+import { ThemeSwitcher } from "@/components/theme-switcher"
+import { MobileNav } from "@/components/mobile-nav"
+import React from "react"
 
 export default function AboutPage() {
   return (
@@ -29,22 +32,26 @@ export default function AboutPage() {
                 <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
             </div>
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                Learn
-              </Link>
-              <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                Tools
-              </Link>
-              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                Examples
-              </Link>
-              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                Practice
-              </Link>
-              <Link href="/about" className="text-foreground font-medium transition-colors">
-                About
-              </Link>
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-6">
+                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Learn
+                </Link>
+                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Tools
+                </Link>
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Examples
+                </Link>
+                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Practice
+                </Link>
+                <Link href="/about" className="text-foreground font-medium transition-colors">
+                  About
+                </Link>
+                <ThemeSwitcher />
+              </div>
+              <MobileNav currentPath="/about" />
             </div>
           </div>
         </div>

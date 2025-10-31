@@ -74,10 +74,10 @@ Key gaps (full list in `docs/GAPS.md`):
 
 Prereqs: Node 18+ recommended.
 
-\`\`\`pwsh
+````pwsh
 npm install
 npm run dev
-\`\`\`
+````
 
 Then open http://localhost:3000.
 

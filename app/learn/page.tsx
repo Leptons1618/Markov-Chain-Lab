@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, ChevronRight, Clock, CheckCircle, PlayCircle, ArrowLeft, Menu, X } from "lucide-react"
+import { BookOpen, ChevronRight, Clock, CheckCircle, PlayCircle, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
+import { ThemeSwitcher } from "@/components/theme-switcher"
+import { MobileNav } from "@/components/mobile-nav"
 
 export default function LearnPage() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -70,31 +72,39 @@ export default function LearnPage() {
                 <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
             </div>
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/learn" className="text-foreground font-medium transition-colors">
-                Learn
-              </Link>
-              <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                Tools
-              </Link>
-              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                Examples
-              </Link>
-              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                Practice
-              </Link>
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                About
-              </Link>
-            </div>
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
+              <div className="hidden md:flex items-center gap-6">
+                <Link href="/learn" className="text-foreground font-medium transition-colors">
+                  Learn
+                </Link>
+                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Tools
+                </Link>
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Examples
+                </Link>
+                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Practice
+                </Link>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                  About
+                </Link>
+                <ThemeSwitcher />
+              </div>
               <div className="hidden md:flex items-center gap-4">
                 <span className="text-sm text-muted-foreground">Progress: {Math.round(progress)}%</span>
                 <Progress value={progress} className="w-24" />
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden cursor-pointer"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label="Toggle sidebar"
+              >
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+              <MobileNav currentPath="/learn" />
             </div>
           </div>
         </div>
