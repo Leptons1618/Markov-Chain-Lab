@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -11,12 +11,44 @@ import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { MobileNav } from "@/components/mobile-nav"
 
+// Progress tracking types
+interface LessonProgress {
+  completed: boolean
+  lastAccessedAt?: string
+}
+
+interface ProgressData {
+  [lessonId: string]: LessonProgress
+}
+
 export default function LearnPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState<string>("")
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [progress, setProgress] = useState<ProgressData>({})
+  // Prefetched lessons per course to compute progress instantly and avoid flicker when switching
+  const [courseLessonsMap, setCourseLessonsMap] = useState<Record<string, Lesson[]>>({})
+
+  // Load progress from localStorage
+  useEffect(() => {
+    const savedProgress = localStorage.getItem('markov-learn-progress')
+    if (savedProgress) {
+      try {
+        setProgress(JSON.parse(savedProgress))
+      } catch (e) {
+        console.error('Failed to parse progress data', e)
+      }
+    }
+  }, [])
+
+  // Save progress to localStorage whenever it changes
+  useEffect(() => {
+    if (Object.keys(progress).length > 0) {
+      localStorage.setItem('markov-learn-progress', JSON.stringify(progress))
+    }
+  }, [progress])
 
   // Fetch courses on mount
   useEffect(() => {
@@ -25,12 +57,41 @@ export default function LearnPage() {
       const fetchedCourses = await fetchCourses()
       setCourses(fetchedCourses)
       if (fetchedCourses.length > 0) {
-        setSelectedCourseId(fetchedCourses[0].id)
+        // Respect a pre-selected course (e.g., from Lesson page "Next Course")
+        const preselect = typeof window !== 'undefined' ? localStorage.getItem('markov-selected-course') : null
+        const validPreselect = preselect && fetchedCourses.some(c => c.id === preselect) ? preselect : null
+        setSelectedCourseId(validPreselect || fetchedCourses[0].id)
+        if (validPreselect) localStorage.removeItem('markov-selected-course')
       }
       setLoading(false)
     }
     loadCourses()
   }, [])
+
+  // Prefetch lessons for all courses once courses are known, for stable progress computation across sidebar and header
+  useEffect(() => {
+    if (!courses.length) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const entries = await Promise.all(
+          courses.map(async (c) => {
+            const ls = await fetchLessonsByCourse(c.id)
+            return [c.id, ls.sort((a, b) => a.order - b.order)] as const
+          })
+        )
+        if (cancelled) return
+        const map: Record<string, Lesson[]> = {}
+        for (const [id, ls] of entries) map[id] = ls
+        setCourseLessonsMap(map)
+      } catch (e) {
+        console.warn("Lesson prefetch failed", e)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [courses])
 
   // Fetch lessons when course changes
   useEffect(() => {
@@ -44,8 +105,45 @@ export default function LearnPage() {
   }, [selectedCourseId])
 
   const currentCourse = courses.find((c) => c.id === selectedCourseId)
-  const completedLessons = lessons.filter((l) => l.status === "published").length
-  const progress = lessons.length > 0 ? (completedLessons / lessons.length) * 100 : 0
+  
+  // Calculate progress for currently loaded lessons (used for per-lesson UI only)
+  const completedLessonsCount = lessons.filter((l) => progress[l.id]?.completed).length
+  const courseProgress = lessons.length > 0 ? (completedLessonsCount / lessons.length) * 100 : 0
+
+  // Stable per-course progress computed from prefetched map to avoid UI resets
+  const getCourseProgress = useCallback(
+    (courseId: string) => {
+      const list = courseLessonsMap[courseId] || []
+      if (!list.length) return 0
+      const done = list.filter((l) => progress[l.id]?.completed).length
+      return (done / list.length) * 100
+    },
+    [courseLessonsMap, progress]
+  )
+  const selectedCourseProgress = selectedCourseId ? getCourseProgress(selectedCourseId) : 0
+
+  // Global progress across all courses for the topbar
+  const { totalLessonsAll, totalCompletedAll } = (() => {
+    const courseIds = Object.keys(courseLessonsMap)
+    if (!courseIds.length) return { totalLessonsAll: 0, totalCompletedAll: 0 }
+    let total = 0
+    let done = 0
+    for (const id of courseIds) {
+      const list = courseLessonsMap[id] || []
+      total += list.length
+      if (list.length) {
+        done += list.filter((l) => progress[l.id]?.completed).length
+      }
+    }
+    return { totalLessonsAll: total, totalCompletedAll: done }
+  })()
+  const globalProgress = totalLessonsAll > 0 ? (totalCompletedAll / totalLessonsAll) * 100 : 0
+  
+  // Helper to check if lesson is completed
+  const isLessonCompleted = (lessonId: string) => progress[lessonId]?.completed || false
+  
+  // Check if all lessons in current course are completed
+  const isCourseCompleted = lessons.length > 0 && lessons.every((l) => isLessonCompleted(l.id))
 
   if (loading) {
     return (
@@ -92,8 +190,8 @@ export default function LearnPage() {
                 <ThemeSwitcher />
               </div>
               <div className="hidden md:flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">Progress: {Math.round(progress)}%</span>
-                <Progress value={progress} className="w-24" />
+                <span className="text-sm text-muted-foreground">Overall: {Math.round(globalProgress)}%</span>
+                <Progress value={globalProgress} className="w-24 transition-all duration-300" />
               </div>
               <Button
                 variant="ghost"
@@ -125,13 +223,21 @@ export default function LearnPage() {
             </div>
 
             <div className="space-y-4">
-              {courses.map((course) => (
+              {courses.map((course) => {
+                // Use prefetched lessons map so each course shows its own progress consistently
+                const isSelected = selectedCourseId === course.id
+                const individualCourseProgress = getCourseProgress(course.id)
+                
+                return (
                 <Card
                   key={course.id}
-                  className={`cursor-pointer transition-colors ${
-                    selectedCourseId === course.id ? "ring-2 ring-primary" : "hover:bg-muted/50"
+                  className={`cursor-pointer transition-all duration-300 ease-in-out hover:shadow-md ${
+                    selectedCourseId === course.id ? "ring-2 ring-primary bg-primary/5" : "hover:bg-muted/50"
                   }`}
                   onClick={() => {
+                    // Optimistically hydrate lessons for the selected course for snappy UI
+                    const prefetched = courseLessonsMap[course.id]
+                    if (prefetched) setLessons(prefetched)
                     setSelectedCourseId(course.id)
                     setSidebarOpen(false)
                   }}
@@ -139,19 +245,22 @@ export default function LearnPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{course.title}</CardTitle>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                        selectedCourseId === course.id ? "rotate-90" : ""
+                      }`} />
                     </div>
                     <CardDescription className="text-sm">{course.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{course.lessons} lessons</span>
-                      <span className="font-medium">{Math.round(progress)}%</span>
+                      <span className="font-medium">{Math.round(individualCourseProgress)}%</span>
                     </div>
-                    <Progress value={progress} className="mt-2" />
+                    <Progress value={individualCourseProgress} className="mt-2 transition-all duration-500" />
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
             </div>
 
             <div className="pt-4 border-t border-border">
@@ -178,20 +287,39 @@ export default function LearnPage() {
               <p className="text-lg text-muted-foreground">{currentCourse?.description}</p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Progress value={progress} className="w-32" />
-                  <span className="text-sm font-medium">{Math.round(progress)}% complete</span>
+                  <Progress value={selectedCourseProgress} className="w-32 transition-all duration-500" />
+                  <span className="text-sm font-medium">{Math.round(selectedCourseProgress)}% complete</span>
                 </div>
               </div>
             </div>
 
+            {/* Course Completion Badge */}
+            {isCourseCompleted && (
+              <Card className="bg-primary/10 border-primary/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-center gap-3">
+                    <CheckCircle className="h-6 w-6 text-primary" />
+                    <div>
+                      <h3 className="font-semibold text-primary">Course Completed! 🎉</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        You've finished all {lessons.length} lessons in this course
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Lessons Grid */}
             <div className="grid gap-4">
               {lessons.length > 0 ? (
-                lessons.map((lesson, index) => (
+                lessons.map((lesson, index) => {
+                  const completed = isLessonCompleted(lesson.id)
+                  return (
                   <Card
                     key={lesson.id}
-                    className={`hover:shadow-md transition-shadow ${
-                      lesson.status === "published" ? "bg-primary/5 border-primary/20" : ""
+                    className={`hover:shadow-md transition-all duration-300 ease-in-out hover:scale-[1.01] ${
+                      completed ? "bg-primary/5 border-primary/20" : ""
                     }`}
                   >
                     <CardContent className="p-6">
@@ -199,11 +327,11 @@ export default function LearnPage() {
                         <div className="flex items-center gap-4">
                           <div
                             className={`
-                            w-10 h-10 rounded-full flex items-center justify-center
-                            ${lesson.status === "published" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}
+                            w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+                            ${completed ? "bg-primary text-primary-foreground scale-110" : "bg-muted text-muted-foreground"}
                           `}
                           >
-                            {lesson.status === "published" ? (
+                            {completed ? (
                               <CheckCircle className="h-5 w-5" />
                             ) : (
                               <span className="font-medium">{index + 1}</span>
@@ -216,9 +344,9 @@ export default function LearnPage() {
                                 <Clock className="h-3 w-3" />
                                 <span>~15 min</span>
                               </div>
-                              {lesson.status === "published" && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Published
+                              {completed && (
+                                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+                                  Completed
                                 </Badge>
                               )}
                             </div>
@@ -226,11 +354,11 @@ export default function LearnPage() {
                         </div>
                         <Link href={`/learn/${lesson.id}`}>
                           <Button
-                            variant={lesson.status === "published" ? "outline" : "default"}
+                            variant={completed ? "outline" : "default"}
                             size="sm"
-                            className="cursor-pointer"
+                            className="cursor-pointer transition-all duration-200 hover:scale-105"
                           >
-                            {lesson.status === "published" ? (
+                            {completed ? (
                               <>
                                 <BookOpen className="mr-2 h-4 w-4" />
                                 Review
@@ -246,7 +374,8 @@ export default function LearnPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))
+                  )
+                })
               ) : (
                 <Card className="p-8 text-center">
                   <p className="text-muted-foreground">No lessons available for this course yet.</p>
