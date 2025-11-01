@@ -133,10 +133,12 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full bg-transparent cursor-pointer text-sm sm:text-base">
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Run Simulation
-                  </Button>
+                  <Link href="/tools?example=weather">
+                    <Button variant="outline" className="w-full bg-transparent cursor-pointer text-sm sm:text-base">
+                      <Calculator className="mr-2 h-4 w-4" />
+                      Run Simulation
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             </div>
@@ -248,17 +250,17 @@ export default function HomePage() {
               <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Learn</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link href="/learn/basics" className="hover:text-foreground transition-colors">
+                  <Link href="/learn/foundations-1" className="hover:text-foreground transition-colors">
                     Foundations
                   </Link>
                 </li>
                 <li>
-                  <Link href="/learn/chains" className="hover:text-foreground transition-colors">
+                  <Link href="/learn/chains-1" className="hover:text-foreground transition-colors">
                     Markov Chains
                   </Link>
                 </li>
                 <li>
-                  <Link href="/learn/advanced" className="hover:text-foreground transition-colors">
+                  <Link href="/learn/stochastic-advanced-1" className="hover:text-foreground transition-colors">
                     Advanced Topics
                   </Link>
                 </li>
@@ -268,17 +270,17 @@ export default function HomePage() {
               <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Tools</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link href="/tools/builder" className="hover:text-foreground transition-colors">
+                  <Link href="/tools" className="hover:text-foreground transition-colors">
                     Chain Builder
                   </Link>
                 </li>
                 <li>
-                  <Link href="/tools/simulator" className="hover:text-foreground transition-colors">
+                  <Link href="/tools" className="hover:text-foreground transition-colors">
                     Simulator
                   </Link>
                 </li>
                 <li>
-                  <Link href="/tools/calculator" className="hover:text-foreground transition-colors">
+                  <Link href="/tools" className="hover:text-foreground transition-colors">
                     Matrix Calculator
                   </Link>
                 </li>

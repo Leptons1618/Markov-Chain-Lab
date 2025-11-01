@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useCallback, useEffect, Suspense } from "react"
+import { useState, useRef, useCallback, useEffect, Suspense, memo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -103,6 +103,14 @@ function ToolsContent() {
   const [isPanning, setIsPanning] = useState(false)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(1)
+  const MIN_SCALE = 0.2
+  const MAX_SCALE = 3
+  const canvasContentRef = useRef<HTMLDivElement>(null)
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const rAFRef = useRef<number | null>(null)
+  const pendingViewRef = useRef<{ pan?: { x: number; y: number }; scale?: number } | null>(null)
+  const lastTapTimeRef = useRef<number>(0)
   const [sidebarWidth, setSidebarWidth] = useState(550)
   const [isResizing, setIsResizing] = useState(false)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
@@ -111,6 +119,9 @@ function ToolsContent() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const autoRunIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [draggingStateId, setDraggingStateId] = useState<string | null>(null)
+  const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null)
+  const dragRafRef = useRef<number | null>(null)
+  const pendingDragPosRef = useRef<{ id: string; x: number; y: number } | null>(null)
   const didDragRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -119,6 +130,7 @@ function ToolsContent() {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [pathHistoryLimit, setPathHistoryLimit] = useState<number | "all">(10)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({})
 
   // Track changes to mark unsaved changes
   useEffect(() => {
@@ -160,15 +172,16 @@ function ToolsContent() {
         .catch((err) => console.error("Failed to load example:", err))
     }
 
-    // Load saved designs from API
-    fetch("/api/designs")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setSavedDesigns(data.data)
-        }
-      })
-      .catch((err) => console.error("Failed to load designs:", err))
+    // Load saved designs from localStorage
+    try {
+      const savedDesignsData = localStorage.getItem('markov-saved-designs')
+      if (savedDesignsData) {
+        const designs = JSON.parse(savedDesignsData)
+        setSavedDesigns(designs)
+      }
+    } catch (err) {
+      console.error("Failed to load designs from localStorage:", err)
+    }
   }, [searchParams])
 
   // Helpers: probability normalization
@@ -206,8 +219,54 @@ function ToolsContent() {
 
   const CANVAS_WIDTH = 2000
   const CANVAS_HEIGHT = 1500
-  const MAX_PAN_X = 200
-  const MAX_PAN_Y = 200
+  const MAX_PAN_X = 5000 // allow large but finite pan for stability
+  const MAX_PAN_Y = 5000
+
+  // Schedule batched view updates (pan/zoom) using rAF for smoothness
+  const scheduleViewUpdate = useCallback((next: { pan?: { x: number; y: number }; scale?: number }) => {
+    pendingViewRef.current = { ...pendingViewRef.current, ...next }
+    if (rAFRef.current != null) return
+    rAFRef.current = requestAnimationFrame(() => {
+      const payload = pendingViewRef.current
+      pendingViewRef.current = null
+      rAFRef.current && cancelAnimationFrame(rAFRef.current)
+      rAFRef.current = null
+      if (!payload) return
+      if (payload.pan) setPanOffset((prev) => ({ x: payload!.pan!.x, y: payload!.pan!.y }))
+      if (payload.scale != null) setScale(payload.scale)
+    })
+  }, [])
+
+  // Utilities to convert between client (screen) and world (canvas) coordinates
+  const getBaseCenterOffset = useCallback(() => {
+    if (!canvasRef.current) return { bx: 0, by: 0, rect: { left: 0, top: 0, width: 0, height: 0 } as DOMRect }
+    const rect = canvasRef.current.getBoundingClientRect()
+    // The inner content is absolutely centered with fixed width/height
+    const bx = rect.width / 2 - CANVAS_WIDTH / 2
+    const by = rect.height / 2 - CANVAS_HEIGHT / 2
+    return { bx, by, rect }
+  }, [])
+
+  const clientToWorld = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!canvasRef.current) return { x: 0, y: 0 }
+      const { bx, by, rect } = getBaseCenterOffset()
+      const x = (clientX - rect.left - bx - panOffset.x) / scale
+      const y = (clientY - rect.top - by - panOffset.y) / scale
+      return { x, y }
+    },
+    [getBaseCenterOffset, panOffset.x, panOffset.y, scale],
+  )
+
+  const getVisibleWorldRect = useCallback(() => {
+    if (!canvasRef.current) return { x0: 0, y0: 0, x1: CANVAS_WIDTH, y1: CANVAS_HEIGHT }
+    const { bx, by, rect } = getBaseCenterOffset()
+    const x0 = (0 - bx - panOffset.x) / scale
+    const y0 = (0 - by - panOffset.y) / scale
+    const x1 = (rect.width - bx - panOffset.x) / scale
+    const y1 = (rect.height - by - panOffset.y) / scale
+    return { x0, y0, x1, y1 }
+  }, [getBaseCenterOffset, panOffset.x, panOffset.y, scale])
 
   const addState = useCallback(
     (x: number, y: number) => {
@@ -261,6 +320,7 @@ function ToolsContent() {
       transitions: prev.transitions.filter((t) => t.from !== stateId && t.to !== stateId),
     }))
     setSelectedState(null)
+    setOpenPopovers(prev => ({ ...prev, [stateId]: false }))
   }, [])
 
   const deleteTransition = useCallback(
@@ -280,22 +340,24 @@ function ToolsContent() {
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (isPanning || isResizing) return
 
-      // Don't add nodes if clicking on a state node (they have their own click handlers)
       const target = e.target as HTMLElement
+      
+      // Ignore clicks from any interactive UI elements
+      if (target.closest('button') || target.closest('[role="dialog"]') || 
+          target.closest('[data-radix-popper-content-wrapper]') ||
+          target.closest('[data-radix-portal]')) return
+      
+      // Ignore clicks that originate outside the canvas (e.g., floating buttons)
+      if (canvasRef.current && !canvasRef.current.contains(target)) return
+
+      // Don't add nodes if clicking on a state node (they have their own click handlers)
       if (target.closest("[data-node-id]")) return
 
-      if (!canvasRef.current) return
-
-      const rect = canvasRef.current.getBoundingClientRect()
-      const x = e.clientX - rect.left - panOffset.x - rect.width / 2 + CANVAS_WIDTH / 2
-      const y = e.clientY - rect.top - panOffset.y - rect.height / 2 + CANVAS_HEIGHT / 2
-
-      const boundedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, x))
-      const boundedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, y))
-      addState(boundedX, boundedY)
+      const { x, y } = clientToWorld(e.clientX, e.clientY)
+      addState(x, y)
       setSelectedState(null)
     },
-    [addState, isPanning, isResizing, panOffset],
+    [addState, isPanning, isResizing, clientToWorld],
   )
 
   const startSimulation = useCallback(() => {
@@ -370,33 +432,35 @@ function ToolsContent() {
     setSaveDialogOpen(true)
   }, [chain.states.length])
 
-  const handleSaveConfirm = useCallback(async () => {
+  const handleSaveConfirm = useCallback(() => {
     if (!saveName.trim()) {
       alert("Please enter a name for your design")
       return
     }
 
     try {
-      const response = await fetch("/api/designs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: saveName.trim(),
-          chain: {
-            states: chain.states,
-            transitions: chain.transitions,
-          },
-        }),
-      })
-      const data = await response.json()
-      if (data.success) {
-        setSavedDesigns((prev) => [...prev, data.data])
-        setHasUnsavedChanges(false)
-        setSaveDialogOpen(false)
-        setSaveName("")
-      } else {
-        alert("Failed to save design. Please try again.")
+      const newDesign: SavedDesign = {
+        id: `design-${Date.now()}`,
+        name: saveName.trim(),
+        savedAt: new Date().toISOString(),
+        chain: {
+          states: chain.states,
+          transitions: chain.transitions,
+        },
       }
+
+      // Get existing designs from localStorage
+      const savedDesignsData = localStorage.getItem('markov-saved-designs')
+      const existingDesigns = savedDesignsData ? JSON.parse(savedDesignsData) : []
+      
+      // Add new design
+      const updatedDesigns = [...existingDesigns, newDesign]
+      localStorage.setItem('markov-saved-designs', JSON.stringify(updatedDesigns))
+      
+      setSavedDesigns(updatedDesigns)
+      setHasUnsavedChanges(false)
+      setSaveDialogOpen(false)
+      setSaveName("")
     } catch (error) {
       console.error("Failed to save design:", error)
       alert("Failed to save design. Please try again.")
@@ -415,12 +479,14 @@ function ToolsContent() {
     [resetSimulation],
   )
 
-  const deleteDesign = useCallback(async (id: string) => {
+  const deleteDesign = useCallback((id: string) => {
     try {
-      const response = await fetch(`/api/designs/${id}`, { method: "DELETE" })
-      const data = await response.json()
-      if (data.success) {
-        setSavedDesigns((prev) => prev.filter((d) => d.id !== id))
+      const savedDesignsData = localStorage.getItem('markov-saved-designs')
+      if (savedDesignsData) {
+        const designs = JSON.parse(savedDesignsData)
+        const updatedDesigns = designs.filter((d: SavedDesign) => d.id !== id)
+        localStorage.setItem('markov-saved-designs', JSON.stringify(updatedDesigns))
+        setSavedDesigns(updatedDesigns)
       }
     } catch (error) {
       console.error("Failed to delete design:", error)
@@ -632,57 +698,524 @@ function ToolsContent() {
 
   const transitionMatrix = generateTransitionMatrix()
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1) {
+  // Arrow-key nudging of selected node
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!selectedState) return
+      const ae = document.activeElement as HTMLElement | null
+      if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return
+      const step = e.shiftKey ? 10 : 1
+      let dx = 0,
+        dy = 0
+      if (e.key === "ArrowLeft") dx = -step
+      else if (e.key === "ArrowRight") dx = step
+      else if (e.key === "ArrowUp") dy = -step
+      else if (e.key === "ArrowDown") dy = step
+      else return
+      e.preventDefault()
+      setChain((prev) => ({
+        ...prev,
+        states: prev.states.map((s) => (s.id === selectedState ? { ...s, x: s.x + dx, y: s.y + dy } : s)),
+      }))
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [selectedState])
+  
+  // Sidebar Tabs component reused for desktop and mobile (memoized to prevent re-renders during drag)
+  const SidebarTabs = memo(() => (
+    <Tabs defaultValue="build" className="w-full">
+      <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+        <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200">
+          Build
+        </TabsTrigger>
+        <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200">
+          Simulate
+        </TabsTrigger>
+        <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200">
+          Analyze
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="build" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Chain Builder</h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0">
+                  <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-xs">
+                <div className="space-y-2">
+                  <p className="font-medium">Instructions:</p>
+                  <ul className="text-xs space-y-1">
+                    <li>• Click on canvas to add states</li>
+                    <li>• Click a state, then another to create transitions</li>
+                    <li>• Use the properties panel to edit values</li>
+                    <li>• Drag on empty canvas to pan • Pinch/scroll to zoom</li>
+                  </ul>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {chain.transitions.length > 0 && (
+          <Card className="transition-all duration-200">
+            <CardHeader>
+              <CardTitle className="text-base">Transitions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+              {chain.transitions.map((transition) => {
+                const fromState = chain.states.find((s) => s.id === transition.from)
+                const toState = chain.states.find((s) => s.id === transition.to)
+                return (
+                  <div
+                    key={transition.id}
+                    className="flex items-center gap-2 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150"
+                  >
+                    <span className="font-medium w-10 truncate">{fromState?.name}</span>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0 mx-1" />
+                    <span className="font-medium w-10 truncate">{toState?.name}</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      <Slider
+                        value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
+                        onValueChange={(values) => updateTransitionProbability(transition.id, values[0])}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        className="w-40"
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={Number.isFinite(transition.probability) ? transition.probability : 0}
+                        onChange={(e) => updateTransitionProbability(transition.id, Number.parseFloat(e.target.value))}
+                        className="w-20 h-7 text-xs transition-all duration-150 focus:ring-2"
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteTransition(transition.id)}
+                      className="transition-all duration-150 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+
+      <TabsContent value="simulate" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Simulation Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Button onClick={startSimulation} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150">
+                <Play className="mr-2 h-4 w-4" />
+                Start
+              </Button>
+              <Button onClick={stepSimulation} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150">
+                Step
+              </Button>
+              <Button onClick={toggleAutoRun} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150">
+                {isAutoRunning ? (
+                  <>
+                    <Pause className="mr-2 h-4 w-4" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Auto-Run
+                  </>
+                )}
+              </Button>
+              <Button onClick={resetSimulation} variant="outline" size="sm" className="transition-all duration-150 bg-transparent">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset
+              </Button>
+            </div>
+
+            {isSimulating && (
+              <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Speed: {simulationSpeed}ms</Label>
+                </div>
+                <Slider value={[simulationSpeed]} onValueChange={(values) => setSimulationSpeed(values[0])} min={50} max={2000} step={50} className="w-full" />
+              </div>
+            )}
+
+            {isSimulating && (
+              <div className="space-y-2 text-sm border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Step:</span>
+                  <Badge variant="secondary">{simulationStep}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Current State:</span>
+                  <Badge>{chain.states.find((s) => s.id === currentState)?.name}</Badge>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && (
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2">
+            <CardHeader>
+              <CardTitle className="text-base">Metrics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">State Visits</Label>
+                <div className="space-y-1.5">
+                  {Object.entries(simulationMetrics.stateVisits)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([stateId, count]) => {
+                      const state = chain.states.find((s) => s.id === stateId)
+                      const percentage = (((count as number) / (simulationStep + 1)) * 100).toFixed(1)
+                      return (
+                        <div key={stateId} className="flex items-center gap-2">
+                          <span className="text-sm font-medium w-12">{state?.name}</span>
+                          <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentage}%` }} />
+                          </div>
+                          <span className="text-xs text-muted-foreground w-16 text-right">
+                            {count as number} ({percentage}%)
+                          </span>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs text-muted-foreground">Recent Path</Label>
+                  <Select value={pathHistoryLimit.toString()} onValueChange={(value) => setPathHistoryLimit(value === "all" ? "all" : Number.parseInt(value))}>
+                    <SelectTrigger className="w-24 h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">Last 5</SelectItem>
+                      <SelectItem value="10">Last 10</SelectItem>
+                      <SelectItem value="20">Last 20</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-1 flex-wrap text-xs">
+                  {(pathHistoryLimit === "all" ? simulationMetrics.pathHistory : simulationMetrics.pathHistory.slice(-pathHistoryLimit))
+                    .map((stateId, idx, arr) => {
+                      const state = chain.states.find((s) => s.id === stateId)
+                      return (
+                        <span key={idx} className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs">{state?.name}</Badge>
+                          {idx < arr.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />}
+                        </span>
+                      )
+                    })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+
+      <TabsContent value="analyze" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Transition Matrix</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {transitionMatrix.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="text-xs border-collapse w-full">
+                  <thead>
+                    <tr>
+                      <th className="border border-border p-2 bg-muted/50"></th>
+                      {chain.states.map((state) => (
+                        <th key={state.id} className="border border-border p-2 bg-muted/50 font-semibold">
+                          {state.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chain.states.map((state, i) => (
+                      <tr key={state.id} className="transition-colors hover:bg-muted/30">
+                        <th className="border border-border p-2 bg-muted/50 font-semibold">{state.name}</th>
+                        {transitionMatrix[i].map((prob, j) => {
+                          const intensity = prob > 0 ? Math.max(0.15, prob) : 0
+                          const bgColor = prob > 0 ? `rgba(5, 150, 105, ${intensity})` : "transparent"
+                          return (
+                            <td key={j} className="border border-border p-2 text-center font-medium transition-all duration-200 hover:scale-105" style={{ backgroundColor: bgColor }}>
+                              {prob > 0 ? prob.toFixed(2) : "—"}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 0.2)" }} />
+                    <span>Low</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 0.6)" }} />
+                    <span>Medium</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 1)" }} />
+                    <span>High</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Add states and transitions to see matrix</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {chain.states.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Chain Properties</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted">
+                  <div className="text-2xl font-bold text-primary">{chain.states.length}</div>
+                  <div className="text-xs text-muted-foreground">Total States</div>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted">
+                  <div className="text-2xl font-bold text-primary">{chain.transitions.length}</div>
+                  <div className="text-xs text-muted-foreground">Transitions</div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t space-y-2">
+                <Label className="text-xs text-muted-foreground">Outgoing Transitions per State</Label>
+                {chain.states.map((state) => {
+                  const outgoing = chain.transitions.filter((t) => t.from === state.id).length
+                  const totalProb = chain.transitions.filter((t) => t.from === state.id).reduce((sum, t) => sum + t.probability, 0)
+                  const isValid = Math.abs(totalProb - 1.0) < 0.01 || outgoing === 0
+                  return (
+                    <div key={state.id} className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{state.name}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={isValid ? "secondary" : "destructive"} className="text-xs">
+                          {outgoing} ({totalProb.toFixed(2)})
+                        </Badge>
+                        {!isValid && <span className="text-xs text-destructive">⚠ Invalid</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {chain.transitions.length > 0 && (
+                <div className="pt-2 border-t">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Transition Probabilities</Label>
+                  <div className="space-y-1.5">
+                    {chain.transitions.map((transition) => {
+                      const fromState = chain.states.find((s) => s.id === transition.from)
+                      const toState = chain.states.find((s) => s.id === transition.to)
+                      return (
+                        <div key={transition.id} className="flex items-center gap-2 text-xs">
+                          <span className="font-medium">{fromState?.name}</span>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">{toState?.name}</span>
+                          <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden ml-2">
+                            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${transition.probability * 100}%` }} />
+                          </div>
+                          <span className="text-muted-foreground w-12 text-right">{(transition.probability * 100).toFixed(0)}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+    </Tabs>
+  ))
+
+  // Pointer-based interactions: pan, drag, pinch-zoom
+  const onCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Start panning on middle button or left-drag on empty canvas
+    if (e.button === 1 || e.button === 0) {
       e.preventDefault()
       setIsPanning(true)
       setLastPanPoint({ x: e.clientX, y: e.clientY })
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    }
+
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (pointersRef.current.size === 2) {
+      // Start pinch gesture
+      setIsPanning(true)
     }
   }, [])
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  const onCanvasPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (pointersRef.current.has(e.pointerId)) {
+        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      }
+
+      if (pointersRef.current.size >= 2) {
+        // Pinch zoom with two pointers
+        const pts = Array.from(pointersRef.current.values())
+        const [p1, p2] = pts
+        const prevMid = { x: (lastPanPoint.x + (lastPanPoint as any).x2 || lastPanPoint.x) / 2, y: (lastPanPoint.y + (lastPanPoint as any).y2 || lastPanPoint.y) / 2 }
+        const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+
+        const prevDist = Math.hypot((lastPanPoint as any).x2 ? (lastPanPoint.x - (lastPanPoint as any).x2) : 1, (lastPanPoint as any).y2 ? (lastPanPoint.y - (lastPanPoint as any).y2) : 0.0001)
+        const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y)
+        const factor = dist / (prevDist || dist)
+
+        // Zoom around the midpoint
+        const before = clientToWorld(mid.x, mid.y)
+        const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
+        scheduleViewUpdate({ scale: nextScale })
+        const after = clientToWorld(mid.x, mid.y)
+        const dx = (after.x - before.x) * nextScale
+        const dy = (after.y - before.y) * nextScale
+        const nextPan = {
+          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + (mid.x - prevMid.x) - dx)),
+          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + (mid.y - prevMid.y) - dy)),
+        }
+        scheduleViewUpdate({ pan: nextPan })
+
+        // Store last two-pointer data
+        setLastPanPoint({ x: p1.x, y: p1.y } as any)
+        ;(lastPanPoint as any).x2 = p2.x
+        ;(lastPanPoint as any).y2 = p2.y
+        return
+      }
+
       if (isPanning) {
         e.preventDefault()
         const deltaX = e.clientX - lastPanPoint.x
         const deltaY = e.clientY - lastPanPoint.y
-        setPanOffset((prev) => ({
-          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, prev.x + deltaX)),
-          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, prev.y + deltaY)),
-        }))
+        const nextPan = {
+          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + deltaX)),
+          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + deltaY)),
+        }
+        scheduleViewUpdate({ pan: nextPan })
         setLastPanPoint({ x: e.clientX, y: e.clientY })
       } else if (draggingStateId) {
         e.preventDefault()
         didDragRef.current = true
-        if (!canvasRef.current) return
-        const rect = canvasRef.current.getBoundingClientRect()
-        const x = e.clientX - rect.left - panOffset.x - rect.width / 2 + CANVAS_WIDTH / 2
-        const y = e.clientY - rect.top - panOffset.y - rect.height / 2 + CANVAS_HEIGHT / 2
-        const boundedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, x))
-        const boundedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, y))
-        setChain((prev) => ({
-          ...prev,
-          states: prev.states.map((s) => (s.id === draggingStateId ? { ...s, x: boundedX, y: boundedY } : s)),
-        }))
+        const { x, y } = clientToWorld(e.clientX, e.clientY)
+        
+        // Always update pending position immediately
+        pendingDragPosRef.current = { id: draggingStateId, x, y }
+        
+        // Throttle state updates with RAF for smooth dragging
+        if (!dragRafRef.current) {
+          dragRafRef.current = requestAnimationFrame(() => {
+            if (pendingDragPosRef.current) {
+              setDragPosition(pendingDragPosRef.current)
+            }
+            dragRafRef.current = null
+          })
+        }
       }
     },
-    [isPanning, lastPanPoint, draggingStateId, panOffset],
+    [clientToWorld, isPanning, lastPanPoint, panOffset.x, panOffset.y, scheduleViewUpdate, draggingStateId, scale],
   )
 
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  const onCanvasPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      pointersRef.current.delete(e.pointerId)
+      try {
+        ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+      } catch {}
       if (e.button === 1) {
         setIsPanning(false)
       }
-      if (e.button === 0 && draggingStateId) {
+      if (draggingStateId && e.button === 0) {
+        // Cancel any pending RAF updates
+        if (dragRafRef.current) {
+          cancelAnimationFrame(dragRafRef.current)
+          dragRafRef.current = null
+        }
+        
+        // Use pending position if available, otherwise use state
+        const finalPos = pendingDragPosRef.current || dragPosition
+        if (finalPos) {
+          setChain((prev) => ({
+            ...prev,
+            states: prev.states.map((s) => (s.id === finalPos.id ? { ...s, x: finalPos.x, y: finalPos.y } : s)),
+          }))
+          setDragPosition(null)
+          pendingDragPosRef.current = null
+        }
         setDraggingStateId(null)
-        // Defer reset so any click event following mouseup gets ignored
         setTimeout(() => {
           didDragRef.current = false
         }, 0)
       }
+      if (pointersRef.current.size < 2) {
+        setIsPanning(false)
+      }
     },
     [draggingStateId],
+  )
+
+  const onCanvasWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      const zoomIntensity = 0.0015
+      const delta = -e.deltaY
+      const factor = Math.exp(delta * zoomIntensity)
+      const before = clientToWorld(e.clientX, e.clientY)
+      const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
+      scheduleViewUpdate({ scale: nextScale })
+      const after = clientToWorld(e.clientX, e.clientY)
+      const dx = (after.x - before.x) * nextScale
+      const dy = (after.y - before.y) * nextScale
+      const nextPan = {
+        x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x - dx)),
+        y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y - dy)),
+      }
+      scheduleViewUpdate({ pan: nextPan })
+    },
+    [clientToWorld, panOffset.x, panOffset.y, scale, scheduleViewUpdate],
+  )
+
+  const onCanvasDoubleClick = useCallback(() => {
+    scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
+  }, [scheduleViewUpdate])
+
+  // Double-tap support for touch
+  const onCanvasPointerUpForTap = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const now = Date.now()
+      if (now - lastTapTimeRef.current < 300) {
+        scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
+      }
+      lastTapTimeRef.current = now
+    },
+    [scheduleViewUpdate],
   )
 
   const handleSidebarResize = useCallback(
@@ -720,6 +1253,32 @@ function ToolsContent() {
       document.body.style.cursor = "col-resize"
     },
     [sidebarWidth],
+  )
+
+  // Helper to get state position (use dragPosition if dragging, otherwise chain state)
+  const getStatePosition = useCallback(
+    (state: State) => {
+      // Use pending position for smoothest rendering
+      if (pendingDragPosRef.current && pendingDragPosRef.current.id === state.id) {
+        return { x: pendingDragPosRef.current.x, y: pendingDragPosRef.current.y }
+      }
+      if (dragPosition && dragPosition.id === state.id) {
+        return { x: dragPosition.x, y: dragPosition.y }
+      }
+      return { x: state.x, y: state.y }
+    },
+    [dragPosition],
+  )
+
+  // Visible world bounds (for simple virtualization)
+  const visiblePad = 200
+  const { x0: _vx0, y0: _vy0, x1: _vx1, y1: _vy1 } = getVisibleWorldRect()
+  const vx0 = _vx0 - visiblePad
+  const vy0 = _vy0 - visiblePad
+  const vx1 = _vx1 + visiblePad
+  const vy1 = _vy1 + visiblePad
+  const visibleIds = new Set(
+    chain.states.filter((s) => s.x >= vx0 && s.x <= vx1 && s.y >= vy0 && s.y <= vy1).map((s) => s.id),
   )
 
   return (
@@ -998,431 +1557,7 @@ function ToolsContent() {
               </p>
             </div>
 
-            <Tabs defaultValue="build" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-muted/50">
-                <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200">
-                  Build
-                </TabsTrigger>
-                <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200">
-                  Simulate
-                </TabsTrigger>
-                <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200">
-                  Analyze
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="build" className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium">Chain Builder</h3>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-transparent focus-visible:ring-0"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs">
-                        <div className="space-y-2">
-                          <p className="font-medium">Instructions:</p>
-                          <ul className="text-xs space-y-1">
-                            <li>• Click on canvas to add states</li>
-                            <li>• Click a state, then another to create transitions</li>
-                            <li>• Use the properties panel to edit values</li>
-                            <li>• Middle-click and drag to pan the canvas</li>
-                          </ul>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-
-                {selectedState && (
-                  <Card className="transition-all duration-200 animate-in fade-in-0 slide-in-from-top-2">
-                    <CardHeader>
-                      <CardTitle className="text-base">State Properties</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <Label htmlFor="state-name">Name</Label>
-                        <Input
-                          id="state-name"
-                          value={chain.states.find((s) => s.id === selectedState)?.name || ""}
-                          onChange={(e) => {
-                            setChain((prev) => ({
-                              ...prev,
-                              states: prev.states.map((s) =>
-                                s.id === selectedState ? { ...s, name: e.target.value } : s,
-                              ),
-                            }))
-                          }}
-                          className="transition-all duration-150"
-                        />
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteState(selectedState)}
-                        className="transition-all duration-150 hover:scale-105"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete State
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {chain.transitions.length > 0 && (
-                  <Card className="transition-all duration-200">
-                    <CardHeader>
-                      <CardTitle className="text-base">Transitions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 max-h-64 overflow-y-auto">
-                      {chain.transitions.map((transition) => {
-                        const fromState = chain.states.find((s) => s.id === transition.from)
-                        const toState = chain.states.find((s) => s.id === transition.to)
-                        return (
-                          <div
-                            key={transition.id}
-                            className="flex items-center gap-2 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150"
-                          >
-                            <span className="font-medium w-10 truncate">{fromState?.name}</span>
-                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0 mx-1" />
-                            <span className="font-medium w-10 truncate">{toState?.name}</span>
-                            <div className="flex items-center gap-2 flex-1">
-                              <Slider
-                                value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
-                                onValueChange={(values) => updateTransitionProbability(transition.id, values[0])}
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                className="w-40"
-                              />
-                              <Input
-                                type="number"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={Number.isFinite(transition.probability) ? transition.probability : 0}
-                                onChange={(e) =>
-                                  updateTransitionProbability(transition.id, Number.parseFloat(e.target.value))
-                                }
-                                className="w-20 h-7 text-xs transition-all duration-150 focus:ring-2"
-                              />
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteTransition(transition.id)}
-                              className="transition-all duration-150 hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )
-                      })}
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="simulate" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Simulation Controls</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={startSimulation}
-                        disabled={chain.states.length === 0 || isSimulating}
-                        size="sm"
-                        className="transition-all duration-150"
-                      >
-                        <Play className="mr-2 h-4 w-4" />
-                        Start
-                      </Button>
-                      <Button
-                        onClick={stepSimulation}
-                        disabled={!isSimulating || isAutoRunning}
-                        size="sm"
-                        className="transition-all duration-150"
-                      >
-                        Step
-                      </Button>
-                      <Button
-                        onClick={toggleAutoRun}
-                        disabled={chain.states.length === 0}
-                        variant={isAutoRunning ? "default" : "secondary"}
-                        size="sm"
-                        className="transition-all duration-150"
-                      >
-                        {isAutoRunning ? (
-                          <>
-                            <Pause className="mr-2 h-4 w-4" />
-                            Pause
-                          </>
-                        ) : (
-                          <>
-                            <Play className="mr-2 h-4 w-4" />
-                            Auto-Run
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={resetSimulation}
-                        variant="outline"
-                        size="sm"
-                        className="transition-all duration-150 bg-transparent"
-                      >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Reset
-                      </Button>
-                    </div>
-
-                    {isSimulating && (
-                      <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs text-muted-foreground">Speed: {simulationSpeed}ms</Label>
-                        </div>
-                        <Slider
-                          value={[simulationSpeed]}
-                          onValueChange={(values) => setSimulationSpeed(values[0])}
-                          min={50}
-                          max={2000}
-                          step={50}
-                          className="w-full"
-                        />
-                      </div>
-                    )}
-
-                    {isSimulating && (
-                      <div className="space-y-2 text-sm border-t pt-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Step:</span>
-                          <Badge variant="secondary">{simulationStep}</Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Current State:</span>
-                          <Badge>{chain.states.find((s) => s.id === currentState)?.name}</Badge>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && (
-                  <Card className="animate-in fade-in-0 slide-in-from-bottom-2">
-                    <CardHeader>
-                      <CardTitle className="text-base">Metrics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-2 block">State Visits</Label>
-                        <div className="space-y-1.5">
-                          {Object.entries(simulationMetrics.stateVisits)
-                            .sort((a, b) => b[1] - a[1])
-                            .map(([stateId, count]) => {
-                              const state = chain.states.find((s) => s.id === stateId)
-                              const percentage = ((count / (simulationStep + 1)) * 100).toFixed(1)
-                              return (
-                                <div key={stateId} className="flex items-center gap-2">
-                                  <span className="text-sm font-medium w-12">{state?.name}</span>
-                                  <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary transition-all duration-300"
-                                      style={{ width: `${percentage}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-xs text-muted-foreground w-16 text-right">
-                                    {count} ({percentage}%)
-                                  </span>
-                                </div>
-                              )
-                            })}
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t">
-                        <div className="flex items-center justify-between mb-2">
-                          <Label className="text-xs text-muted-foreground">Recent Path</Label>
-                          <Select
-                            value={pathHistoryLimit.toString()}
-                            onValueChange={(value) =>
-                              setPathHistoryLimit(value === "all" ? "all" : Number.parseInt(value))
-                            }
-                          >
-                            <SelectTrigger className="w-24 h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="5">Last 5</SelectItem>
-                              <SelectItem value="10">Last 10</SelectItem>
-                              <SelectItem value="20">Last 20</SelectItem>
-                              <SelectItem value="all">All</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center gap-1 flex-wrap text-xs">
-                          {(pathHistoryLimit === "all"
-                            ? simulationMetrics.pathHistory
-                            : simulationMetrics.pathHistory.slice(-pathHistoryLimit)
-                          ).map((stateId, idx, arr) => {
-                            const state = chain.states.find((s) => s.id === stateId)
-                            return (
-                              <span key={idx} className="flex items-center gap-1">
-                                <Badge variant="outline" className="text-xs">
-                                  {state?.name}
-                                </Badge>
-                                {idx < arr.length - 1 && (
-                                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                                )}
-                              </span>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="analyze" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Transition Matrix</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {transitionMatrix.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="text-xs border-collapse w-full">
-                          <thead>
-                            <tr>
-                              <th className="border border-border p-2 bg-muted/50"></th>
-                              {chain.states.map((state) => (
-                                <th key={state.id} className="border border-border p-2 bg-muted/50 font-semibold">
-                                  {state.name}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {chain.states.map((state, i) => (
-                              <tr key={state.id} className="transition-colors hover:bg-muted/30">
-                                <th className="border border-border p-2 bg-muted/50 font-semibold">{state.name}</th>
-                                {transitionMatrix[i].map((prob, j) => {
-                                  // Color intensity based on probability
-                                  const intensity = prob > 0 ? Math.max(0.15, prob) : 0
-                                  const bgColor = prob > 0 ? `rgba(5, 150, 105, ${intensity})` : "transparent"
-                                  return (
-                                    <td
-                                      key={j}
-                                      className="border border-border p-2 text-center font-medium transition-all duration-200 hover:scale-105"
-                                      style={{ backgroundColor: bgColor }}
-                                    >
-                                      {prob > 0 ? prob.toFixed(2) : "—"}
-                                    </td>
-                                  )
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 0.2)" }} />
-                            <span>Low</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 0.6)" }} />
-                            <span>Medium</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: "rgba(5, 150, 105, 1)" }} />
-                            <span>High</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Add states and transitions to see matrix</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {chain.states.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Chain Properties</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted">
-                          <div className="text-2xl font-bold text-primary">{chain.states.length}</div>
-                          <div className="text-xs text-muted-foreground">Total States</div>
-                        </div>
-                        <div className="p-3 rounded-lg bg-muted/50 transition-all hover:bg-muted">
-                          <div className="text-2xl font-bold text-primary">{chain.transitions.length}</div>
-                          <div className="text-xs text-muted-foreground">Transitions</div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t space-y-2">
-                        <Label className="text-xs text-muted-foreground">Outgoing Transitions per State</Label>
-                        {chain.states.map((state) => {
-                          const outgoing = chain.transitions.filter((t) => t.from === state.id).length
-                          const totalProb = chain.transitions
-                            .filter((t) => t.from === state.id)
-                            .reduce((sum, t) => sum + t.probability, 0)
-                          const isValid = Math.abs(totalProb - 1.0) < 0.01 || outgoing === 0
-                          return (
-                            <div key={state.id} className="flex items-center justify-between text-sm">
-                              <span className="font-medium">{state.name}</span>
-                              <div className="flex items-center gap-2">
-                                <Badge variant={isValid ? "secondary" : "destructive"} className="text-xs">
-                                  {outgoing} ({totalProb.toFixed(2)})
-                                </Badge>
-                                {!isValid && <span className="text-xs text-destructive">⚠ Invalid</span>}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {chain.transitions.length > 0 && (
-                        <div className="pt-2 border-t">
-                          <Label className="text-xs text-muted-foreground mb-2 block">Transition Probabilities</Label>
-                          <div className="space-y-1.5">
-                            {chain.transitions.map((transition) => {
-                              const fromState = chain.states.find((s) => s.id === transition.from)
-                              const toState = chain.states.find((s) => s.id === transition.to)
-                              return (
-                                <div key={transition.id} className="flex items-center gap-2 text-xs">
-                                  <span className="font-medium">{fromState?.name}</span>
-                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                  <span className="font-medium">{toState?.name}</span>
-                                  <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden ml-2">
-                                    <div
-                                      className="h-full bg-primary transition-all duration-300"
-                                      style={{ width: `${transition.probability * 100}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-muted-foreground w-12 text-right">
-                                    {(transition.probability * 100).toFixed(0)}%
-                                  </span>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            </Tabs>
+            <SidebarTabs />
           </div>
         </aside>
 
@@ -1442,14 +1577,7 @@ function ToolsContent() {
             </SheetHeader>
             <div className="mt-6">
               {/* ... existing sidebar content for mobile ... */}
-              <Tabs defaultValue="build" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="build">Build</TabsTrigger>
-                  <TabsTrigger value="simulate">Simulate</TabsTrigger>
-                  <TabsTrigger value="analyze">Analyze</TabsTrigger>
-                </TabsList>
-                {/* ... rest of tabs content ... */}
-              </Tabs>
+              <SidebarTabs />
             </div>
           </SheetContent>
         </Sheet>
@@ -1477,14 +1605,21 @@ function ToolsContent() {
               isPanning ? "cursor-grabbing" : draggingStateId ? "cursor-move" : "cursor-crosshair"
             }`}
             onClick={handleCanvasClick}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
+            onPointerDown={onCanvasPointerDown}
+            onPointerMove={onCanvasPointerMove}
+            onPointerUp={(e) => {
+              onCanvasPointerUp(e)
+              onCanvasPointerUpForTap(e)
+            }}
+            onWheel={onCanvasWheel}
+            onDoubleClick={onCanvasDoubleClick}
             onContextMenu={(e) => e.preventDefault()}
           >
             <div
+              ref={canvasContentRef}
               style={{
-                transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${scale})`,
+                transformOrigin: "0 0",
                 width: CANVAS_WIDTH,
                 height: CANVAS_HEIGHT,
                 position: "absolute",
@@ -1492,6 +1627,8 @@ function ToolsContent() {
                 top: "50%",
                 marginLeft: -CANVAS_WIDTH / 2,
                 marginTop: -CANVAS_HEIGHT / 2,
+                willChange: draggingStateId || isPanning ? 'transform' : 'auto',
+                transition: draggingStateId || isPanning ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               <div className="absolute inset-0 border-2 border-dashed border-primary/20 rounded-2xl shadow-inner" />
@@ -1507,6 +1644,7 @@ function ToolsContent() {
                 }}
               />
 
+              {/* Transitions (filtered to visible endpoints) */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
                   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -1525,11 +1663,15 @@ function ToolsContent() {
                     </feMerge>
                   </filter>
                 </defs>
-
-                {chain.transitions.map((transition) => {
+                {chain.transitions
+                  .filter((t) => visibleIds.has(t.from) || visibleIds.has(t.to))
+                  .map((transition) => {
                   const fromState = chain.states.find((s) => s.id === transition.from)
                   const toState = chain.states.find((s) => s.id === transition.to)
                   if (!fromState || !toState) return null
+
+                  const fromPos = getStatePosition(fromState)
+                  const toPos = getStatePosition(toState)
 
                   const isSelfLoop = fromState.id === toState.id
 
@@ -1537,6 +1679,7 @@ function ToolsContent() {
                     const radius = 32
                     const loopRadius = 28
                     const s = fromState
+                    const sPos = fromPos
                     const margin = 80
 
                     const counts = { top: 0, right: 0, bottom: 0, left: 0 }
@@ -1546,8 +1689,8 @@ function ToolsContent() {
                       const otherId = t.from === s.id ? t.to : t.from
                       const other = chain.states.find((st) => st.id === otherId)
                       if (!other) continue
-                      const dx = other.x - s.x
-                      const dy = other.y - s.y
+                      const dx = other.x - sPos.x
+                      const dy = other.y - sPos.y
                       if (Math.abs(dy) > Math.abs(dx)) {
                         if (dy < 0) counts.top++
                         else counts.bottom++
@@ -1561,16 +1704,16 @@ function ToolsContent() {
                     let preferred: "top" | "right" | "bottom" | "left" = "top"
                     const centerX = CANVAS_WIDTH / 2
                     const centerY = CANVAS_HEIGHT / 2
-                    const dxC = s.x - centerX
-                    const dyC = s.y - centerY
+                    const dxC = sPos.x - centerX
+                    const dyC = sPos.y - centerY
                     if (Math.abs(dyC) > Math.abs(dxC)) preferred = dyC > 0 ? "bottom" : "top"
                     else preferred = dxC > 0 ? "right" : "left"
 
                     const avoid = new Set<string>()
-                    if (s.y < margin) avoid.add("top")
-                    if (s.y > CANVAS_HEIGHT - margin) avoid.add("bottom")
-                    if (s.x < margin) avoid.add("left")
-                    if (s.x > CANVAS_WIDTH - margin) avoid.add("right")
+                    if (sPos.y < margin) avoid.add("top")
+                    if (sPos.y > CANVAS_HEIGHT - margin) avoid.add("bottom")
+                    if (sPos.x < margin) avoid.add("left")
+                    if (sPos.x > CANVAS_WIDTH - margin) avoid.add("right")
 
                     const orientations: Array<"top" | "right" | "bottom" | "left"> = ["top", "right", "bottom", "left"]
                     const ordered = [preferred, ...orientations.filter((o) => o !== preferred)]
@@ -1578,45 +1721,45 @@ function ToolsContent() {
                     if (!orientation) orientation = preferred
 
                     let pathData = ""
-                    let labelX = s.x
-                    let labelY = s.y
+                    let labelX = sPos.x
+                    let labelY = sPos.y
                     if (orientation === "top") {
-                      const cx = s.x
-                      const cy = s.y - radius - loopRadius
-                      const startX = s.x - radius * 0.7
-                      const startY = s.y - radius * 0.7
-                      const endX = s.x + radius * 0.7
-                      const endY = s.y - radius * 0.7
+                      const cx = sPos.x
+                      const cy = sPos.y - radius - loopRadius
+                      const startX = sPos.x - radius * 0.7
+                      const startY = sPos.y - radius * 0.7
+                      const endX = sPos.x + radius * 0.7
+                      const endY = sPos.y - radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`
                       labelX = cx
                       labelY = cy - 8
                     } else if (orientation === "bottom") {
-                      const cx = s.x
-                      const cy = s.y + radius + loopRadius
-                      const startX = s.x + radius * 0.7
-                      const startY = s.y + radius * 0.7
-                      const endX = s.x - radius * 0.7
-                      const endY = s.y + radius * 0.7
+                      const cx = sPos.x
+                      const cy = sPos.y + radius + loopRadius
+                      const startX = sPos.x + radius * 0.7
+                      const startY = sPos.y + radius * 0.7
+                      const endX = sPos.x - radius * 0.7
+                      const endY = sPos.y + radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx + loopRadius} ${cy} ${cx} ${cy} Q ${cx - loopRadius} ${cy} ${endX} ${endY}`
                       labelX = cx
                       labelY = cy + 16
                     } else if (orientation === "right") {
-                      const cx = s.x + radius + loopRadius
-                      const cy = s.y
-                      const startX = s.x + radius * 0.7
-                      const startY = s.y - radius * 0.7
-                      const endX = s.x + radius * 0.7
-                      const endY = s.y + radius * 0.7
+                      const cx = sPos.x + radius + loopRadius
+                      const cy = sPos.y
+                      const startX = sPos.x + radius * 0.7
+                      const startY = sPos.y - radius * 0.7
+                      const endX = sPos.x + radius * 0.7
+                      const endY = sPos.y + radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx} ${cy - loopRadius} ${cx} ${cy} Q ${cx} ${cy + loopRadius} ${endX} ${endY}`
                       labelX = cx + 14
                       labelY = cy + 4
                     } else if (orientation === "left") {
-                      const cx = s.x - radius - loopRadius
-                      const cy = s.y
-                      const startX = s.x - radius * 0.7
-                      const startY = s.y + radius * 0.7
-                      const endX = s.x - radius * 0.7
-                      const endY = s.y - radius * 0.7
+                      const cx = sPos.x - radius - loopRadius
+                      const cy = sPos.y
+                      const startX = sPos.x - radius * 0.7
+                      const startY = sPos.y + radius * 0.7
+                      const endX = sPos.x - radius * 0.7
+                      const endY = sPos.y - radius * 0.7
                       pathData = `M ${startX} ${startY} Q ${cx} ${cy + loopRadius} ${cx} ${cy} Q ${cx} ${cy - loopRadius} ${endX} ${endY}`
                       labelX = cx - 14
                       labelY = cy + 4
@@ -1664,14 +1807,14 @@ function ToolsContent() {
                   const isBidirectional = !!reverseTransition
 
                   const radius = 32
-                  const dx = toState.x - fromState.x
-                  const dy = toState.y - fromState.y
+                  const dx = toPos.x - fromPos.x
+                  const dy = toPos.y - fromPos.y
                   const distance = Math.sqrt(dx * dx + dy * dy)
 
-                  const fromX = fromState.x + (dx / distance) * radius
-                  const fromY = fromState.y + (dy / distance) * radius
-                  const toX = toState.x - (dx / distance) * radius
-                  const toY = toState.y - (dy / distance) * radius
+                  const fromX = fromPos.x + (dx / distance) * radius
+                  const fromY = fromPos.y + (dy / distance) * radius
+                  const toX = toPos.x - (dx / distance) * radius
+                  const toY = toPos.y - (dy / distance) * radius
 
                   if (isBidirectional) {
                     const canonicalFrom = fromState.id < toState.id ? fromState : toState
@@ -1782,8 +1925,12 @@ function ToolsContent() {
                 })}
               </svg>
 
-              {chain.states.map((state) => (
-                <Popover.Root key={state.id}>
+              {chain.states
+                .filter((s) => s.x >= vx0 && s.x <= vx1 && s.y >= vy0 && s.y <= vy1)
+                .map((state) => {
+                  const pos = getStatePosition(state)
+                  return (
+                <Popover.Root key={state.id} open={openPopovers[state.id]} onOpenChange={(open) => setOpenPopovers(prev => ({ ...prev, [state.id]: open }))}>
                   <Popover.Trigger asChild>
                     <div
                       data-node-id={state.id}
@@ -1792,21 +1939,36 @@ function ToolsContent() {
                         text-sm font-medium cursor-pointer transition-all transform -translate-x-8 -translate-y-8 select-none
                         ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2" : ""}
                         ${currentState === state.id ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
+                        ${draggingStateId === state.id ? "transition-none" : ""}
                       `}
                       style={{
-                        left: state.x,
-                        top: state.y,
+                        left: pos.x,
+                        top: pos.y,
                         backgroundColor: state.color + "20",
                         borderColor: state.color,
                         color: state.color,
+                        willChange: draggingStateId === state.id ? 'transform' : 'auto',
+                        contain: 'layout style paint',
                       }}
-                      onMouseDown={(e) => {
+                      onPointerDown={(e) => {
                         if (e.button !== 0) return
                         e.stopPropagation()
                         e.preventDefault()
                         didDragRef.current = false
                         setDraggingStateId(state.id)
-                        setLastPanPoint({ x: e.clientX, y: e.clientY })
+                        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+                      }}
+                      onPointerUp={(e) => {
+                        e.stopPropagation()
+                        try {
+                          ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+                        } catch {}
+                        if (draggingStateId) {
+                          setDraggingStateId(null)
+                          setTimeout(() => {
+                            didDragRef.current = false
+                          }, 0)
+                        }
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -1828,22 +1990,46 @@ function ToolsContent() {
                       {state.name}
                     </div>
                   </Popover.Trigger>
-                  <Popover.Content side="top" sideOffset={10} className="z-50 rounded-lg border bg-card p-3 shadow-md">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{state.name}</span>
+                  <Popover.Content side="top" sideOffset={10} className="z-50 rounded-lg border bg-card p-3 shadow-md w-auto min-w-[280px] max-w-[90vw]">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <Input
+                            id={`state-name-${state.id}`}
+                            value={state.name}
+                            onChange={(e) => {
+                              setChain((prev) => ({
+                                ...prev,
+                                states: prev.states.map((s) => (s.id === state.id ? { ...s, name: e.target.value } : s)),
+                              }))
+                            }}
+                            onPointerDown={(e) => {
+                              e.stopPropagation()
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                            }}
+                            placeholder="State name"
+                            className="h-8 text-sm"
+                          />
+                        </div>
                         <Button
                           size="sm"
                           variant="destructive"
+                          onPointerDown={(e) => {
+                            e.stopPropagation()
+                          }}
                           onClick={(e) => {
                             e.stopPropagation()
+                            e.preventDefault()
                             deleteState(state.id)
                           }}
+                          className="h-8 shrink-0"
                         >
-                          <Trash2 className="h-3 w-3 mr-1" /> Delete
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 pt-1 border-t">
                         <Label className="text-xs text-muted-foreground">Outgoing Probabilities</Label>
                         {chain.transitions
                           .filter((t) => t.from === state.id)
@@ -1876,7 +2062,8 @@ function ToolsContent() {
                     </div>
                   </Popover.Content>
                 </Popover.Root>
-              ))}
+                  )
+                })}
 
               {chain.states.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500">
@@ -1892,7 +2079,7 @@ function ToolsContent() {
                         Click anywhere on the canvas to add your first state
                       </p>
                       <p className="text-muted-foreground text-xs sm:text-sm mt-2 opacity-75">
-                        Middle-click and drag to pan • Touch and drag on mobile
+                        Drag to pan • Pinch/scroll to zoom • Double‑tap/double‑click to reset
                       </p>
                     </CardContent>
                   </Card>

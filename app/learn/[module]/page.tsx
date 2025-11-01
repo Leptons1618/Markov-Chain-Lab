@@ -8,12 +8,13 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ArrowRight, CheckCircle, Lightbulb, Calculator, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { fetchLesson, fetchLessonsByCourse, type Lesson } from "@/lib/lms"
+import { fetchLesson, fetchLessonsByCourse, fetchCourses, type Lesson, type Course } from "@/lib/lms"
 import MarkdownRenderer from "@/components/markdown-renderer"
 
 export default function LessonPage({ params }: { params: any }) {
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
+  const [courses, setCourses] = useState<Course[]>([])
   const [isLessonCompleted, setIsLessonCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [coinFlips, setCoinFlips] = useState({
@@ -28,7 +29,22 @@ export default function LessonPage({ params }: { params: any }) {
   const resolvedParams = React.use(params as any) as { module?: string }
   const lessonId = resolvedParams?.module ?? ""
 
-  // Fetch lesson data
+  // Load completion status from localStorage
+  useEffect(() => {
+    if (lessonId) {
+      const savedProgress = localStorage.getItem('markov-learn-progress')
+      if (savedProgress) {
+        try {
+          const progress = JSON.parse(savedProgress)
+          setIsLessonCompleted(progress[lessonId]?.completed || false)
+        } catch (e) {
+          console.error('Failed to parse progress data', e)
+        }
+      }
+    }
+  }, [lessonId])
+
+  // Fetch lesson data and courses
   useEffect(() => {
     const loadLesson = async () => {
       setLoading(true)
@@ -39,6 +55,11 @@ export default function LessonPage({ params }: { params: any }) {
         const courseLessons = await fetchLessonsByCourse(fetchedLesson.courseId)
         setAllLessons(courseLessons.sort((a, b) => a.order - b.order))
       }
+      // Prefetch courses list to enable Next Course navigation
+      try {
+        const cs = await fetchCourses()
+        setCourses(cs)
+      } catch {}
       setLoading(false)
     }
 
@@ -71,10 +92,36 @@ export default function LessonPage({ params }: { params: any }) {
   const previousLesson = getPreviousLesson()
   const currentLessonIndex = getCurrentLessonIndex()
   const totalLessons = allLessons.length
-  const progressPercentage = currentLessonIndex >= 0 ? ((currentLessonIndex + 1) / totalLessons) * 100 : 0
+  const completedCount = allLessons.filter(l => {
+    const savedProgress = localStorage.getItem('markov-learn-progress')
+    if (savedProgress) {
+      try {
+        const progress = JSON.parse(savedProgress)
+        return progress[l.id]?.completed || false
+      } catch {
+        return false
+      }
+    }
+    return false
+  }).length
+  const progressPercentage = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0
+
+  // Compute next course (if any) based on current lesson's courseId and courses order
+  const currentCourseId = lesson?.courseId
+  const currentCourseIndex = currentCourseId ? courses.findIndex(c => c.id === currentCourseId) : -1
+  const nextCourse = currentCourseIndex >= 0 && currentCourseIndex < courses.length - 1 ? courses[currentCourseIndex + 1] : null
 
   const markLessonComplete = () => {
     setIsLessonCompleted(true)
+    
+    // Save to localStorage
+    const savedProgress = localStorage.getItem('markov-learn-progress')
+    const progress = savedProgress ? JSON.parse(savedProgress) : {}
+    progress[lessonId] = {
+      completed: true,
+      lastAccessedAt: new Date().toISOString()
+    }
+    localStorage.setItem('markov-learn-progress', JSON.stringify(progress))
   }
 
   const flipCoin = () => {
@@ -146,7 +193,7 @@ export default function LessonPage({ params }: { params: any }) {
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <Progress value={progressPercentage} className="w-32" />
+              <Progress value={progressPercentage} className="w-32 transition-all duration-500" />
               <span className="text-sm text-muted-foreground">
                 {currentLessonIndex + 1} of {totalLessons}
               </span>
@@ -155,7 +202,7 @@ export default function LessonPage({ params }: { params: any }) {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-8 space-y-8">
         <div className="space-y-4">
           <Badge variant="outline">{lesson.title}</Badge>
           <h1 className="text-3xl font-bold">{lesson.title}</h1>
@@ -163,29 +210,39 @@ export default function LessonPage({ params }: { params: any }) {
         </div>
 
         <div className="space-y-8">
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6 md:p-8">
             <MarkdownRenderer content={lesson.content} />
           </Card>
         </div>
 
         {!isLessonCompleted && (
           <div className="flex justify-center pt-4">
-            <Button onClick={markLessonComplete} size="lg" className="cursor-pointer">
+            <Button onClick={markLessonComplete} size="lg" className="cursor-pointer transition-all duration-300 hover:scale-105">
+              <CheckCircle className="mr-2 h-5 w-5" />
               Mark Lesson Complete
             </Button>
+          </div>
+        )}
+        
+        {isLessonCompleted && (
+          <div className="flex justify-center pt-4">
+            <Badge variant="secondary" className="text-sm px-4 py-2 bg-primary/10 text-primary border-primary/20">
+              <CheckCircle className="mr-2 h-4 w-4 inline" />
+              Lesson Completed!
+            </Badge>
           </div>
         )}
 
         <div className="flex items-center justify-between pt-8 border-t border-border">
           {previousLesson ? (
             <Link href={`/learn/${previousLesson.id}`}>
-              <Button variant="outline" className="cursor-pointer bg-transparent">
+              <Button variant="outline" className="cursor-pointer bg-transparent transition-all duration-200 hover:scale-105">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Previous
               </Button>
             </Link>
           ) : (
-            <Button variant="outline" disabled className="cursor-not-allowed bg-transparent">
+            <Button variant="outline" disabled className="cursor-not-allowed bg-transparent opacity-50">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Previous
             </Button>
@@ -207,15 +264,43 @@ export default function LessonPage({ params }: { params: any }) {
 
           {nextLesson ? (
             <Link href={`/learn/${nextLesson.id}`}>
-              <Button className="cursor-pointer" disabled={!isLessonCompleted}>
+              <Button className="cursor-pointer transition-all duration-200 hover:scale-105" disabled={!isLessonCompleted}>
                 Next Lesson
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
+          ) : isLessonCompleted ? (
+            <div className="flex items-center gap-2">
+              {nextCourse ? (
+                <Link
+                  href="/learn"
+                  onClick={() => {
+                    try { localStorage.setItem('markov-selected-course', nextCourse.id) } catch {}
+                  }}
+                >
+                  <Button className="cursor-pointer transition-all duration-200 hover:scale-105 bg-primary">
+                    Next Course: {nextCourse.title}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/learn">
+                  <Button className="cursor-pointer transition-all duration-200 hover:scale-105 bg-primary">
+                    Course Complete!
+                    <CheckCircle className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
+              <Link href="/learn">
+                <Button variant="outline" className="cursor-pointer">
+                  Back to Learn
+                </Button>
+              </Link>
+            </div>
           ) : (
-            <Button disabled className="cursor-not-allowed">
-              Course Complete!
-              <CheckCircle className="ml-2 h-4 w-4" />
+            <Button disabled className="cursor-not-allowed opacity-50">
+              Finish Lesson First
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
         </div>
