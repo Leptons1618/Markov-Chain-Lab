@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, BookOpen, Calculator, Users, Zap } from "lucide-react"
+import { ArrowRight, Calculator, Users } from "lucide-react"
 import Link from "next/link"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { MobileNav } from "@/components/mobile-nav"
@@ -76,19 +76,9 @@ export default function HomePage() {
                   </Button>
                 </Link>
               </div>
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span>10,000+ Students</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  <span>Interactive Lessons</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  <span>Real-time Simulations</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground border border-dashed border-border/60 rounded-md px-3 py-2">
+                <Users className="h-4 w-4" />
+                <span>This is a prototype preview — final metrics and content are still in progress.</span>
               </div>
             </div>
 
@@ -146,85 +136,28 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Prototype Note */}
       <section className="py-12 sm:py-16 lg:py-20 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-3 sm:space-y-4 mb-10 sm:mb-12 lg:mb-16">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-balance">
-              Why Choose Interactive Learning?
-            </h2>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-              Transform abstract mathematical concepts into tangible, visual experiences
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <Card className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3 sm:pb-4 px-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto sm:mx-0 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                  <Zap className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
-                </div>
-                <CardTitle className="text-center sm:text-left text-base sm:text-lg">Real-time Simulations</CardTitle>
-              </CardHeader>
-              <CardContent className="px-0 text-center sm:text-left">
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  Watch Markov chains evolve step-by-step with interactive controls and visual feedback.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3 sm:pb-4 px-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto sm:mx-0 rounded-lg bg-accent/10 flex items-center justify-center mb-3 sm:mb-4">
-                  <BookOpen className="h-6 w-6 sm:h-7 sm:w-7 text-accent" />
-                </div>
-                <CardTitle className="text-center sm:text-left text-base sm:text-lg">Progressive Learning</CardTitle>
-              </CardHeader>
-              <CardContent className="px-0 text-center sm:text-left">
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  Start with basics and gradually build up to advanced concepts with guided pathways.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="p-4 sm:p-6 hover:shadow-lg transition-shadow sm:col-span-2 lg:col-span-1">
-              <CardHeader className="pb-3 sm:pb-4 px-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto sm:mx-0 rounded-lg bg-chart-3/10 flex items-center justify-center mb-3 sm:mb-4">
-                  <Calculator className="h-6 w-6 sm:h-7 sm:w-7 text-chart-3" />
-                </div>
-                <CardTitle className="text-center sm:text-left text-base sm:text-lg">Hands-on Tools</CardTitle>
-              </CardHeader>
-              <CardContent className="px-0 text-center sm:text-left">
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  Build your own Markov chains with drag-and-drop interfaces and instant calculations.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-12 sm:py-16 lg:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 sm:space-y-8">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-balance">Ready to Start Your Journey?</h2>
-          <p className="text-base sm:text-lg lg:text-xl text-muted-foreground text-pretty">
-            Join thousands of students who have mastered advanced mathematics through interactive learning.
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 sm:space-y-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-balance">Prototype Status</h2>
+          <p className="text-sm sm:text-base text-muted-foreground text-pretty">
+            We&apos;re actively shaping MarkovLearn. Expect rapid iterations on lessons, tools, and dashboards as we
+            gather feedback. Let us know what would help you understand stochastic processes faster.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Link href="/learn" className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 cursor-pointer">
-                Begin Learning Path
+                Explore Lessons
                 <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </Link>
-            <Link href="/examples" className="w-full sm:w-auto">
+            <Link href="/tools" className="w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 bg-transparent cursor-pointer"
               >
-                Explore Examples
+                Open Builder
               </Button>
             </Link>
           </div>

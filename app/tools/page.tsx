@@ -31,6 +31,8 @@ import {
   FileText,
   FilePlus,
   Menu,
+  X,
+  Wrench,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -41,8 +43,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { MobileNav } from "@/components/mobile-nav"
 
 interface State {
   id: string
@@ -114,14 +116,17 @@ function ToolsContent() {
   const [sidebarWidth, setSidebarWidth] = useState(550)
   const [isResizing, setIsResizing] = useState(false)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const autoRunIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [draggingStateId, setDraggingStateId] = useState<string | null>(null)
-  const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragPosRef = useRef<{ id: string; x: number; y: number } | null>(null)
+  const currentDragPosRef = useRef<{ id: string; x: number; y: number } | null>(null)
   const didDragRef = useRef(false)
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null)
+  const [dragRenderTick, setDragRenderTick] = useState(0)
+  const DRAG_THRESHOLD = 5 // pixels
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [saveName, setSaveName] = useState("")
@@ -134,6 +139,7 @@ function ToolsContent() {
   const [activeTab, setActiveTab] = useState<"build" | "simulate" | "analyze">("build")
   // Track pinch gesture data
   const pinchRef = useRef<{ mid: { x: number; y: number }; dist: number } | null>(null)
+  const [toolboxOpen, setToolboxOpen] = useState(false)
 
   // Track changes to mark unsaved changes
   useEffect(() => {
@@ -1128,21 +1134,47 @@ function ToolsContent() {
       }
 
       if (draggingStateId) {
-        e.preventDefault()
-        didDragRef.current = true
-        const { x, y } = clientToWorld(e.clientX, e.clientY)
-        
-        // Always update pending position immediately
-        pendingDragPosRef.current = { id: draggingStateId, x, y }
-        
-        // Throttle state updates with RAF for smooth dragging
-        if (!dragRafRef.current) {
-          dragRafRef.current = requestAnimationFrame(() => {
-            if (pendingDragPosRef.current) {
-              setDragPosition(pendingDragPosRef.current)
+        // Check if we've moved beyond the drag threshold
+        if (dragStartPosRef.current) {
+          const dx = e.clientX - dragStartPosRef.current.x
+          const dy = e.clientY - dragStartPosRef.current.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          
+          // Only start actual dragging if moved beyond threshold
+          if (distance > DRAG_THRESHOLD) {
+            e.preventDefault()
+            didDragRef.current = true
+            dragStartPosRef.current = null // Clear threshold check
+            
+            const { x, y } = clientToWorld(e.clientX, e.clientY)
+            
+            // Always update pending position immediately
+            pendingDragPosRef.current = { id: draggingStateId, x, y }
+            currentDragPosRef.current = { id: draggingStateId, x, y }
+            
+            // Throttle re-renders with RAF for smooth dragging
+            if (!dragRafRef.current) {
+              dragRafRef.current = requestAnimationFrame(() => {
+                // Trigger minimal re-render only for the dragged node
+                setDragRenderTick(t => t + 1)
+                dragRafRef.current = null
+              })
             }
-            dragRafRef.current = null
-          })
+          }
+        } else if (didDragRef.current) {
+          // Already dragging, continue
+          e.preventDefault()
+          const { x, y } = clientToWorld(e.clientX, e.clientY)
+          pendingDragPosRef.current = { id: draggingStateId, x, y }
+          currentDragPosRef.current = { id: draggingStateId, x, y }
+          
+          if (!dragRafRef.current) {
+            dragRafRef.current = requestAnimationFrame(() => {
+              // Trigger minimal re-render only for the dragged node
+              setDragRenderTick(t => t + 1)
+              dragRafRef.current = null
+            })
+          }
         }
       } else if (isPanning && !draggingStateId) {
         e.preventDefault()
@@ -1175,20 +1207,21 @@ function ToolsContent() {
           dragRafRef.current = null
         }
         
-        // Use pending position if available, otherwise use state
-        const finalPos = pendingDragPosRef.current || dragPosition
+        // Use current drag position from ref
+        const finalPos = currentDragPosRef.current || pendingDragPosRef.current
         if (finalPos) {
           setChain((prev) => {
             // Clamp node position to canvas bounds
             const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, finalPos.x))
             const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, finalPos.y))
-            // Deep clone states to avoid reference issues
+            // Only update the dragged node
             const newStates = prev.states.map((s) =>
-              s.id === finalPos.id ? { ...s, x: clampedX, y: clampedY } : { ...s }
+              s.id === finalPos.id ? { ...s, x: clampedX, y: clampedY } : s
             )
             return { ...prev, states: newStates }
           })
-          setDragPosition(null)
+          // Clear refs
+          currentDragPosRef.current = null
           pendingDragPosRef.current = null
         }
         setDraggingStateId(null)
@@ -1287,19 +1320,19 @@ function ToolsContent() {
     [sidebarWidth],
   )
 
-  // Helper to get state position (use dragPosition if dragging, otherwise chain state)
+  // Helper to get state position (use refs only to avoid re-renders)
   const getStatePosition = useCallback(
     (state: State) => {
-      // Use pending position for smoothest rendering
+      // Check refs for drag position (no state dependency = no unnecessary re-renders)
+      if (currentDragPosRef.current && currentDragPosRef.current.id === state.id) {
+        return { x: currentDragPosRef.current.x, y: currentDragPosRef.current.y }
+      }
       if (pendingDragPosRef.current && pendingDragPosRef.current.id === state.id) {
         return { x: pendingDragPosRef.current.x, y: pendingDragPosRef.current.y }
       }
-      if (dragPosition && dragPosition.id === state.id) {
-        return { x: dragPosition.x, y: dragPosition.y }
-      }
       return { x: state.x, y: state.y }
     },
-    [dragPosition],
+    [], // No dependencies - stable function
   )
 
   // Visible world bounds (for simple virtualization)
@@ -1315,148 +1348,44 @@ function ToolsContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <nav className="border-b border-border/40 bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
+      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/" className="flex items-center gap-2 group">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-primary/25 transition-all duration-300 group-hover:scale-105">
-                  <span className="text-primary-foreground font-bold text-sm sm:text-base">M</span>
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">M</span>
                 </div>
-                <span className="font-semibold text-base sm:text-lg bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  MarkovLearn
-                </span>
+                <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
             </div>
-
-            {/* Desktop Navigation */}
-            {/* <div className="hidden lg:flex items-center gap-6">
-              <Link
-                href="/learn"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Learn
-              </Link>
-              <Link
-                href="/tools"
-                className="text-sm text-foreground font-medium transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary"
-              >
-                Tools
-              </Link>
-              <Link
-                href="/examples"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Examples
-              </Link>
-              <Link
-                href="/practice"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Practice
-              </Link>
-              <Link
-                href="/about"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                About
-              </Link>
-            </div> */}
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                Learn
-              </Link>
-              <Link href="/tools" className="text-foreground font-medium transition-colors">
-                Tools
-              </Link>
-              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                Examples
-              </Link>
-              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                Practice
-              </Link>
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                About
-              </Link>
-              <ThemeSwitcher />
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-6">
+                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Learn
+                </Link>
+                <Link href="/tools" className="text-foreground font-medium transition-colors">
+                  Tools
+                </Link>
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Examples
+                </Link>
+                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Practice
+                </Link>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                  About
+                </Link>
+                <ThemeSwitcher />
+              </div>
+              <MobileNav currentPath="/tools" />
             </div>
-            <div className="flex md:hidden items-center gap-2">
-              <ThemeSwitcher />
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-2">
-              <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={newDesign}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <FilePlus className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">New</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={saveDesign}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <Save className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">Save</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLibraryOpen(true)}
-                className="transition-all duration-200 hover:scale-105"
-              >
-                <FolderOpen className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">Library</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleImportClick}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportChain}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetView}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-                title="Restore View"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">Restore View</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportReport}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <FileText className="h-4 w-4" />
-                Export Report
-              </Button>
-            </div>
-
-            {/* Mobile menu removed to avoid duplicate hamburger */}
           </div>
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)]">
+      <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
+      <div className="flex min-h-[calc(100vh-7rem)] sm:min-h-[calc(100vh-8rem)]">
         <aside
           className={`hidden lg:block border-r border-border/40 bg-card/50 backdrop-blur-sm p-6 overflow-y-auto relative transition-all duration-300 ease-in-out ${isResizing ? "select-none" : ""}`}
           style={{
@@ -1485,26 +1414,118 @@ function ToolsContent() {
           </div>
         </aside>
 
-        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-all duration-200 hover:scale-110"
+        <div className="lg:hidden fixed bottom-6 right-6 z-40">
+          <Popover.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <Popover.Trigger asChild>
+              <Button size="lg" className="shadow-lg cursor-pointer" aria-label="Toggle tool options">
+                {mobileMenuOpen ? (
+                  <>
+                    <X className="mr-2 h-5 w-5" />
+                    Close
+                  </>
+                ) : (
+                  <>
+                    <Menu className="mr-2 h-5 w-5" />
+                    Toolbox
+                  </>
+                )}
+              </Button>
+            </Popover.Trigger>
+            <Popover.Content
+              side="top"
+              align="end"
+              className="z-50 w-[min(360px,90vw)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur"
             >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Chain Builder</SheetTitle>
-              <SheetDescription>Create and manage your Markov chain</SheetDescription>
-            </SheetHeader>
-            <div className="mt-6">
-              {/* ... existing sidebar content for mobile ... */}
-              <SidebarTabs value={activeTab} onChange={setActiveTab} />
-            </div>
-          </SheetContent>
-        </Sheet>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      newDesign()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <FilePlus className="mr-2 h-4 w-4" />
+                    New Chain
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      saveDesign()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      setLibraryOpen(true)
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Library
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      handleImportClick()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      exportChain()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      exportReport()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Report
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      resetView()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset View
+                  </Button>
+                </div>
+                <div className="border-t pt-4">
+                  <div className="max-h-[52vh] overflow-y-auto pr-1">
+                    <SidebarTabs value={activeTab} onChange={setActiveTab} />
+                  </div>
+                </div>
+              </div>
+              <Popover.Arrow className="fill-card/95" />
+            </Popover.Content>
+          </Popover.Root>
+        </div>
 
         <button
           onClick={() => setIsSidebarMinimized(!isSidebarMinimized)}
@@ -1523,6 +1544,133 @@ function ToolsContent() {
         </button>
 
         <main className="flex-1 relative overflow-hidden">
+          {/* Floating Toolbox Button */}
+          <div className="hidden lg:block absolute top-6 right-6 z-40">
+            <Popover.Root open={toolboxOpen} onOpenChange={setToolboxOpen}>
+              <Popover.Trigger asChild>
+                <Button
+                  size="icon"
+                  className="h-14 w-14 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-primary/90 to-primary hover:from-primary hover:to-primary/90 border border-primary/20 hover:scale-105"
+                  aria-label="Toggle toolbox"
+                >
+                  {toolboxOpen ? (
+                    <X className="h-6 w-6 stroke-[2.5]" />
+                  ) : (
+                    <Wrench className="h-6 w-6 stroke-[2.5]" />
+                  )}
+                </Button>
+              </Popover.Trigger>
+              <Popover.Content
+                side="bottom"
+                align="end"
+                className="z-50 w-auto rounded-2xl border border-border/60 bg-card/95 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in-0 slide-in-from-top-2 duration-300"
+                sideOffset={8}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3 pb-2 border-b">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Canvas Toolbox</span>
+                    <Badge variant="secondary" className="text-[10px]">Quick Actions</Badge>
+                  </div>
+                  <TooltipProvider delayDuration={150}>
+                    <div className="grid grid-cols-4 gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={newDesign}
+                      >
+                        <FilePlus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">New Chain</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={saveDesign}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Save</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={() => setLibraryOpen(true)}
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Library</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={handleImportClick}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Import JSON</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={exportChain}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Export JSON</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={exportReport}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Export Report</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={resetView}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Reset View</TooltipContent>
+                  </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </div>
+                <Popover.Arrow className="fill-card/95" />
+              </Popover.Content>
+            </Popover.Root>
+          </div>
           <div
             ref={canvasRef}
             className={`w-full h-full bg-gradient-to-br from-muted/5 via-background to-muted/10 relative overflow-hidden select-none ${
@@ -1877,10 +2025,10 @@ function ToolsContent() {
                       onPointerDown={(e) => {
                         if (e.button !== 0) return
                         e.stopPropagation()
-                        e.preventDefault()
                         didDragRef.current = false
                         setIsPanning(false) // Ensure panning is stopped when dragging node
                         setDraggingStateId(state.id)
+                        dragStartPosRef.current = { x: e.clientX, y: e.clientY } // Track start position for threshold
                         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
                       }}
                       onPointerUp={(e) => {
@@ -1890,6 +2038,7 @@ function ToolsContent() {
                         } catch {}
                         if (draggingStateId) {
                           setDraggingStateId(null)
+                          dragStartPosRef.current = null // Clear drag start position
                           setTimeout(() => {
                             didDragRef.current = false
                           }, 0)
