@@ -114,7 +114,6 @@ function ToolsContent() {
   const [sidebarWidth, setSidebarWidth] = useState(550)
   const [isResizing, setIsResizing] = useState(false)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const autoRunIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -131,6 +130,10 @@ function ToolsContent() {
   const [pathHistoryLimit, setPathHistoryLimit] = useState<number | "all">(10)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({})
+  // Controlled tabs to prevent resets on re-render
+  const [activeTab, setActiveTab] = useState<"build" | "simulate" | "analyze">("build")
+  // Track pinch gesture data
+  const pinchRef = useRef<{ mid: { x: number; y: number }; dist: number } | null>(null)
 
   // Track changes to mark unsaved changes
   useEffect(() => {
@@ -217,10 +220,22 @@ function ToolsContent() {
     [],
   )
 
-  const CANVAS_WIDTH = 2000
-  const CANVAS_HEIGHT = 1500
-  const MAX_PAN_X = 5000 // allow large but finite pan for stability
-  const MAX_PAN_Y = 5000
+  // Device-specific canvas bounds
+  const getDeviceType = () => {
+    if (typeof window !== 'undefined') {
+      const w = window.innerWidth
+      if (w < 640) return 'phone'
+      if (w < 1024) return 'tablet'
+      return 'desktop'
+    }
+    return 'desktop'
+  }
+
+  const deviceType = typeof window !== 'undefined' ? getDeviceType() : 'desktop'
+  const CANVAS_WIDTH = deviceType === 'phone' ? 1200 : deviceType === 'tablet' ? 1600 : 2000
+  const CANVAS_HEIGHT = deviceType === 'phone' ? 900 : deviceType === 'tablet' ? 1200 : 1500
+  const MAX_PAN_X = CANVAS_WIDTH * 1.5
+  const MAX_PAN_Y = CANVAS_HEIGHT * 1.5
 
   // Schedule batched view updates (pan/zoom) using rAF for smoothness
   const scheduleViewUpdate = useCallback((next: { pan?: { x: number; y: number }; scale?: number }) => {
@@ -245,7 +260,7 @@ function ToolsContent() {
     const bx = rect.width / 2 - CANVAS_WIDTH / 2
     const by = rect.height / 2 - CANVAS_HEIGHT / 2
     return { bx, by, rect }
-  }, [])
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT])
 
   const clientToWorld = useCallback(
     (clientX: number, clientY: number) => {
@@ -266,15 +281,18 @@ function ToolsContent() {
     const x1 = (rect.width - bx - panOffset.x) / scale
     const y1 = (rect.height - by - panOffset.y) / scale
     return { x0, y0, x1, y1 }
-  }, [getBaseCenterOffset, panOffset.x, panOffset.y, scale])
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT, getBaseCenterOffset, panOffset.x, panOffset.y, scale])
 
   const addState = useCallback(
     (x: number, y: number) => {
+      // Clamp new state position to canvas bounds
+      const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, x))
+      const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, y))
       const newState: State = {
         id: `state-${Date.now()}`,
         name: `S${chain.states.length + 1}`,
-        x,
-        y,
+        x: clampedX,
+        y: clampedY,
         color: defaultColors[chain.states.length % defaultColors.length],
       }
       setChain((prev) => ({ ...prev, states: [...prev.states, newState] }))
@@ -723,8 +741,8 @@ function ToolsContent() {
   }, [selectedState])
   
   // Sidebar Tabs component reused for desktop and mobile (memoized to prevent re-renders during drag)
-  const SidebarTabs = memo(() => (
-    <Tabs defaultValue="build" className="w-full">
+  const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze"; onChange: (val: "build" | "simulate" | "analyze") => void }) => (
+    <Tabs value={value} onValueChange={(v) => onChange(v as any)} className="w-full">
       <TabsList className="grid w-full grid-cols-3 bg-muted/50">
         <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200">
           Build
@@ -821,14 +839,14 @@ function ToolsContent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Button onClick={startSimulation} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); startSimulation() }} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150">
                 <Play className="mr-2 h-4 w-4" />
                 Start
               </Button>
-              <Button onClick={stepSimulation} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); stepSimulation() }} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150">
                 Step
               </Button>
-              <Button onClick={toggleAutoRun} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); toggleAutoRun() }} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150">
                 {isAutoRunning ? (
                   <>
                     <Pause className="mr-2 h-4 w-4" />
@@ -848,7 +866,7 @@ function ToolsContent() {
             </div>
 
             {isSimulating && (
-              <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs text-muted-foreground">Speed: {simulationSpeed}ms</Label>
                 </div>
@@ -872,7 +890,7 @@ function ToolsContent() {
         </Card>
 
         {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && (
-          <Card className="animate-in fade-in-0 slide-in-from-bottom-2">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">Metrics</CardTitle>
             </CardHeader>
@@ -1058,8 +1076,11 @@ function ToolsContent() {
 
   // Pointer-based interactions: pan, drag, pinch-zoom
   const onCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Start panning on middle button or left-drag on empty canvas
-    if (e.button === 1 || e.button === 0) {
+    // Start panning on middle button or left-drag on empty canvas (not on nodes)
+    const targetEl = e.target as HTMLElement
+    const onNode = !!targetEl.closest('[data-node-id]')
+    // Don't start panning if already dragging a node
+    if ((e.button === 1 || (e.button === 0 && !onNode)) && !draggingStateId) {
       e.preventDefault()
       setIsPanning(true)
       setLastPanPoint({ x: e.clientX, y: e.clientY })
@@ -1070,7 +1091,10 @@ function ToolsContent() {
 
     if (pointersRef.current.size === 2) {
       // Start pinch gesture
-      setIsPanning(true)
+      const pts = Array.from(pointersRef.current.values())
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      pinchRef.current = { mid, dist }
     }
   }, [])
 
@@ -1081,47 +1105,29 @@ function ToolsContent() {
       }
 
       if (pointersRef.current.size >= 2) {
-        // Pinch zoom with two pointers
+        // Pinch zoom anchored at gesture midpoint using stable refs
         const pts = Array.from(pointersRef.current.values())
         const [p1, p2] = pts
-        const prevMid = { x: (lastPanPoint.x + (lastPanPoint as any).x2 || lastPanPoint.x) / 2, y: (lastPanPoint.y + (lastPanPoint as any).y2 || lastPanPoint.y) / 2 }
         const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
-
-        const prevDist = Math.hypot((lastPanPoint as any).x2 ? (lastPanPoint.x - (lastPanPoint as any).x2) : 1, (lastPanPoint as any).y2 ? (lastPanPoint.y - (lastPanPoint as any).y2) : 0.0001)
         const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y)
-        const factor = dist / (prevDist || dist)
-
-        // Zoom around the midpoint
-        const before = clientToWorld(mid.x, mid.y)
+        const prev = pinchRef.current || { mid, dist }
+        const factor = dist / (prev.dist || dist)
         const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
-        scheduleViewUpdate({ scale: nextScale })
-        const after = clientToWorld(mid.x, mid.y)
-        const dx = (after.x - before.x) * nextScale
-        const dy = (after.y - before.y) * nextScale
-        const nextPan = {
-          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + (mid.x - prevMid.x) - dx)),
-          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + (mid.y - prevMid.y) - dy)),
-        }
-        scheduleViewUpdate({ pan: nextPan })
 
-        // Store last two-pointer data
-        setLastPanPoint({ x: p1.x, y: p1.y } as any)
-        ;(lastPanPoint as any).x2 = p2.x
-        ;(lastPanPoint as any).y2 = p2.y
+        const { bx, by, rect } = getBaseCenterOffset()
+        const worldBeforeX = (mid.x - rect.left - bx - panOffset.x) / scale
+        const worldBeforeY = (mid.y - rect.top - by - panOffset.y) / scale
+        const nextPan = {
+          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, mid.x - rect.left - bx - worldBeforeX * nextScale)),
+          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, mid.y - rect.top - by - worldBeforeY * nextScale)),
+        }
+        scheduleViewUpdate({ scale: nextScale })
+        scheduleViewUpdate({ pan: nextPan })
+        pinchRef.current = { mid, dist }
         return
       }
 
-      if (isPanning) {
-        e.preventDefault()
-        const deltaX = e.clientX - lastPanPoint.x
-        const deltaY = e.clientY - lastPanPoint.y
-        const nextPan = {
-          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + deltaX)),
-          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + deltaY)),
-        }
-        scheduleViewUpdate({ pan: nextPan })
-        setLastPanPoint({ x: e.clientX, y: e.clientY })
-      } else if (draggingStateId) {
+      if (draggingStateId) {
         e.preventDefault()
         didDragRef.current = true
         const { x, y } = clientToWorld(e.clientX, e.clientY)
@@ -1138,9 +1144,19 @@ function ToolsContent() {
             dragRafRef.current = null
           })
         }
+      } else if (isPanning && !draggingStateId) {
+        e.preventDefault()
+        const deltaX = e.clientX - lastPanPoint.x
+        const deltaY = e.clientY - lastPanPoint.y
+        const nextPan = {
+          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + deltaX)),
+          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + deltaY)),
+        }
+        scheduleViewUpdate({ pan: nextPan })
+        setLastPanPoint({ x: e.clientX, y: e.clientY })
       }
     },
-    [clientToWorld, isPanning, lastPanPoint, panOffset.x, panOffset.y, scheduleViewUpdate, draggingStateId, scale],
+    [clientToWorld, isPanning, lastPanPoint, panOffset.x, panOffset.y, scheduleViewUpdate, draggingStateId, scale, getBaseCenterOffset],
   )
 
   const onCanvasPointerUp = useCallback(
@@ -1162,10 +1178,16 @@ function ToolsContent() {
         // Use pending position if available, otherwise use state
         const finalPos = pendingDragPosRef.current || dragPosition
         if (finalPos) {
-          setChain((prev) => ({
-            ...prev,
-            states: prev.states.map((s) => (s.id === finalPos.id ? { ...s, x: finalPos.x, y: finalPos.y } : s)),
-          }))
+          setChain((prev) => {
+            // Clamp node position to canvas bounds
+            const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, finalPos.x))
+            const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, finalPos.y))
+            // Deep clone states to avoid reference issues
+            const newStates = prev.states.map((s) =>
+              s.id === finalPos.id ? { ...s, x: clampedX, y: clampedY } : { ...s }
+            )
+            return { ...prev, states: newStates }
+          })
           setDragPosition(null)
           pendingDragPosRef.current = null
         }
@@ -1176,6 +1198,7 @@ function ToolsContent() {
       }
       if (pointersRef.current.size < 2) {
         setIsPanning(false)
+        pinchRef.current = null
       }
     },
     [draggingStateId],
@@ -1187,35 +1210,44 @@ function ToolsContent() {
       const zoomIntensity = 0.0015
       const delta = -e.deltaY
       const factor = Math.exp(delta * zoomIntensity)
-      const before = clientToWorld(e.clientX, e.clientY)
       const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
-      scheduleViewUpdate({ scale: nextScale })
-      const after = clientToWorld(e.clientX, e.clientY)
-      const dx = (after.x - before.x) * nextScale
-      const dy = (after.y - before.y) * nextScale
+
+      const { bx, by, rect } = getBaseCenterOffset()
+      const worldBeforeX = (e.clientX - rect.left - bx - panOffset.x) / scale
+      const worldBeforeY = (e.clientY - rect.top - by - panOffset.y) / scale
       const nextPan = {
-        x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x - dx)),
-        y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y - dy)),
+        x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, e.clientX - rect.left - bx - worldBeforeX * nextScale)),
+        y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, e.clientY - rect.top - by - worldBeforeY * nextScale)),
       }
+      scheduleViewUpdate({ scale: nextScale })
       scheduleViewUpdate({ pan: nextPan })
     },
-    [clientToWorld, panOffset.x, panOffset.y, scale, scheduleViewUpdate],
+    [getBaseCenterOffset, panOffset.x, panOffset.y, scale, scheduleViewUpdate],
   )
 
-  const onCanvasDoubleClick = useCallback(() => {
+  // Reset pan/zoom to defaults
+  const resetView = useCallback(() => {
     scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
   }, [scheduleViewUpdate])
+
+  const onCanvasDoubleClick = useCallback(() => {
+    resetView()
+  }, [resetView])
 
   // Double-tap support for touch
   const onCanvasPointerUpForTap = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // Only primary or middle button
+      if (!(e.button === 0 || e.button === 1)) return
+      // If a node drag occurred, skip double-tap reset
+      if (didDragRef.current) return
       const now = Date.now()
       if (now - lastTapTimeRef.current < 300) {
-        scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
+        resetView()
       }
       lastTapTimeRef.current = now
     },
-    [scheduleViewUpdate],
+    [resetView],
   )
 
   const handleSidebarResize = useCallback(
@@ -1401,6 +1433,16 @@ function ToolsContent() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={resetView}
+                className="transition-all duration-200 hover:scale-105 bg-transparent"
+                title="Restore View"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                <span className="hidden xl:inline">Restore View</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={exportReport}
                 className="transition-all duration-200 hover:scale-105 bg-transparent"
               >
@@ -1409,125 +1451,7 @@ function ToolsContent() {
               </Button>
             </div>
 
-            {/* Mobile Menu Button */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-72">
-                <SheetHeader>
-                  <SheetTitle>Menu</SheetTitle>
-                  <SheetDescription>Navigation and actions</SheetDescription>
-                </SheetHeader>
-                <div className="flex flex-col gap-4 mt-6">
-                  <div className="flex flex-col gap-2">
-                    <Link
-                      href="/learn"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Learn
-                    </Link>
-                    <Link href="/tools" className="px-4 py-2 text-sm text-foreground font-medium bg-muted rounded-lg">
-                      Tools
-                    </Link>
-                    <Link
-                      href="/examples"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Examples
-                    </Link>
-                    <Link
-                      href="/practice"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Practice
-                    </Link>
-                    <Link
-                      href="/about"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      About
-                    </Link>
-                  </div>
-                  <div className="border-t pt-4 flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        newDesign()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <FilePlus className="mr-2 h-4 w-4" />
-                      New Design
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        saveDesign()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      Save
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLibraryOpen(true)
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <FolderOpen className="mr-2 h-4 w-4" />
-                      Library
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        handleImportClick()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        exportChain()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Export
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        exportReport()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Export Report
-                    </Button>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+            {/* Mobile menu removed to avoid duplicate hamburger */}
           </div>
         </div>
       </nav>
@@ -1557,7 +1481,7 @@ function ToolsContent() {
               </p>
             </div>
 
-            <SidebarTabs />
+            <SidebarTabs value={activeTab} onChange={setActiveTab} />
           </div>
         </aside>
 
@@ -1577,7 +1501,7 @@ function ToolsContent() {
             </SheetHeader>
             <div className="mt-6">
               {/* ... existing sidebar content for mobile ... */}
-              <SidebarTabs />
+              <SidebarTabs value={activeTab} onChange={setActiveTab} />
             </div>
           </SheetContent>
         </Sheet>
@@ -1955,6 +1879,7 @@ function ToolsContent() {
                         e.stopPropagation()
                         e.preventDefault()
                         didDragRef.current = false
+                        setIsPanning(false) // Ensure panning is stopped when dragging node
                         setDraggingStateId(state.id)
                         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
                       }}
