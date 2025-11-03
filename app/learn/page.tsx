@@ -107,9 +107,6 @@ export default function LearnPage() {
   const currentCourse = courses.find((c) => c.id === selectedCourseId)
   
   // Calculate progress for currently loaded lessons (used for per-lesson UI only)
-  const completedLessonsCount = lessons.filter((l) => progress[l.id]?.completed).length
-  const courseProgress = lessons.length > 0 ? (completedLessonsCount / lessons.length) * 100 : 0
-
   // Stable per-course progress computed from prefetched map to avoid UI resets
   const getCourseProgress = useCallback(
     (courseId: string) => {
@@ -189,19 +186,6 @@ export default function LearnPage() {
                 </Link>
                 <ThemeSwitcher />
               </div>
-              <div className="hidden md:flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">Overall: {Math.round(globalProgress)}%</span>
-                <Progress value={globalProgress} className="w-24 transition-all duration-300" />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden cursor-pointer"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                aria-label="Toggle sidebar"
-              >
-                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
               <MobileNav currentPath="/learn" />
             </div>
           </div>
@@ -285,10 +269,15 @@ export default function LearnPage() {
               </div>
               <h1 className="text-3xl font-bold">{currentCourse?.title}</h1>
               <p className="text-lg text-muted-foreground">{currentCourse?.description}</p>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Progress value={selectedCourseProgress} className="w-32 transition-all duration-500" />
                   <span className="text-sm font-medium">{Math.round(selectedCourseProgress)}% complete</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Overall</span>
+                  <Progress value={globalProgress} className="w-24 transition-all duration-300" />
+                  <span className="font-medium text-foreground">{Math.round(globalProgress)}%</span>
                 </div>
               </div>
             </div>
@@ -390,6 +379,28 @@ export default function LearnPage() {
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
+
+      {/* Mobile Floating Sidebar Toggle */}
+      <div className="md:hidden fixed bottom-6 right-6 z-50">
+        <Button
+          size="lg"
+          className="shadow-lg cursor-pointer"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label="Toggle course sidebar"
+        >
+          {sidebarOpen ? (
+            <>
+              <X className="mr-2 h-5 w-5" />
+              Close
+            </>
+          ) : (
+            <>
+              <Menu className="mr-2 h-5 w-5" />
+              Courses
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -31,6 +31,8 @@ import {
   FileText,
   FilePlus,
   Menu,
+  X,
+  Wrench,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -41,8 +43,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeSwitcher } from "@/components/theme-switcher"
+import { MobileNav } from "@/components/mobile-nav"
 
 interface State {
   id: string
@@ -114,15 +116,17 @@ function ToolsContent() {
   const [sidebarWidth, setSidebarWidth] = useState(550)
   const [isResizing, setIsResizing] = useState(false)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const autoRunIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [draggingStateId, setDraggingStateId] = useState<string | null>(null)
-  const [dragPosition, setDragPosition] = useState<{ id: string; x: number; y: number } | null>(null)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragPosRef = useRef<{ id: string; x: number; y: number } | null>(null)
+  const currentDragPosRef = useRef<{ id: string; x: number; y: number } | null>(null)
   const didDragRef = useRef(false)
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null)
+  const [dragRenderTick, setDragRenderTick] = useState(0)
+  const DRAG_THRESHOLD = 5 // pixels
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [saveName, setSaveName] = useState("")
@@ -131,6 +135,11 @@ function ToolsContent() {
   const [pathHistoryLimit, setPathHistoryLimit] = useState<number | "all">(10)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({})
+  // Controlled tabs to prevent resets on re-render
+  const [activeTab, setActiveTab] = useState<"build" | "simulate" | "analyze">("build")
+  // Track pinch gesture data
+  const pinchRef = useRef<{ mid: { x: number; y: number }; dist: number } | null>(null)
+  const [toolboxOpen, setToolboxOpen] = useState(false)
 
   // Track changes to mark unsaved changes
   useEffect(() => {
@@ -217,10 +226,22 @@ function ToolsContent() {
     [],
   )
 
-  const CANVAS_WIDTH = 2000
-  const CANVAS_HEIGHT = 1500
-  const MAX_PAN_X = 5000 // allow large but finite pan for stability
-  const MAX_PAN_Y = 5000
+  // Device-specific canvas bounds
+  const getDeviceType = () => {
+    if (typeof window !== 'undefined') {
+      const w = window.innerWidth
+      if (w < 640) return 'phone'
+      if (w < 1024) return 'tablet'
+      return 'desktop'
+    }
+    return 'desktop'
+  }
+
+  const deviceType = typeof window !== 'undefined' ? getDeviceType() : 'desktop'
+  const CANVAS_WIDTH = deviceType === 'phone' ? 1200 : deviceType === 'tablet' ? 1600 : 2000
+  const CANVAS_HEIGHT = deviceType === 'phone' ? 900 : deviceType === 'tablet' ? 1200 : 1500
+  const MAX_PAN_X = CANVAS_WIDTH * 1.5
+  const MAX_PAN_Y = CANVAS_HEIGHT * 1.5
 
   // Schedule batched view updates (pan/zoom) using rAF for smoothness
   const scheduleViewUpdate = useCallback((next: { pan?: { x: number; y: number }; scale?: number }) => {
@@ -245,7 +266,7 @@ function ToolsContent() {
     const bx = rect.width / 2 - CANVAS_WIDTH / 2
     const by = rect.height / 2 - CANVAS_HEIGHT / 2
     return { bx, by, rect }
-  }, [])
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT])
 
   const clientToWorld = useCallback(
     (clientX: number, clientY: number) => {
@@ -266,15 +287,18 @@ function ToolsContent() {
     const x1 = (rect.width - bx - panOffset.x) / scale
     const y1 = (rect.height - by - panOffset.y) / scale
     return { x0, y0, x1, y1 }
-  }, [getBaseCenterOffset, panOffset.x, panOffset.y, scale])
+  }, [CANVAS_WIDTH, CANVAS_HEIGHT, getBaseCenterOffset, panOffset.x, panOffset.y, scale])
 
   const addState = useCallback(
     (x: number, y: number) => {
+      // Clamp new state position to canvas bounds
+      const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, x))
+      const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, y))
       const newState: State = {
         id: `state-${Date.now()}`,
         name: `S${chain.states.length + 1}`,
-        x,
-        y,
+        x: clampedX,
+        y: clampedY,
         color: defaultColors[chain.states.length % defaultColors.length],
       }
       setChain((prev) => ({ ...prev, states: [...prev.states, newState] }))
@@ -723,8 +747,8 @@ function ToolsContent() {
   }, [selectedState])
   
   // Sidebar Tabs component reused for desktop and mobile (memoized to prevent re-renders during drag)
-  const SidebarTabs = memo(() => (
-    <Tabs defaultValue="build" className="w-full">
+  const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze"; onChange: (val: "build" | "simulate" | "analyze") => void }) => (
+    <Tabs value={value} onValueChange={(v) => onChange(v as any)} className="w-full">
       <TabsList className="grid w-full grid-cols-3 bg-muted/50">
         <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200">
           Build
@@ -821,14 +845,14 @@ function ToolsContent() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Button onClick={startSimulation} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); startSimulation() }} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150">
                 <Play className="mr-2 h-4 w-4" />
                 Start
               </Button>
-              <Button onClick={stepSimulation} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); stepSimulation() }} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150">
                 Step
               </Button>
-              <Button onClick={toggleAutoRun} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); toggleAutoRun() }} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150">
                 {isAutoRunning ? (
                   <>
                     <Pause className="mr-2 h-4 w-4" />
@@ -848,7 +872,7 @@ function ToolsContent() {
             </div>
 
             {isSimulating && (
-              <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs text-muted-foreground">Speed: {simulationSpeed}ms</Label>
                 </div>
@@ -872,7 +896,7 @@ function ToolsContent() {
         </Card>
 
         {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && (
-          <Card className="animate-in fade-in-0 slide-in-from-bottom-2">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">Metrics</CardTitle>
             </CardHeader>
@@ -1058,8 +1082,11 @@ function ToolsContent() {
 
   // Pointer-based interactions: pan, drag, pinch-zoom
   const onCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Start panning on middle button or left-drag on empty canvas
-    if (e.button === 1 || e.button === 0) {
+    // Start panning on middle button or left-drag on empty canvas (not on nodes)
+    const targetEl = e.target as HTMLElement
+    const onNode = !!targetEl.closest('[data-node-id]')
+    // Don't start panning if already dragging a node
+    if ((e.button === 1 || (e.button === 0 && !onNode)) && !draggingStateId) {
       e.preventDefault()
       setIsPanning(true)
       setLastPanPoint({ x: e.clientX, y: e.clientY })
@@ -1070,7 +1097,10 @@ function ToolsContent() {
 
     if (pointersRef.current.size === 2) {
       // Start pinch gesture
-      setIsPanning(true)
+      const pts = Array.from(pointersRef.current.values())
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      pinchRef.current = { mid, dist }
     }
   }, [])
 
@@ -1081,37 +1111,72 @@ function ToolsContent() {
       }
 
       if (pointersRef.current.size >= 2) {
-        // Pinch zoom with two pointers
+        // Pinch zoom anchored at gesture midpoint using stable refs
         const pts = Array.from(pointersRef.current.values())
         const [p1, p2] = pts
-        const prevMid = { x: (lastPanPoint.x + (lastPanPoint as any).x2 || lastPanPoint.x) / 2, y: (lastPanPoint.y + (lastPanPoint as any).y2 || lastPanPoint.y) / 2 }
         const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
-
-        const prevDist = Math.hypot((lastPanPoint as any).x2 ? (lastPanPoint.x - (lastPanPoint as any).x2) : 1, (lastPanPoint as any).y2 ? (lastPanPoint.y - (lastPanPoint as any).y2) : 0.0001)
         const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y)
-        const factor = dist / (prevDist || dist)
-
-        // Zoom around the midpoint
-        const before = clientToWorld(mid.x, mid.y)
+        const prev = pinchRef.current || { mid, dist }
+        const factor = dist / (prev.dist || dist)
         const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
-        scheduleViewUpdate({ scale: nextScale })
-        const after = clientToWorld(mid.x, mid.y)
-        const dx = (after.x - before.x) * nextScale
-        const dy = (after.y - before.y) * nextScale
-        const nextPan = {
-          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + (mid.x - prevMid.x) - dx)),
-          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + (mid.y - prevMid.y) - dy)),
-        }
-        scheduleViewUpdate({ pan: nextPan })
 
-        // Store last two-pointer data
-        setLastPanPoint({ x: p1.x, y: p1.y } as any)
-        ;(lastPanPoint as any).x2 = p2.x
-        ;(lastPanPoint as any).y2 = p2.y
+        const { bx, by, rect } = getBaseCenterOffset()
+        const worldBeforeX = (mid.x - rect.left - bx - panOffset.x) / scale
+        const worldBeforeY = (mid.y - rect.top - by - panOffset.y) / scale
+        const nextPan = {
+          x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, mid.x - rect.left - bx - worldBeforeX * nextScale)),
+          y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, mid.y - rect.top - by - worldBeforeY * nextScale)),
+        }
+        scheduleViewUpdate({ scale: nextScale })
+        scheduleViewUpdate({ pan: nextPan })
+        pinchRef.current = { mid, dist }
         return
       }
 
-      if (isPanning) {
+      if (draggingStateId) {
+        // Check if we've moved beyond the drag threshold
+        if (dragStartPosRef.current) {
+          const dx = e.clientX - dragStartPosRef.current.x
+          const dy = e.clientY - dragStartPosRef.current.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          
+          // Only start actual dragging if moved beyond threshold
+          if (distance > DRAG_THRESHOLD) {
+            e.preventDefault()
+            didDragRef.current = true
+            dragStartPosRef.current = null // Clear threshold check
+            
+            const { x, y } = clientToWorld(e.clientX, e.clientY)
+            
+            // Always update pending position immediately
+            pendingDragPosRef.current = { id: draggingStateId, x, y }
+            currentDragPosRef.current = { id: draggingStateId, x, y }
+            
+            // Throttle re-renders with RAF for smooth dragging
+            if (!dragRafRef.current) {
+              dragRafRef.current = requestAnimationFrame(() => {
+                // Trigger minimal re-render only for the dragged node
+                setDragRenderTick(t => t + 1)
+                dragRafRef.current = null
+              })
+            }
+          }
+        } else if (didDragRef.current) {
+          // Already dragging, continue
+          e.preventDefault()
+          const { x, y } = clientToWorld(e.clientX, e.clientY)
+          pendingDragPosRef.current = { id: draggingStateId, x, y }
+          currentDragPosRef.current = { id: draggingStateId, x, y }
+          
+          if (!dragRafRef.current) {
+            dragRafRef.current = requestAnimationFrame(() => {
+              // Trigger minimal re-render only for the dragged node
+              setDragRenderTick(t => t + 1)
+              dragRafRef.current = null
+            })
+          }
+        }
+      } else if (isPanning && !draggingStateId) {
         e.preventDefault()
         const deltaX = e.clientX - lastPanPoint.x
         const deltaY = e.clientY - lastPanPoint.y
@@ -1121,26 +1186,9 @@ function ToolsContent() {
         }
         scheduleViewUpdate({ pan: nextPan })
         setLastPanPoint({ x: e.clientX, y: e.clientY })
-      } else if (draggingStateId) {
-        e.preventDefault()
-        didDragRef.current = true
-        const { x, y } = clientToWorld(e.clientX, e.clientY)
-        
-        // Always update pending position immediately
-        pendingDragPosRef.current = { id: draggingStateId, x, y }
-        
-        // Throttle state updates with RAF for smooth dragging
-        if (!dragRafRef.current) {
-          dragRafRef.current = requestAnimationFrame(() => {
-            if (pendingDragPosRef.current) {
-              setDragPosition(pendingDragPosRef.current)
-            }
-            dragRafRef.current = null
-          })
-        }
       }
     },
-    [clientToWorld, isPanning, lastPanPoint, panOffset.x, panOffset.y, scheduleViewUpdate, draggingStateId, scale],
+    [clientToWorld, isPanning, lastPanPoint, panOffset.x, panOffset.y, scheduleViewUpdate, draggingStateId, scale, getBaseCenterOffset],
   )
 
   const onCanvasPointerUp = useCallback(
@@ -1159,14 +1207,21 @@ function ToolsContent() {
           dragRafRef.current = null
         }
         
-        // Use pending position if available, otherwise use state
-        const finalPos = pendingDragPosRef.current || dragPosition
+        // Use current drag position from ref
+        const finalPos = currentDragPosRef.current || pendingDragPosRef.current
         if (finalPos) {
-          setChain((prev) => ({
-            ...prev,
-            states: prev.states.map((s) => (s.id === finalPos.id ? { ...s, x: finalPos.x, y: finalPos.y } : s)),
-          }))
-          setDragPosition(null)
+          setChain((prev) => {
+            // Clamp node position to canvas bounds
+            const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, finalPos.x))
+            const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, finalPos.y))
+            // Only update the dragged node
+            const newStates = prev.states.map((s) =>
+              s.id === finalPos.id ? { ...s, x: clampedX, y: clampedY } : s
+            )
+            return { ...prev, states: newStates }
+          })
+          // Clear refs
+          currentDragPosRef.current = null
           pendingDragPosRef.current = null
         }
         setDraggingStateId(null)
@@ -1176,6 +1231,7 @@ function ToolsContent() {
       }
       if (pointersRef.current.size < 2) {
         setIsPanning(false)
+        pinchRef.current = null
       }
     },
     [draggingStateId],
@@ -1187,35 +1243,44 @@ function ToolsContent() {
       const zoomIntensity = 0.0015
       const delta = -e.deltaY
       const factor = Math.exp(delta * zoomIntensity)
-      const before = clientToWorld(e.clientX, e.clientY)
       const nextScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
-      scheduleViewUpdate({ scale: nextScale })
-      const after = clientToWorld(e.clientX, e.clientY)
-      const dx = (after.x - before.x) * nextScale
-      const dy = (after.y - before.y) * nextScale
+
+      const { bx, by, rect } = getBaseCenterOffset()
+      const worldBeforeX = (e.clientX - rect.left - bx - panOffset.x) / scale
+      const worldBeforeY = (e.clientY - rect.top - by - panOffset.y) / scale
       const nextPan = {
-        x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x - dx)),
-        y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y - dy)),
+        x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, e.clientX - rect.left - bx - worldBeforeX * nextScale)),
+        y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, e.clientY - rect.top - by - worldBeforeY * nextScale)),
       }
+      scheduleViewUpdate({ scale: nextScale })
       scheduleViewUpdate({ pan: nextPan })
     },
-    [clientToWorld, panOffset.x, panOffset.y, scale, scheduleViewUpdate],
+    [getBaseCenterOffset, panOffset.x, panOffset.y, scale, scheduleViewUpdate],
   )
 
-  const onCanvasDoubleClick = useCallback(() => {
+  // Reset pan/zoom to defaults
+  const resetView = useCallback(() => {
     scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
   }, [scheduleViewUpdate])
+
+  const onCanvasDoubleClick = useCallback(() => {
+    resetView()
+  }, [resetView])
 
   // Double-tap support for touch
   const onCanvasPointerUpForTap = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // Only primary or middle button
+      if (!(e.button === 0 || e.button === 1)) return
+      // If a node drag occurred, skip double-tap reset
+      if (didDragRef.current) return
       const now = Date.now()
       if (now - lastTapTimeRef.current < 300) {
-        scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
+        resetView()
       }
       lastTapTimeRef.current = now
     },
-    [scheduleViewUpdate],
+    [resetView],
   )
 
   const handleSidebarResize = useCallback(
@@ -1255,19 +1320,19 @@ function ToolsContent() {
     [sidebarWidth],
   )
 
-  // Helper to get state position (use dragPosition if dragging, otherwise chain state)
+  // Helper to get state position (use refs only to avoid re-renders)
   const getStatePosition = useCallback(
     (state: State) => {
-      // Use pending position for smoothest rendering
+      // Check refs for drag position (no state dependency = no unnecessary re-renders)
+      if (currentDragPosRef.current && currentDragPosRef.current.id === state.id) {
+        return { x: currentDragPosRef.current.x, y: currentDragPosRef.current.y }
+      }
       if (pendingDragPosRef.current && pendingDragPosRef.current.id === state.id) {
         return { x: pendingDragPosRef.current.x, y: pendingDragPosRef.current.y }
       }
-      if (dragPosition && dragPosition.id === state.id) {
-        return { x: dragPosition.x, y: dragPosition.y }
-      }
       return { x: state.x, y: state.y }
     },
-    [dragPosition],
+    [], // No dependencies - stable function
   )
 
   // Visible world bounds (for simple virtualization)
@@ -1283,256 +1348,44 @@ function ToolsContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <nav className="border-b border-border/40 bg-card/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm">
+      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/" className="flex items-center gap-2 group">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-primary/25 transition-all duration-300 group-hover:scale-105">
-                  <span className="text-primary-foreground font-bold text-sm sm:text-base">M</span>
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">M</span>
                 </div>
-                <span className="font-semibold text-base sm:text-lg bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  MarkovLearn
-                </span>
+                <span className="font-semibold text-lg">MarkovLearn</span>
               </Link>
             </div>
-
-            {/* Desktop Navigation */}
-            {/* <div className="hidden lg:flex items-center gap-6">
-              <Link
-                href="/learn"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Learn
-              </Link>
-              <Link
-                href="/tools"
-                className="text-sm text-foreground font-medium transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary"
-              >
-                Tools
-              </Link>
-              <Link
-                href="/examples"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Examples
-              </Link>
-              <Link
-                href="/practice"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Practice
-              </Link>
-              <Link
-                href="/about"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                About
-              </Link>
-            </div> */}
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                Learn
-              </Link>
-              <Link href="/tools" className="text-foreground font-medium transition-colors">
-                Tools
-              </Link>
-              <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                Examples
-              </Link>
-              <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                Practice
-              </Link>
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                About
-              </Link>
-              <ThemeSwitcher />
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-6">
+                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Learn
+                </Link>
+                <Link href="/tools" className="text-foreground font-medium transition-colors">
+                  Tools
+                </Link>
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Examples
+                </Link>
+                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Practice
+                </Link>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                  About
+                </Link>
+                <ThemeSwitcher />
+              </div>
+              <MobileNav currentPath="/tools" />
             </div>
-            <div className="flex md:hidden items-center gap-2">
-              <ThemeSwitcher />
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-2">
-              <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={newDesign}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <FilePlus className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">New</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={saveDesign}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <Save className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">Save</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLibraryOpen(true)}
-                className="transition-all duration-200 hover:scale-105"
-              >
-                <FolderOpen className="mr-2 h-4 w-4" />
-                <span className="hidden xl:inline">Library</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleImportClick}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportChain}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportReport}
-                className="transition-all duration-200 hover:scale-105 bg-transparent"
-              >
-                <FileText className="h-4 w-4" />
-                Export Report
-              </Button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-72">
-                <SheetHeader>
-                  <SheetTitle>Menu</SheetTitle>
-                  <SheetDescription>Navigation and actions</SheetDescription>
-                </SheetHeader>
-                <div className="flex flex-col gap-4 mt-6">
-                  <div className="flex flex-col gap-2">
-                    <Link
-                      href="/learn"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Learn
-                    </Link>
-                    <Link href="/tools" className="px-4 py-2 text-sm text-foreground font-medium bg-muted rounded-lg">
-                      Tools
-                    </Link>
-                    <Link
-                      href="/examples"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Examples
-                    </Link>
-                    <Link
-                      href="/practice"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      Practice
-                    </Link>
-                    <Link
-                      href="/about"
-                      className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      About
-                    </Link>
-                  </div>
-                  <div className="border-t pt-4 flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        newDesign()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <FilePlus className="mr-2 h-4 w-4" />
-                      New Design
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        saveDesign()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      Save
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLibraryOpen(true)
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <FolderOpen className="mr-2 h-4 w-4" />
-                      Library
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        handleImportClick()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        exportChain()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Export
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        exportReport()
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Export Report
-                    </Button>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)]">
+      <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
+      <div className="flex min-h-[calc(100vh-7rem)] sm:min-h-[calc(100vh-8rem)]">
         <aside
           className={`hidden lg:block border-r border-border/40 bg-card/50 backdrop-blur-sm p-6 overflow-y-auto relative transition-all duration-300 ease-in-out ${isResizing ? "select-none" : ""}`}
           style={{
@@ -1557,30 +1410,122 @@ function ToolsContent() {
               </p>
             </div>
 
-            <SidebarTabs />
+            <SidebarTabs value={activeTab} onChange={setActiveTab} />
           </div>
         </aside>
 
-        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-all duration-200 hover:scale-110"
+        <div className="lg:hidden fixed bottom-6 right-6 z-40">
+          <Popover.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <Popover.Trigger asChild>
+              <Button size="lg" className="shadow-lg cursor-pointer" aria-label="Toggle tool options">
+                {mobileMenuOpen ? (
+                  <>
+                    <X className="mr-2 h-5 w-5" />
+                    Close
+                  </>
+                ) : (
+                  <>
+                    <Menu className="mr-2 h-5 w-5" />
+                    Toolbox
+                  </>
+                )}
+              </Button>
+            </Popover.Trigger>
+            <Popover.Content
+              side="top"
+              align="end"
+              className="z-50 w-[min(360px,90vw)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur"
             >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Chain Builder</SheetTitle>
-              <SheetDescription>Create and manage your Markov chain</SheetDescription>
-            </SheetHeader>
-            <div className="mt-6">
-              {/* ... existing sidebar content for mobile ... */}
-              <SidebarTabs />
-            </div>
-          </SheetContent>
-        </Sheet>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      newDesign()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <FilePlus className="mr-2 h-4 w-4" />
+                    New Chain
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      saveDesign()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      setLibraryOpen(true)
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Library
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      handleImportClick()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      exportChain()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      exportReport()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Report
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start"
+                    onClick={() => {
+                      resetView()
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset View
+                  </Button>
+                </div>
+                <div className="border-t pt-4">
+                  <div className="max-h-[52vh] overflow-y-auto pr-1">
+                    <SidebarTabs value={activeTab} onChange={setActiveTab} />
+                  </div>
+                </div>
+              </div>
+              <Popover.Arrow className="fill-card/95" />
+            </Popover.Content>
+          </Popover.Root>
+        </div>
 
         <button
           onClick={() => setIsSidebarMinimized(!isSidebarMinimized)}
@@ -1599,6 +1544,133 @@ function ToolsContent() {
         </button>
 
         <main className="flex-1 relative overflow-hidden">
+          {/* Floating Toolbox Button */}
+          <div className="hidden lg:block absolute top-6 right-6 z-40">
+            <Popover.Root open={toolboxOpen} onOpenChange={setToolboxOpen}>
+              <Popover.Trigger asChild>
+                <Button
+                  size="icon"
+                  className="h-14 w-14 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-primary/90 to-primary hover:from-primary hover:to-primary/90 border border-primary/20 hover:scale-105"
+                  aria-label="Toggle toolbox"
+                >
+                  {toolboxOpen ? (
+                    <X className="h-6 w-6 stroke-[2.5]" />
+                  ) : (
+                    <Wrench className="h-6 w-6 stroke-[2.5]" />
+                  )}
+                </Button>
+              </Popover.Trigger>
+              <Popover.Content
+                side="bottom"
+                align="end"
+                className="z-50 w-auto rounded-2xl border border-border/60 bg-card/95 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in-0 slide-in-from-top-2 duration-300"
+                sideOffset={8}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3 pb-2 border-b">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Canvas Toolbox</span>
+                    <Badge variant="secondary" className="text-[10px]">Quick Actions</Badge>
+                  </div>
+                  <TooltipProvider delayDuration={150}>
+                    <div className="grid grid-cols-4 gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={newDesign}
+                      >
+                        <FilePlus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">New Chain</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={saveDesign}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Save</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={() => setLibraryOpen(true)}
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Library</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={handleImportClick}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Import JSON</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={exportChain}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Export JSON</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={exportReport}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Export Report</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
+                        onClick={resetView}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Reset View</TooltipContent>
+                  </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </div>
+                <Popover.Arrow className="fill-card/95" />
+              </Popover.Content>
+            </Popover.Root>
+          </div>
           <div
             ref={canvasRef}
             className={`w-full h-full bg-gradient-to-br from-muted/5 via-background to-muted/10 relative overflow-hidden select-none ${
@@ -1953,9 +2025,10 @@ function ToolsContent() {
                       onPointerDown={(e) => {
                         if (e.button !== 0) return
                         e.stopPropagation()
-                        e.preventDefault()
                         didDragRef.current = false
+                        setIsPanning(false) // Ensure panning is stopped when dragging node
                         setDraggingStateId(state.id)
+                        dragStartPosRef.current = { x: e.clientX, y: e.clientY } // Track start position for threshold
                         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
                       }}
                       onPointerUp={(e) => {
@@ -1965,6 +2038,7 @@ function ToolsContent() {
                         } catch {}
                         if (draggingStateId) {
                           setDraggingStateId(null)
+                          dragStartPosRef.current = null // Clear drag start position
                           setTimeout(() => {
                             didDragRef.current = false
                           }, 0)

@@ -293,7 +293,7 @@ export default function AboutPage() {
             </p>
             <div className="pt-4 border-t border-border text-center text-sm text-muted-foreground">
               <p>Built with ❤️ for the mathematics education community</p>
-              <p className="mt-1">© 2024 MarkovLearn. Open source and freely available.</p>
+              <p className="mt-1">© 2025 MarkovLearn. Open source and freely available.</p>
             </div>
           </CardContent>
         </Card>
