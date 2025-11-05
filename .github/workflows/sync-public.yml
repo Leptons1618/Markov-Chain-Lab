@@ -20,4 +20,4 @@ jobs:
           git config user.email "anishgiri163@gmail.com"
 
           git remote add public https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/Leptons1618/Markov-Chain-Lab.git
-          git push --force public public-branch:main
+          git push --force public main:main
