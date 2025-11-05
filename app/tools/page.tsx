@@ -539,14 +539,6 @@ function ToolsContent() {
       // Don't add nodes if clicking on a state node (they have their own click handlers)
       if (target.closest("[data-node-id]")) return
 
-      // CRITICAL: Prevent node placement on double-tap/double-click
-      // Check if this click is part of a double-tap sequence (within 300ms of last tap)
-      const now = Date.now()
-      if (now - lastTapTimeRef.current < 350) {
-        // This is a double-tap, don't add a node
-        return
-      }
-
       const { x, y } = clientToWorld(e.clientX, e.clientY)
       addState(x, y)
       setSelectedState(null)
@@ -1449,7 +1441,10 @@ function ToolsContent() {
       // Only primary or middle button
       if (!(e.button === 0 || e.button === 1)) return
       // If a node drag occurred, skip double-tap reset
-      if (didDragRef.current) return
+      if (didDragRef.current) {
+        lastTapTimeRef.current = 0 // Reset to prevent accidental double-tap after drag
+        return
+      }
       
       // Ignore if tap is on a node or interactive element
       const target = e.target as HTMLElement
@@ -1458,18 +1453,22 @@ function ToolsContent() {
           target.closest('[role="dialog"]') ||
           target.closest('[data-radix-popper-content-wrapper]') ||
           target.closest('[data-radix-portal]')) {
+        lastTapTimeRef.current = 0 // Reset since this isn't a canvas tap
         return
       }
       
       const now = Date.now()
-      if (now - lastTapTimeRef.current < 300) {
+      const timeSinceLastTap = now - lastTapTimeRef.current
+      
+      if (timeSinceLastTap > 0 && timeSinceLastTap < 300) {
         // Double-tap detected - reset view
         resetView()
-        // Prevent handleCanvasClick from being called
-        e.preventDefault()
-        e.stopPropagation()
+        // Reset the timer to prevent triple-tap issues
+        lastTapTimeRef.current = 0
+      } else {
+        // Single tap - record the time
+        lastTapTimeRef.current = now
       }
-      lastTapTimeRef.current = now
     },
     [resetView],
   )
