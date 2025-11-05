@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getStore, updateCourseLessonCounts, saveStore } from "@/lib/server/lms-store"
+import { getStore, updateCourseLessonCounts, saveStore, type Lesson } from "@/lib/server/lms-store"
 
 // GET all lessons or filter by courseId
 export async function GET(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 })
     }
 
-    const newLesson = {
+    const newLesson: Lesson = {
       id: Date.now().toString(),
       courseId,
       title,

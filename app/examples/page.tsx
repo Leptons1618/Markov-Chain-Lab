@@ -152,7 +152,7 @@ export default function ExamplesPage() {
                   className={`cursor-pointer transition-all hover:shadow-lg ${
                     selectedExample?.id === example.id ? "ring-2 ring-primary" : ""
                   }`}
-                  onClick={() => setSelectedExample(example)}
+                  onClick={() => setSelectedExample((prev) => (prev?.id === example.id ? null : example))}
                 >
                   <CardHeader>
                     <div className="flex items-center gap-3">
@@ -207,6 +207,18 @@ export default function ExamplesPage() {
                           )}
                         </div>
                       </div>
+                      {selectedExample?.id === example.id && (
+                        <div className="pt-3 border-t border-border/60">
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Button asChild className="w-full sm:w-auto">
+                              <Link href={`/tools?example=${example.id}`}>
+                                Open in Chain Builder
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -227,7 +239,7 @@ export default function ExamplesPage() {
                   className={`cursor-pointer transition-all hover:shadow-lg ${
                     selectedExample?.id === example.id ? "ring-2 ring-primary" : ""
                   }`}
-                  onClick={() => setSelectedExample(example)}
+                  onClick={() => setSelectedExample((prev) => (prev?.id === example.id ? null : example))}
                 >
                   <CardHeader>
                     <div className="flex items-center gap-3">
@@ -282,6 +294,18 @@ export default function ExamplesPage() {
                           )}
                         </div>
                       </div>
+                      {selectedExample?.id === example.id && (
+                        <div className="pt-3 border-t border-border/60">
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Button asChild className="w-full sm:w-auto">
+                              <Link href={`/tools?example=${example.id}`}>
+                                Open in Chain Builder
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -289,77 +313,6 @@ export default function ExamplesPage() {
             </div>
           </TabsContent>
         </Tabs>
-
-        {/* Detailed View */}
-        {selectedExample && (
-          <Card className="mt-8">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    {selectedExample.icon}
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">{selectedExample.title}</CardTitle>
-                    <CardDescription>{selectedExample.description}</CardDescription>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{selectedExample.difficulty}</Badge>
-                  <Badge variant={selectedExample.category === "classic" ? "secondary" : "default"}>
-                    {selectedExample.category}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* State Visualization */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">State Space</h3>
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
-                    View this example in the Chain Builder to see the full state diagram and run simulations.
-                  </p>
-                  <Button asChild>
-                    <Link href={`/tools?example=${selectedExample.id}`}>
-                      Open in Chain Builder
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Applications */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Real-World Applications</h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  {selectedExample.applications.map((application) => (
-                    <Card key={application} className="p-4">
-                      <div className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-primary" />
-                        <span className="font-medium text-sm">{application}</span>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-4 border-t border-border flex gap-3">
-                <Button asChild className="flex-1 sm:flex-initial">
-                  <Link href={`/tools?example=${selectedExample.id}`}>
-                    View in Chain Builder
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button variant="outline" className="flex-1 sm:flex-initial">
-                  View Case Study
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Call to Action */}
         <Card className="mt-8 bg-primary/5 border-primary/20">

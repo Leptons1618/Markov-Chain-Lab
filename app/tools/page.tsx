@@ -230,6 +230,9 @@ function ToolsContent() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [hasUnsavedChanges])
 
+  // Ref for zoomToFit function to avoid dependency issues
+  const zoomToFitRef = useRef<(() => void) | null>(null)
+  
   // Load from example URL parameter on mount and fetch saved designs from API
   useEffect(() => {
     // Check if loading from example
@@ -248,6 +251,12 @@ function ToolsContent() {
               const scaledDesign = scaleDesignToCanvas(example.design, CANVAS_WIDTH, CANVAS_HEIGHT)
               setChain(scaledDesign)
               setHasUnsavedChanges(false)
+              // Auto zoom-to-fit after a short delay to ensure rendering is complete
+              setTimeout(() => {
+                if (example.design.states.length > 0 && zoomToFitRef.current) {
+                  zoomToFitRef.current()
+                }
+              }, 100)
               return
             }
           }
@@ -383,6 +392,65 @@ function ToolsContent() {
     return { x0, y0, x1, y1 }
   }, [CANVAS_WIDTH, CANVAS_HEIGHT, getBaseCenterOffset, panOffset.x, panOffset.y, scale])
 
+  // Zoom to fit all nodes in view with padding
+  const zoomToFit = useCallback(() => {
+    if (chain.states.length === 0) return
+    
+    // Calculate bounding box of all nodes
+    let minX = Infinity, maxX = -Infinity
+    let minY = Infinity, maxY = -Infinity
+    
+    chain.states.forEach(state => {
+      minX = Math.min(minX, state.x)
+      maxX = Math.max(maxX, state.x)
+      minY = Math.min(minY, state.y)
+      maxY = Math.max(maxY, state.y)
+    })
+    
+    // Add padding around nodes (in world coordinates)
+    const padding = 150
+    minX -= padding
+    maxX += padding
+    minY -= padding
+    maxY += padding
+    
+    const contentWidth = maxX - minX
+    const contentHeight = maxY - minY
+    
+    if (!canvasRef.current) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    
+    // Calculate scale to fit content in viewport with some margin
+    const scaleX = (rect.width * 0.85) / contentWidth
+    const scaleY = (rect.height * 0.85) / contentHeight
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, Math.min(scaleX, scaleY)))
+    
+    // Calculate center of content
+    const contentCenterX = (minX + maxX) / 2
+    const contentCenterY = (minY + maxY) / 2
+    
+    // Calculate pan to center the content
+    const { bx, by } = getBaseCenterOffset()
+    const viewportCenterX = rect.width / 2
+    const viewportCenterY = rect.height / 2
+    
+    const newPanX = viewportCenterX - bx - contentCenterX * newScale
+    const newPanY = viewportCenterY - by - contentCenterY * newScale
+    
+    scheduleViewUpdate({ 
+      scale: newScale,
+      pan: { 
+        x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, newPanX)),
+        y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, newPanY))
+      }
+    })
+  }, [chain.states, MIN_SCALE, MAX_SCALE, MAX_PAN_X, MAX_PAN_Y, getBaseCenterOffset, scheduleViewUpdate])
+  
+  // Store zoomToFit in ref for use in effects
+  useEffect(() => {
+    zoomToFitRef.current = zoomToFit
+  }, [zoomToFit])
+
   const addState = useCallback(
     (x: number, y: number) => {
       // Clamp new state position to canvas bounds
@@ -470,6 +538,14 @@ function ToolsContent() {
 
       // Don't add nodes if clicking on a state node (they have their own click handlers)
       if (target.closest("[data-node-id]")) return
+
+      // CRITICAL: Prevent node placement on double-tap/double-click
+      // Check if this click is part of a double-tap sequence (within 300ms of last tap)
+      const now = Date.now()
+      if (now - lastTapTimeRef.current < 350) {
+        // This is a double-tap, don't add a node
+        return
+      }
 
       const { x, y } = clientToWorld(e.clientX, e.clientY)
       addState(x, y)
@@ -593,6 +669,12 @@ function ToolsContent() {
       setSelectedTransition(null)
       resetSimulation()
       setLibraryOpen(false)
+      // Auto zoom-to-fit after a short delay to ensure rendering is complete
+      setTimeout(() => {
+        if (design.chain.states.length > 0 && zoomToFitRef.current) {
+          zoomToFitRef.current()
+        }
+      }, 100)
     },
     [resetSimulation],
   )
@@ -1368,9 +1450,24 @@ function ToolsContent() {
       if (!(e.button === 0 || e.button === 1)) return
       // If a node drag occurred, skip double-tap reset
       if (didDragRef.current) return
+      
+      // Ignore if tap is on a node or interactive element
+      const target = e.target as HTMLElement
+      if (target.closest("[data-node-id]") || 
+          target.closest('button') || 
+          target.closest('[role="dialog"]') ||
+          target.closest('[data-radix-popper-content-wrapper]') ||
+          target.closest('[data-radix-portal]')) {
+        return
+      }
+      
       const now = Date.now()
       if (now - lastTapTimeRef.current < 300) {
+        // Double-tap detected - reset view
         resetView()
+        // Prevent handleCanvasClick from being called
+        e.preventDefault()
+        e.stopPropagation()
       }
       lastTapTimeRef.current = now
     },
@@ -1441,10 +1538,10 @@ function ToolsContent() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
+      <nav className="border-b border-border bg-card/50 backdrop-blur-sm z-50 flex-shrink-0">
+        <div className="max-w-full px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-2">
               <Link href="/" className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -1479,9 +1576,9 @@ function ToolsContent() {
       </nav>
 
       <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
-      <div className="flex min-h-[calc(100vh-7rem)] sm:min-h-[calc(100vh-8rem)]">
+      <div className="flex flex-1 overflow-hidden">
         <aside
-          className={`hidden lg:block border-r border-border/40 bg-card/50 backdrop-blur-sm p-6 overflow-y-auto relative transition-all duration-300 ease-in-out ${isResizing ? "select-none" : ""}`}
+          className={`hidden lg:flex flex-col border-r border-border/40 bg-card/50 backdrop-blur-sm p-4 overflow-y-auto relative transition-all duration-300 ease-in-out ${isResizing ? "select-none" : ""}`}
           style={{
             width: isSidebarMinimized ? "0px" : `${sidebarWidth}px`,
             padding: isSidebarMinimized ? "0" : undefined,
@@ -1508,10 +1605,10 @@ function ToolsContent() {
           </div>
         </aside>
 
-        <div className="lg:hidden fixed bottom-6 right-6 z-40">
+        <div className="lg:hidden fixed bottom-20 right-4 z-[60]">
           <Popover.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <Popover.Trigger asChild>
-              <Button size="lg" className="shadow-lg cursor-pointer" aria-label="Toggle tool options">
+              <Button size="lg" className="shadow-lg cursor-pointer rounded-2xl" aria-label="Toggle tool options">
                 {mobileMenuOpen ? (
                   <>
                     <X className="mr-2 h-5 w-5" />
@@ -1528,7 +1625,7 @@ function ToolsContent() {
             <Popover.Content
               side="top"
               align="end"
-              className="z-50 w-[min(360px,90vw)] max-h-[80vh] overflow-y-auto rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur"
+              className="z-[70] w-[min(360px,90vw)] max-h-[65vh] overflow-y-auto rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur"
             >
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
@@ -1639,25 +1736,25 @@ function ToolsContent() {
 
         <main className="flex-1 relative overflow-hidden">
           {/* Floating Toolbox Button */}
-          <div className="hidden lg:block absolute top-6 right-6 z-40">
+          <div className="hidden lg:block absolute top-4 right-4 z-[60]">
             <Popover.Root open={toolboxOpen} onOpenChange={setToolboxOpen}>
               <Popover.Trigger asChild>
                 <Button
                   size="icon"
-                  className="h-14 w-14 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-primary/90 to-primary hover:from-primary hover:to-primary/90 border border-primary/20 hover:scale-105"
+                  className="h-12 w-12 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-primary/90 to-primary hover:from-primary hover:to-primary/90 border border-primary/20 hover:scale-105"
                   aria-label="Toggle toolbox"
                 >
                   {toolboxOpen ? (
-                    <X className="h-6 w-6 stroke-[2.5]" />
+                    <X className="h-5 w-5 stroke-[2.5]" />
                   ) : (
-                    <Wrench className="h-6 w-6 stroke-[2.5]" />
+                    <Wrench className="h-5 w-5 stroke-[2.5]" />
                   )}
                 </Button>
               </Popover.Trigger>
               <Popover.Content
                 side="bottom"
                 align="end"
-                className="z-50 w-auto rounded-2xl border border-border/60 bg-card/95 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in-0 slide-in-from-top-2 duration-300"
+                className="z-[70] w-auto rounded-2xl border border-border/60 bg-card/95 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in-0 slide-in-from-top-2 duration-300"
                 sideOffset={8}
               >
                 <div className="space-y-4">
@@ -1814,7 +1911,7 @@ function ToolsContent() {
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
                   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
+                    <polygon points="0 0, 10 3.5, 0 7" className="fill-primary" />
                   </marker>
                   {/* Add filter for label background shadow */}
                   <filter id="label-shadow" x="-50%" y="-50%" width="200%" height="200%">
@@ -1937,10 +2034,10 @@ function ToolsContent() {
 
                     return (
                       <g key={transition.id}>
-                        <path d={pathData} stroke="white" strokeWidth="5" fill="none" opacity="0.92" />
+                        <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="5" fill="none" opacity="0.92" />
                         <path
                           d={pathData}
-                          stroke="#059669"
+                          className="stroke-primary"
                           strokeWidth="2.25"
                           fill="none"
                           markerEnd="url(#arrowhead)"
@@ -2018,10 +2115,10 @@ function ToolsContent() {
 
                     return (
                       <g key={transition.id}>
-                        <path d={pathData} stroke="white" strokeWidth="5" fill="none" opacity="0.92" />
+                        <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="5" fill="none" opacity="0.92" />
                         <path
                           d={pathData}
-                          stroke="#059669"
+                          className="stroke-primary"
                           strokeWidth="2.25"
                           fill="none"
                           markerEnd="url(#arrowhead)"
@@ -2056,13 +2153,13 @@ function ToolsContent() {
 
                     return (
                       <g key={transition.id}>
-                        <line x1={fromX} y1={fromY} x2={toX} y2={toY} stroke="white" strokeWidth="4" opacity="0.8" />
+                        <line x1={fromX} y1={fromY} x2={toX} y2={toY} className="stroke-background dark:stroke-foreground/10" strokeWidth="4" opacity="0.8" />
                         <line
                           x1={fromX}
                           y1={fromY}
                           x2={toX}
                           y2={toY}
-                          stroke="#059669"
+                          className="stroke-primary"
                           strokeWidth="2"
                           markerEnd="url(#arrowhead)"
                           opacity="1"
@@ -2179,6 +2276,12 @@ function ToolsContent() {
                             }}
                             placeholder="State name"
                             className="h-8 text-sm"
+                            autoFocus={false}
+                            readOnly
+                            onFocus={(e) => {
+                              // Remove readOnly when user explicitly focuses
+                              e.target.readOnly = false
+                            }}
                           />
                         </div>
                         <Button

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getStore, saveStore } from "@/lib/server/lms-store"
+import { getStore, saveStore, type Course } from "@/lib/server/lms-store"
 
 // GET all courses
 export async function GET() {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    const newCourse = {
+    const newCourse: Course = {
       id: slug || title.toLowerCase().replace(/\s+/g, "-"),
       title,
       description,
