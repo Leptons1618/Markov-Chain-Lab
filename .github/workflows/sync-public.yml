@@ -3,7 +3,7 @@ name: Sync Public Branch
 on:
   push:
     branches:
-      - public-branch   # the branch you want to mirror
+      - main
 
 jobs:
   sync:
