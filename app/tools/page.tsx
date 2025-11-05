@@ -1510,19 +1510,23 @@ function ToolsContent() {
     [sidebarWidth],
   )
 
-  // Helper to get state position (use refs only to avoid re-renders)
+  // Helper to get state position (use refs only for currently dragging node)
   const getStatePosition = useCallback(
     (state: State) => {
-      // Check refs for drag position (no state dependency = no unnecessary re-renders)
-      if (currentDragPosRef.current && currentDragPosRef.current.id === state.id) {
-        return { x: currentDragPosRef.current.x, y: currentDragPosRef.current.y }
+      // ONLY use refs if this is the CURRENTLY dragging node
+      // This prevents stale ref data from affecting other nodes
+      if (draggingStateId === state.id) {
+        if (currentDragPosRef.current && currentDragPosRef.current.id === state.id) {
+          return { x: currentDragPosRef.current.x, y: currentDragPosRef.current.y }
+        }
+        if (pendingDragPosRef.current && pendingDragPosRef.current.id === state.id) {
+          return { x: pendingDragPosRef.current.x, y: pendingDragPosRef.current.y }
+        }
       }
-      if (pendingDragPosRef.current && pendingDragPosRef.current.id === state.id) {
-        return { x: pendingDragPosRef.current.x, y: pendingDragPosRef.current.y }
-      }
+      // For all other nodes, use the committed state position
       return { x: state.x, y: state.y }
     },
-    [], // No dependencies - stable function
+    [draggingStateId], // Depend on draggingStateId to know which node is active
   )
 
   // Visible world bounds (for simple virtualization)
