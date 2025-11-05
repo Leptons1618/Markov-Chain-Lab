@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       description,
       slug: slug || title.toLowerCase().replace(/\s+/g, "-"),
       lessons: 0,
-      status: "draft",
+      status: "draft" as "draft",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
