@@ -52,6 +52,8 @@ interface State {
   x: number
   y: number
   color: string
+  isInitial?: boolean
+  isFinal?: boolean
 }
 
 interface Transition {
@@ -2237,6 +2239,7 @@ function ToolsContent() {
                         ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2" : ""}
                         ${currentState === state.id ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
                         ${draggingStateId === state.id ? "transition-none" : ""}
+                        ${state.isFinal ? "border-4" : ""}
                       `}
                       style={{
                         left: pos.x,
@@ -2246,6 +2249,7 @@ function ToolsContent() {
                         color: state.color,
                         willChange: draggingStateId === state.id ? 'transform' : 'auto',
                         contain: 'layout style paint',
+                        boxShadow: state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
                       }}
                       onPointerDown={(e) => {
                         if (e.button !== 0) return
@@ -2315,7 +2319,24 @@ function ToolsContent() {
                         }
                       }}
                     >
-                      {state.name}
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {/* Initial state indicator - arrow pointing in */}
+                        {state.isInitial && (
+                          <div 
+                            className="absolute -left-8 top-1/2 -translate-y-1/2"
+                            style={{ color: state.color }}
+                          >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        )}
+                        
+                        {/* State name */}
+                        <span className="z-10 font-semibold">{state.name}</span>
+                        
+                        {/* Final state indicator - double circle border is handled by CSS */}
+                      </div>
                     </div>
                   </Popover.Trigger>
                   <Popover.Content side="top" sideOffset={10} className="z-50 rounded-lg border bg-card p-3 shadow-md w-auto min-w-[280px] max-w-[90vw]">
@@ -2363,6 +2384,52 @@ function ToolsContent() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                      
+                      {/* State Type Controls */}
+                      <div className="flex items-center gap-4 pt-2 border-t">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={state.isInitial || false}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              setChain((prev) => ({
+                                ...prev,
+                                states: prev.states.map((s) => 
+                                  s.id === state.id 
+                                    ? { ...s, isInitial: e.target.checked }
+                                    : s
+                                ),
+                              }))
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                          />
+                          <span className="text-xs font-medium">Initial State</span>
+                        </label>
+                        
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={state.isFinal || false}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              setChain((prev) => ({
+                                ...prev,
+                                states: prev.states.map((s) => 
+                                  s.id === state.id 
+                                    ? { ...s, isFinal: e.target.checked }
+                                    : s
+                                ),
+                              }))
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                          />
+                          <span className="text-xs font-medium">Final State</span>
+                        </label>
+                      </div>
+                      
                       <div className="space-y-2 pt-1 border-t">
                         <Label className="text-xs text-muted-foreground">Outgoing Probabilities</Label>
                         {chain.transitions
