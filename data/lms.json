@@ -15,7 +15,7 @@
       "title": "Markov Chain Basics",
       "description": "Discover how probability evolves: state transitions, convergence, and equilibrium",
       "slug": "markov-chain-basics",
-      "lessons": 7,
+      "lessons": 1,
       "status": "published",
       "createdAt": "2025-10-25T11:37:21.531Z",
       "updatedAt": "2025-11-06T12:00:00.000Z"
@@ -28,7 +28,7 @@
       "status": "published",
       "createdAt": "2025-10-25T14:00:00.000Z",
       "updatedAt": "2025-11-06T12:00:00.000Z",
-      "lessons": 5
+      "lessons": 0
     },
     {
       "id": "stochastic-advanced",
@@ -38,7 +38,7 @@
       "status": "published",
       "createdAt": "2025-10-25T14:05:00.000Z",
       "updatedAt": "2025-11-06T12:00:00.000Z",
-      "lessons": 5
+      "lessons": 0
     },
     {
       "id": "markov-simulations",
@@ -48,7 +48,7 @@
       "status": "published",
       "createdAt": "2025-10-25T14:10:00.000Z",
       "updatedAt": "2025-11-06T12:00:00.000Z",
-      "lessons": 5
+      "lessons": 0
     }
   ],
   "lessons": [
