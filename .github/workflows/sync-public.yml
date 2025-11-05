@@ -3,21 +3,28 @@ name: Sync Public Branch
 on:
   push:
     branches:
-      - main
+      - main   # Trigger on pushes to main in your private repo
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout private repo
         uses: actions/checkout@v4
         with:
           ref: main
+          persist-credentials: false   # 👈 important so we use our PAT instead
+          fetch-depth: 0               # full history in case you ever need it
 
-      - name: Mirror to public repo
+      - name: Configure Git
         run: |
           git config user.name "Anish Giri"
           git config user.email "anishgiri163@gmail.com"
 
-          git remote add public https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/Leptons1618/Markov-Chain-Lab.git
+      - name: Mirror to public repo
+        env:
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          git remote add public https://x-access-token:${PUBLIC_REPO_TOKEN}@github.com/Leptons1618/Markov-Chain-Lab.git
           git push --force public main:main
