@@ -87,9 +87,79 @@ const defaultColors = [
   "#ec4899", // chart-5
 ]
 
+/**
+ * Determine device type based on window width
+ */
+function getDeviceType(): 'phone' | 'tablet' | 'desktop' {
+  if (typeof window !== 'undefined') {
+    const w = window.innerWidth
+    if (w < 640) return 'phone'
+    if (w < 1024) return 'tablet'
+    return 'desktop'
+  }
+  return 'desktop'
+}
+
+/**
+ * Scale a design (from examples.json) to fit the current canvas dimensions
+ * Examples are designed for a reference canvas (2000x1500), so we need to scale them
+ * to fit mobile/tablet/desktop canvases responsively
+ */
+function scaleDesignToCanvas(design: MarkovChain, targetWidth: number, targetHeight: number): MarkovChain {
+  if (!design.states || design.states.length === 0) {
+    return design
+  }
+
+  // Reference dimensions (what examples were designed for)
+  const REF_WIDTH = 2000
+  const REF_HEIGHT = 1500
+
+  // Find bounding box of all nodes in the design
+  const xs = design.states.map(s => s.x)
+  const ys = design.states.map(s => s.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+
+  // Calculate the design's natural dimensions
+  const designWidth = Math.max(10, maxX - minX)
+  const designHeight = Math.max(10, maxY - minY)
+
+  // Add padding (10% of target dimensions)
+  const paddingX = targetWidth * 0.1
+  const paddingY = targetHeight * 0.1
+  const availableWidth = targetWidth - paddingX * 2
+  const availableHeight = targetHeight - paddingY * 2
+
+  // Calculate scale to fit the design in available space while maintaining aspect ratio
+  const scaleX = availableWidth / designWidth
+  const scaleY = availableHeight / designHeight
+  const scale = Math.min(scaleX, scaleY, 1) // Don't upscale, only downscale if needed
+
+  // Calculate translation to center the design in the canvas
+  const scaledWidth = designWidth * scale
+  const scaledHeight = designHeight * scale
+  const offsetX = (targetWidth - scaledWidth) / 2 - minX * scale
+  const offsetY = (targetHeight - scaledHeight) / 2 - minY * scale
+
+  // Apply transformation to all states
+  const scaledStates = design.states.map(state => ({
+    ...state,
+    x: state.x * scale + offsetX,
+    y: state.y * scale + offsetY
+  }))
+
+  return {
+    states: scaledStates,
+    transitions: design.transitions
+  }
+}
+
 function ToolsContent() {
   const searchParams = useSearchParams()
   const [chain, setChain] = useState<MarkovChain>({ states: [], transitions: [] })
+  const [originalExampleDesign, setOriginalExampleDesign] = useState<MarkovChain | null>(null)
   const [selectedState, setSelectedState] = useState<string | null>(null)
   const [selectedTransition, setSelectedTransition] = useState<string | null>(null)
   const [isSimulating, setIsSimulating] = useState(false)
@@ -172,7 +242,11 @@ function ToolsContent() {
           if (data.success) {
             const example = data.data.find((ex: any) => ex.id === exampleId)
             if (example?.design) {
-              setChain(example.design)
+              // Store original design for responsive rescaling
+              setOriginalExampleDesign(example.design)
+              // Scale example coordinates to fit current canvas
+              const scaledDesign = scaleDesignToCanvas(example.design, CANVAS_WIDTH, CANVAS_HEIGHT)
+              setChain(scaledDesign)
               setHasUnsavedChanges(false)
               return
             }
@@ -192,6 +266,36 @@ function ToolsContent() {
       console.error("Failed to load designs from localStorage:", err)
     }
   }, [searchParams])
+
+  // Handle window resize to rescale loaded examples responsively
+  useEffect(() => {
+    if (!originalExampleDesign) return // Only apply to loaded examples, not user-created designs
+
+    let resizeTimer: NodeJS.Timeout
+    const handleResize = () => {
+      // Debounce resize events
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        // Recalculate device type and canvas size
+        const currentDeviceType = getDeviceType()
+        const newCanvasWidth = currentDeviceType === 'phone' ? 1200 : currentDeviceType === 'tablet' ? 1600 : 2000
+        const newCanvasHeight = currentDeviceType === 'phone' ? 900 : currentDeviceType === 'tablet' ? 1200 : 1500
+        
+        // Rescale the original example to new canvas size
+        const rescaledDesign = scaleDesignToCanvas(originalExampleDesign, newCanvasWidth, newCanvasHeight)
+        setChain(rescaledDesign)
+      }, 300)
+    }
+
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+
+    return () => {
+      clearTimeout(resizeTimer)
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
+  }, [originalExampleDesign])
 
   // Helpers: probability normalization
   const equalizeOutgoing = useCallback((transitions: Transition[], fromId: string) => {
@@ -227,16 +331,6 @@ function ToolsContent() {
   )
 
   // Device-specific canvas bounds
-  const getDeviceType = () => {
-    if (typeof window !== 'undefined') {
-      const w = window.innerWidth
-      if (w < 640) return 'phone'
-      if (w < 1024) return 'tablet'
-      return 'desktop'
-    }
-    return 'desktop'
-  }
-
   const deviceType = typeof window !== 'undefined' ? getDeviceType() : 'desktop'
   const CANVAS_WIDTH = deviceType === 'phone' ? 1200 : deviceType === 'tablet' ? 1600 : 2000
   const CANVAS_HEIGHT = deviceType === 'phone' ? 900 : deviceType === 'tablet' ? 1200 : 1500
