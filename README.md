@@ -35,8 +35,6 @@ See docs for deeper details:
 - `docs/SOURCES.md`
 - `docs/LESSON_OUTLINES.md`
  - `docs/PERFORMANCE_PREDEPLOY.md` – pre-deployment performance, reliability, and security plan
- - `docs/DEPLOYMENT_AZURE.md` – step-by-step production deployment to Azure with CI/CD
- - `docs/DEPLOYMENT_AWS_AMPLIFY.md` – deploy on AWS Amplify Hosting (SSR) with CI/CD
 
 ## Sample and markup data inventory
 
@@ -102,28 +100,25 @@ Navigate to `http://localhost:3000`.
    - Update admin page to call the auth API
    - Never hardcode passwords in client code
 
-4. **For production deployment:**
+4. **For deployment:**
    - Set `ADMIN_PASSWORD` as environment variable in your hosting platform
-   - See deployment guides below for platform-specific instructions
 
-**Current Status:** Admin authentication uses a hardcoded password (`admin123`) which is **NOT SECURE** for production. Follow the security guide before deploying.
+**Current Status:** Admin authentication uses a hardcoded password (`admin123`) which is **NOT SECURE**. Follow the security guide before deploying.
 
 📖 **Full Security Guide:** [`docs/SECURITY.md`](docs/SECURITY.md)
 
 ## Persistence
 
-Currently uses local JSON file (`data/lms.json`). For production, plan to migrate to a database (PostgreSQL or MongoDB) with proper API endpoints.
+Currently uses local JSON file (`data/lms.json`). For future, plan to migrate to a database (PostgreSQL or MongoDB) with proper API endpoints.
 
 ## Documentation
 
-Comprehensive guides for development, deployment, and security:
+Comprehensive guides for development and security:
 
-- **[Security Guide](docs/SECURITY.md)** - 🔐 Admin authentication and production security (read this before deploying!)
+- **[Security Guide](docs/SECURITY.md)** - 🔐 Admin authentication and security setup
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and technical decisions
 - **[Features](docs/FEATURES.md)** - Complete feature list and capabilities
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - Playwright test suite and visual regression
-- **[Deployment: AWS Amplify](docs/DEPLOYMENT_AWS_AMPLIFY.md)** - Step-by-step AWS deployment
-- **[Deployment: Azure](docs/DEPLOYMENT_AZURE.md)** - Azure Static Web Apps guide
 - **[Roadmap](docs/ROADMAP.md)** - Future plans and enhancements
 - **[Content Enhancement Plan](docs/CONTENT_ENHANCEMENT_PLAN.md)** - Educational content strategy
 - **[Lesson Outlines](docs/LESSON_OUTLINES.md)** - Detailed lesson structures

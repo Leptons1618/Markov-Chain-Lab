@@ -26,11 +26,7 @@ ADMIN_PASSWORD=your-strong-password-here-change-this
 NEXTAUTH_SECRET=your-random-secret-key-32-chars-min
 ```
 
-For production (AWS Amplify, Azure, Vercel, etc.), set these as **environment variables** in your hosting platform's dashboard:
-
-- **AWS Amplify:** Console → App → Environment Variables
-- **Azure Static Web Apps:** Portal → Configuration → Application Settings
-- **Vercel:** Dashboard → Project → Settings → Environment Variables
+For production, set these as **environment variables** in your hosting platform's dashboard.
 
 #### Step 2: Create Server-Side Auth API Route
 
@@ -298,11 +294,7 @@ export async function POST(request: NextRequest) {
 
 #### HTTPS Only
 
-Ensure your hosting platform uses HTTPS (all modern platforms do by default):
-
-- AWS Amplify: ✅ Auto HTTPS
-- Azure Static Web Apps: ✅ Auto HTTPS  
-- Vercel: ✅ Auto HTTPS
+Ensure your hosting platform uses HTTPS (all modern platforms do by default).
 
 #### Security Headers
 
@@ -338,7 +330,7 @@ const nextConfig = {
 
 - [ ] Remove hardcoded password from client code
 - [ ] Create `.env.local` with strong password
-- [ ] Add `ADMIN_PASSWORD` to production environment variables
+- [ ] Add `ADMIN_PASSWORD` to hosting environment variables
 - [ ] Implement server-side auth API route
 - [ ] Update admin page to call auth API
 - [ ] Add rate limiting
@@ -367,9 +359,9 @@ const nextConfig = {
 If you forget the admin password:
 
 1. **Local development:** Check `.env.local`
-2. **Production:** Check environment variables in hosting dashboard
+2. **Deployed instance:** Check environment variables in hosting dashboard
 3. **Lost access:** Redeploy with new password in environment variables
 
 ## Questions?
 
-See the main README.md for deployment guides or create an issue.
+See the main README.md or create an issue.
