@@ -1428,7 +1428,38 @@ function ToolsContent() {
 
   // Reset pan/zoom to defaults
   const resetView = useCallback(() => {
+    // Reset pan and zoom
     scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
+    
+    // Clear all states and transitions
+    setChain({ states: [], transitions: [] })
+    
+    // Clear selections
+    setSelectedState(null)
+    setSelectedTransition(null)
+    
+    // Reset simulation
+    setIsSimulating(false)
+    setIsAutoRunning(false)
+    setSimulationStep(0)
+    setCurrentState(null)
+    setSimulationMetrics({
+      stateVisits: {},
+      transitionUsage: {},
+      pathHistory: [],
+    })
+    
+    // Clear any saved design reference
+    setOriginalExampleDesign(null)
+    
+    // Mark as no unsaved changes since we're starting fresh
+    setHasUnsavedChanges(false)
+    
+    // Clear auto-run interval if running
+    if (autoRunIntervalRef.current) {
+      clearInterval(autoRunIntervalRef.current)
+      autoRunIntervalRef.current = null
+    }
   }, [scheduleViewUpdate])
 
   const onCanvasDoubleClick = useCallback(() => {
