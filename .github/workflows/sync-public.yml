@@ -12,7 +12,7 @@ jobs:
       - name: Checkout private repo
         uses: actions/checkout@v4
         with:
-          ref: public-branch
+          ref: main
 
       - name: Mirror to public repo
         run: |
