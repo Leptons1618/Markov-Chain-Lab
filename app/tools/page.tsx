@@ -2230,9 +2230,38 @@ function ToolsContent() {
                         try {
                           ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
                         } catch {}
+                        
+                        // Save the position BEFORE clearing draggingStateId
+                        if (draggingStateId && didDragRef.current) {
+                          // Cancel any pending RAF updates
+                          if (dragRafRef.current) {
+                            cancelAnimationFrame(dragRafRef.current)
+                            dragRafRef.current = null
+                          }
+                          
+                          // Use current drag position from ref
+                          const finalPos = currentDragPosRef.current || pendingDragPosRef.current
+                          if (finalPos) {
+                            setChain((prev) => {
+                              // Clamp node position to canvas bounds
+                              const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, finalPos.x))
+                              const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, finalPos.y))
+                              // Only update the dragged node
+                              const newStates = prev.states.map((s) =>
+                                s.id === finalPos.id ? { ...s, x: clampedX, y: clampedY } : s
+                              )
+                              return { ...prev, states: newStates }
+                            })
+                          }
+                        }
+                        
+                        // Now clear the drag state
                         if (draggingStateId) {
+                          // Clear refs after state update
+                          currentDragPosRef.current = null
+                          pendingDragPosRef.current = null
                           setDraggingStateId(null)
-                          dragStartPosRef.current = null // Clear drag start position
+                          dragStartPosRef.current = null
                           setTimeout(() => {
                             didDragRef.current = false
                           }, 0)
