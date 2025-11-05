@@ -16,15 +16,15 @@
                 {
                     "id": "sunny",
                     "name": "Sunny",
-                    "x": 600,
-                    "y": 400,
+                    "x": 700,
+                    "y": 650,
                     "color": "#fbbf24"
                 },
                 {
                     "id": "rainy",
                     "name": "Rainy",
-                    "x": 1200,
-                    "y": 400,
+                    "x": 1300,
+                    "y": 650,
                     "color": "#60a5fa"
                 }
             ],
@@ -74,14 +74,14 @@
                 {
                     "id": "pos-2",
                     "name": "Position -2",
-                    "x": 300,
+                    "x": 350,
                     "y": 750,
                     "color": "#fb923c"
                 },
                 {
                     "id": "pos-1",
                     "name": "Position -1",
-                    "x": 650,
+                    "x": 675,
                     "y": 750,
                     "color": "#fbbf24"
                 },
@@ -95,14 +95,14 @@
                 {
                     "id": "pos1",
                     "name": "Position 1",
-                    "x": 1350,
+                    "x": 1325,
                     "y": 750,
                     "color": "#34d399"
                 },
                 {
                     "id": "pos2",
                     "name": "Position 2",
-                    "x": 1700,
+                    "x": 1650,
                     "y": 750,
                     "color": "#a78bfa"
                 }
@@ -348,35 +348,35 @@
                     "id": "q0",
                     "name": "0 customers",
                     "x": 1000,
-                    "y": 250,
+                    "y": 300,
                     "color": "#34d399"
                 },
                 {
                     "id": "q1",
                     "name": "1 customer",
                     "x": 1000,
-                    "y": 520,
+                    "y": 540,
                     "color": "#60a5fa"
                 },
                 {
                     "id": "q2",
                     "name": "2 customers",
                     "x": 1000,
-                    "y": 790,
+                    "y": 780,
                     "color": "#fbbf24"
                 },
                 {
                     "id": "q3",
                     "name": "3 customers",
                     "x": 1000,
-                    "y": 1060,
+                    "y": 1020,
                     "color": "#fb923c"
                 },
                 {
                     "id": "q4plus",
                     "name": "4+ customers",
                     "x": 1000,
-                    "y": 1320,
+                    "y": 1260,
                     "color": "#f87171"
                 }
             ],
@@ -481,28 +481,28 @@
                     "id": "pageA",
                     "name": "Page A",
                     "x": 700,
-                    "y": 450,
+                    "y": 500,
                     "color": "#fbbf24"
                 },
                 {
                     "id": "pageB",
                     "name": "Page B",
                     "x": 1300,
-                    "y": 450,
+                    "y": 500,
                     "color": "#60a5fa"
                 },
                 {
                     "id": "pageC",
                     "name": "Page C",
                     "x": 700,
-                    "y": 1050,
+                    "y": 1000,
                     "color": "#34d399"
                 },
                 {
                     "id": "pageD",
                     "name": "Page D",
                     "x": 1300,
-                    "y": 1050,
+                    "y": 1000,
                     "color": "#a78bfa"
                 }
             ],
@@ -625,21 +625,21 @@
                     "id": "bull",
                     "name": "Bull Market",
                     "x": 1000,
-                    "y": 350,
+                    "y": 450,
                     "color": "#34d399"
                 },
                 {
                     "id": "stable",
                     "name": "Stable Market",
                     "x": 700,
-                    "y": 900,
+                    "y": 950,
                     "color": "#60a5fa"
                 },
                 {
                     "id": "bear",
                     "name": "Bear Market",
                     "x": 1300,
-                    "y": 900,
+                    "y": 950,
                     "color": "#f87171"
                 }
             ],
@@ -719,29 +719,29 @@
                 {
                     "id": "A",
                     "name": "Adenine (A)",
-                    "x": 600,
+                    "x": 650,
                     "y": 600,
                     "color": "#fbbf24"
                 },
                 {
                     "id": "T",
                     "name": "Thymine (T)",
-                    "x": 1400,
+                    "x": 1350,
                     "y": 600,
                     "color": "#f87171"
                 },
                 {
                     "id": "G",
                     "name": "Guanine (G)",
-                    "x": 600,
-                    "y": 1000,
+                    "x": 650,
+                    "y": 950,
                     "color": "#60a5fa"
                 },
                 {
                     "id": "C",
                     "name": "Cytosine (C)",
-                    "x": 1400,
-                    "y": 1000,
+                    "x": 1350,
+                    "y": 950,
                     "color": "#34d399"
                 }
             ],
@@ -864,7 +864,7 @@
                     "id": "article",
                     "name": "Article",
                     "x": 1000,
-                    "y": 300,
+                    "y": 350,
                     "color": "#94a3b8"
                 },
                 {
@@ -885,14 +885,14 @@
                     "id": "verb",
                     "name": "Verb",
                     "x": 800,
-                    "y": 1200,
+                    "y": 1150,
                     "color": "#60a5fa"
                 },
                 {
                     "id": "adverb",
                     "name": "Adverb",
                     "x": 1200,
-                    "y": 1200,
+                    "y": 1150,
                     "color": "#a78bfa"
                 }
             ],

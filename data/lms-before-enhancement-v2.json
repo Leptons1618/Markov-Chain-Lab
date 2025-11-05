@@ -1,0 +1,100 @@
+{
+  "courses": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "description": "Journey through probability — from coin flips to random variables",
+      "slug": "foundations",
+      "lessons": 3,
+      "status": "published",
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z"
+    },
+    {
+      "id": "chains",
+      "title": "Markov Chain Basics",
+      "description": "Discover how probability evolves: state transitions, convergence, and equilibrium",
+      "slug": "markov-chain-basics",
+      "lessons": 7,
+      "status": "published",
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z"
+    },
+    {
+      "id": "ctmc",
+      "title": "Continuous-Time Markov Processes",
+      "description": "When time flows continuously: exponential clocks and queueing systems",
+      "slug": "continuous-time-markov-processes",
+      "status": "published",
+      "createdAt": "2025-10-25T14:00:00.000Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z",
+      "lessons": 5
+    },
+    {
+      "id": "stochastic-advanced",
+      "title": "Advanced Stochastic Adventures",
+      "description": "Martingales, MDPs, and the cutting edge of probability theory",
+      "slug": "stochastic-advanced",
+      "status": "published",
+      "createdAt": "2025-10-25T14:05:00.000Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z",
+      "lessons": 5
+    },
+    {
+      "id": "markov-simulations",
+      "title": "Simulation and Applications",
+      "description": "From theory to code: Monte Carlo, MCMC, and PageRank",
+      "slug": "markov-simulations",
+      "status": "published",
+      "createdAt": "2025-10-25T14:10:00.000Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z",
+      "lessons": 5
+    }
+  ],
+  "lessons": [
+    {
+      "id": "foundations-1",
+      "courseId": "foundations",
+      "title": "The Language of Uncertainty",
+      "description": "Your first steps into probability: sample spaces, events, and the axioms that rule them all.",
+      "content": "# The Language of Uncertainty\n\nImagine you're standing at a crossroads. You don't know which path leads where, but you need to make a decision. This is the essence of uncertainty — and **probability theory** is your map.\n\nWelcome to your first lesson! Here, we'll build the foundation for understanding randomness, which will later help us explore how systems evolve through Markov chains.\n\n## Why Probability Matters\n\nEvery day, we face uncertainty:\n- Will it rain tomorrow?\n- Will your team win the game?\n- What's the chance a new startup succeeds?\n\n**Probability** gives us a mathematical language to quantify these uncertainties and make informed decisions.\n\n## The Building Blocks\n\n### Sample Space: All Possible Worlds\n\nThe **sample space (Ω)** is like a catalog of everything that *could* happen in your experiment.\n\n**Example:** Roll a standard die → Ω = {1, 2, 3, 4, 5, 6}\n\nEach outcome is one possible world. The sample space captures all possibilities.\n\n### Events: Questions We Care About\n\nAn **event** is a specific question about your experiment — a collection of outcomes.\n\n**Example:** Let A = \"rolling an even number\" → A = {2, 4, 6}\n\nEvents can be simple (one outcome) or compound (multiple outcomes).\n\n### The Rules of the Game: Kolmogorov's Axioms\n\nIn 1933, Andrey Kolmogorov established three elegant rules governing all probability:\n\n1. **Non-negativity:** 0 ≤ P(A) ≤ 1\n2. **Certainty:** P(Ω) = 1 (something must happen)\n3. **Additivity:** For mutually exclusive events, P(A ∪ B) = P(A) + P(B)\n\nThese simple axioms underpin everything from weather forecasting to quantum mechanics.\n\n## Story 1: The Fair Coin\n\nYou flip a coin. What's the probability of heads?\n\n- Sample space: Ω = {H, T}\n- P(H) = 0.5, P(T) = 0.5\n- Check: P(H) + P(T) = 1 ✓\n\nThe axioms work! This simple experiment forms the basis of countless probability models.\n\n<div style=\"padding: 20px; margin: 20px 0; border: 2px dashed #666; border-radius: 8px; background: rgba(128,128,128,0.05);\">\n  <strong>📊 Interactive Visualization Coming Soon!</strong><br/>\n  <em>Explore probability with interactive Venn diagrams — drag events, adjust probabilities, and see the axioms in action.</em>\n</div>\n\n## Story 2: The Lucky Die\n\n**Challenge:** What's the probability of rolling less than 4?\n\n**Solution:**\n- Event A = {1, 2, 3}\n- Since all outcomes are equally likely: P(A) = 3/6 = 0.5\n\n**Answer:** 50% chance!\n\n## Where Probability Lives\n\nProbability isn't just abstract math — it's everywhere:\n\n🌦️ **Weather Forecasting** — Meteorologists use probability to predict patterns\n\n🏭 **Quality Control** — Manufacturers estimate defect rates\n\n💰 **Finance** — Risk assessment powers investment decisions\n\n🤖 **Machine Learning** — Every AI model uses probability to learn and predict\n\n## Your Turn\n\n**Practice Questions:**\n1. Roll a fair die. What's P(rolling > 4)?\n2. A bag has 3 red, 2 blue, and 5 green marbles. What's P(drawing green)?\n3. Can two mutually exclusive events also be independent? Think about it!\n\n## The Road Ahead\n\nYou've just learned the language of uncertainty:\n- **Sample spaces** define what's possible\n- **Events** capture what we care about  \n- **Axioms** provide the rules\n\nThese concepts will be your companions as we explore more complex ideas.\n\n**Next Stop:** How do probabilities *change* when we gain new information? Get ready for conditional probability and Bayes' Theorem!\n",
+      "status": "published",
+      "order": 1,
+      "createdAt": "2025-10-25T12:59:00.000Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z"
+    },
+    {
+      "id": "foundations-2",
+      "courseId": "foundations",
+      "title": "When Information Changes Everything",
+      "description": "Discover how new evidence transforms probabilities through conditional probability and Bayes' theorem.",
+      "content": "# When Information Changes Everything\n\nPicture this: You're watching the sky. Dark clouds gather. Suddenly, the probability of rain isn't just a number — it's *updated* by what you see.\n\nThis is the power of **conditional probability**: understanding how new information reshapes our beliefs.\n\n## The Mystery of the Medical Test\n\nImagine a disease that affects 1% of people. A test detects it 95% of the time when present, but gives false positives 2% of the time for healthy people.\n\n**You test positive.** Should you panic?\n\nLet's find out using the tools you'll learn in this lesson.\n\n## Conditional Probability: Zooming In\n\nThe **conditional probability** P(A|B) asks: \"What's the probability of A, *given* that B has occurred?\"\n\n```math\nP(A|B) = \\frac{P(A \\cap B)}{P(B)}, \\quad \\text{when } P(B) > 0\n```\n\n**Intuition:** If we know B happened, our sample space shrinks to B. We then measure how much of B overlaps with A.\n\n<div style=\"padding: 20px; margin: 20px 0; border: 2px dashed #666; border-radius: 8px; background: rgba(128,128,128,0.05);\">\n  <strong>📊 Interactive Visualization Coming Soon!</strong><br/>\n  <em>Watch Venn diagrams dynamically shrink and highlight as you apply conditions — see conditional probability in action!</em>\n</div>\n\n## Story 1: Drawing Cards\n\nA standard deck has 52 cards. What's P(Ace | Spade)?\n\n**Solution:**\n- A = {card is Ace}, B = {card is Spade}\n- A ∩ B = {Ace of Spades}\n- P(A ∩ B) = 1/52, P(B) = 13/52\n\n```math\nP(A|B) = \\frac{1/52}{13/52} = \\frac{1}{13}\n```\n\n**Answer:** Among spades, 1 in 13 is an Ace.\n\n## Bayes' Theorem: The Information Reverser\n\nBayes' theorem is a superpower — it lets you *reverse* conditional probabilities:\n\n```math\nP(A|B) = \\frac{P(B|A) \\cdot P(A)}{P(B)}\n```\n\nThis connects:\n- **Prior belief** P(A)\n- **Likelihood** P(B|A) \n- **Posterior belief** P(A|B)\n\n## Back to the Medical Test\n\nLet D = \"has disease\", T = \"tests positive\"\n\nGiven:\n- P(D) = 0.01 (prior)\n- P(T|D) = 0.95 (true positive rate)\n- P(T|¬D) = 0.02 (false positive rate)\n\n**Find:** P(D|T) — probability you have the disease given a positive test.\n\n**Step 1:** Compute P(T) using total probability:\n\n```math\nP(T) = P(T|D)P(D) + P(T|¬D)P(¬D)\n     = (0.95)(0.01) + (0.02)(0.99)\n     = 0.0293\n```\n\n**Step 2:** Apply Bayes' theorem:\n\n```math\nP(D|T) = \\frac{P(T|D) \\cdot P(D)}{P(T)} = \\frac{0.95 \\times 0.01}{0.0293} \\approx 0.324\n```\n\n**Surprising Answer:** Even with a positive test, there's only a 32% chance you have the disease!\n\nThis is because the disease is rare (low prior), so most positives are false alarms.\n\n<div style=\"padding: 20px; margin: 20px 0; border: 2px dashed #666; border-radius: 8px; background: rgba(128,128,128,0.05);\">\n  <strong>📊 Interactive Bayes Calculator Coming Soon!</strong><br/>\n  <em>Adjust priors, likelihoods, and see posteriors update instantly — perfect for understanding medical tests, spam filters, and more!</em>\n</div>\n\n## Where This Matters\n\n🔍 **Spam Detection** — Email filters use Bayes to classify messages\n\n🩺 **Medical Diagnosis** — Doctors update beliefs based on test results\n\n🤖 **Machine Learning** — Bayesian models power adaptive AI systems\n\n🎲 **Game Theory** — Players update strategies based on opponent moves\n\n## Your Turn\n\n**Practice Questions:**\n1. A biased coin has P(H) = 0.6. If flipped twice, what's P(first = H | total heads = 1)?\n2. A machine makes 5% defects. A test catches 90% of defects and flags 3% of good items. Find P(defect | flagged).\n3. Explain in your own words how Bayes' theorem \"reverses\" conditional probabilities.\n\n## The Journey Continues\n\nYou've now mastered:\n- **Conditional probability** — updating beliefs with evidence\n- **Bayes' theorem** — the mathematical engine of inference\n- **Real-world impact** — from medicine to AI\n\n**Next Adventure:** Random variables and expectations — turning probability into numbers we can compute and predict!\n",
+      "status": "published",
+      "order": 2,
+      "createdAt": "2025-10-25T13:06:00.000Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z"
+    },
+    {
+      "id": "foundations-3",
+      "courseId": "foundations",
+      "title": "Random Variables: Probability Meets Numbers",
+      "description": "Transform random outcomes into numbers, compute averages, and discover the law of large numbers through interactive exploration.",
+      "content": "# Random Variables: Probability Meets Numbers\n\nSo far, we've dealt with abstract outcomes — heads/tails, sunny/rainy, Ace/King. But what if we want to *quantify* randomness? Enter **random variables** — the bridge between probability and numerical analysis.\n\n## What Is a Random Variable?\n\nA **random variable (RV)** assigns a number to each outcome of a random experiment.\n\n```math\nX: \\Omega \\to \\mathbb{R}\n```\n\n**Example:** Roll a die. Let X = the number shown. Then X(outcome) ∈ {1,2,3,4,5,6}.\n\n**Why care?** Random variables let us compute averages, spreads, and make predictions.\n\n## Types of Random Variables\n\n### Discrete Random Variables\nTake on countable values (like dice rolls, coin flips counted).\n\n**Probability Mass Function (PMF):**\n\n```math\np(x) = P(X = x), \\quad \\sum p(x) = 1\n```\n\n### Continuous Random Variables  \nTake values from intervals (like heights, times).\n\n**Probability Density Function (PDF):**\n\n```math\nP(a \\le X \\le b) = \\int_a^b f(x)\\,dx, \\quad \\int_{-\\infty}^{\\infty} f(x)\\,dx = 1\n```\n\n## Story 1: Rolling the Die\n\nLet X = result of rolling a fair six-sided die.\n\n| x | 1 | 2 | 3 | 4 | 5 | 6 |\n|---|---|---|---|---|---|---|\n| P(X=x) | 1/6 | 1/6 | 1/6 | 1/6 | 1/6 | 1/6 |\n\nThis is a **uniform discrete distribution**.\n\n## Expected Value: The Long-Run Average\n\nThe **expected value** E[X] is the weighted average of all possible values:\n\n```math\nE[X] = \\sum x \\cdot P(X=x) \\quad \\text{(discrete)}\n```\n\nFor our die:\n\n```math\nE[X] = 1(\\frac{1}{6}) + 2(\\frac{1}{6}) + \\cdots + 6(\\frac{1}{6}) = \\frac{21}{6} = 3.5\n```\n\n**Interpretation:** If you roll the die thousands of times, the average approaches 3.5.\n\n**Fun fact:** 3.5 is not even a possible outcome! Expectations don't have to be achievable values.\n\n## Story 2: Coin Flips and Convergence\n\nFlip a fair coin repeatedly. Let p = 0.5 be the true probability of heads.\n\nDefine $\\hat{p}_n$ = (number of heads) / n.\n\n**Question:** As n increases, what happens to $\\hat{p}_n$?\n\n**Answer:** By the **Law of Large Numbers**, $\\hat{p}_n$ converges to p = 0.5!\n\n### Experience It Yourself\n\n```component\n{\"name\":\"FlipConvergence\",\"props\":{\"p\":0.5,\"trials\":500,\"updateIntervalMs\":30,\"batch\":50,\"height\":400}}\n```\n\n**Instructions:** Click \"Start\" and watch the estimated probability converge to the true value. Try changing the speed and see convergence in real-time!\n\n## Variance: Measuring Spread\n\nThe **variance** quantifies how spread out a distribution is:\n\n```math\n\\text{Var}(X) = E[(X - E[X])^2] = E[X^2] - (E[X])^2\n```\n\n**Standard deviation** = √Var(X)\n\n### Example: Die Roll Variance\n\n```math\nE[X^2] = (1^2 + 2^2 + \\cdots + 6^2)/6 = 91/6\n```\n\n```math\n\\text{Var}(X) = 91/6 - (3.5)^2 = 35/12 \\approx 2.92\n```\n\n**Standard deviation:** √2.92 ≈ 1.71\n\n<div style=\"padding: 20px; margin: 20px 0; border: 2px dashed #666; border-radius: 8px; background: rgba(128,128,128,0.05);\">\n  <strong>📊 Interactive PMF/PDF Explorer Coming Soon!</strong><br/>\n  <em>Adjust distribution parameters and watch expected value and variance shift dynamically on interactive charts.</em>\n</div>\n\n## Where Random Variables Live\n\n💰 **Finance** — Expected returns and portfolio risk (variance)\n\n🏭 **Quality Control** — Expected defect counts in manufacturing\n\n🎲 **Gaming** — Fair pricing based on expected payouts\n\n🤖 **Machine Learning** — Loss functions are expectations over data\n\n## Your Turn\n\n**Practice Questions:**\n1. A coin is flipped 3 times. Let X = number of heads. Find E[X] and Var(X).\n2. X takes values {0,1,2} with P(0)=0.2, P(1)=0.5, P(2)=0.3. Compute E[X] and Var(X).\n3. Why can E[X] = 3.5 for a die even though you can't roll 3.5?\n\n## The Story So Far\n\nYou've now mastered the foundations:\n- **Probability** quantifies uncertainty\n- **Conditional probability** updates beliefs\n- **Random variables** turn outcomes into numbers\n- **Expectations** predict long-run averages\n\n**Next Chapter:** Markov chains — where probabilities *evolve* through time and state transitions!\n",
+      "status": "published",
+      "order": 3,
+      "createdAt": "2025-10-25T13:12:00.000Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z"
+    },
+    {
+      "id": "chains-1",
+      "courseId": "chains",
+      "title": "Enter the Markov Chain: Memory-Free Transitions",
+      "description": "Discover the memoryless property and see your first Markov chain in action.",
+      "content": "# Enter the Markov Chain: Memory-Free Transitions\n\nImagine a system that evolves through time, jumping from state to state. **But here's the twist:** the future depends *only* on where you are now, not on how you got there.\n\nThis is the **Markov property** — and it unlocks an entire universe of stochastic models.\n\n## The Big Idea\n\nA **Markov chain** is a sequence of random states where:\n\n> The probability of the next state depends only on the current state, not on past history.\n\nMathematically:\n\n```math\nP(X_{n+1} = j \\mid X_n = i, X_{n-1}, X_{n-2}, \\ldots) = P(X_{n+1} = j \\mid X_n = i)\n```\n\n**Translation:** \"Where you go next depends only on where you are now — your past is irrelevant.\"\n\n## Story 1: The Weather Model\n\nConsider a simple weather system with two states:\n- **S** = Sunny\n- **R** = Rainy\n\nObservations show:\n- After a sunny day, 70% of tomorrows are sunny, 30% rainy\n- After a rainy day, 40% of tomorrows are sunny, 60% rainy\n\n**Transition Matrix:**\n\n```matrix\n        S     R\n  S [ 0.7   0.3 ]\n  R [ 0.4   0.6 ]\n```\n\nEach row shows where you can go from that state. Rows sum to 1 (you must go somewhere).\n\n<div style=\"padding: 20px; margin: 20px 0; border: 2px dashed #666; border-radius: 8px; background: rgba(128,128,128,0.05);\">\n  <strong>📊 Interactive State Diagram Coming Soon!</strong><br/>\n  <em>Visualize states as nodes and transitions as arrows — click to follow the chain through time!</em>\n</div>\n\n## The Anatomy of a Markov Chain\n\n### 1. State Space\nThe set of all possible states: S = {S, R} in our weather example.\n\n### 2. Transition Probabilities\nP(i→j) = probability of moving from state i to state j.\n\n### 3. Initial Distribution\nWhere does the chain start? π₀ = [P(start in S), P(start in R)].\n\n## Simulating the Weather\n\nStart on a sunny day. Use the transition matrix to generate next days:\n\n- Day 0: S (given)\n- Day 1: With prob 0.7 → S, with prob 0.3 → R. Say we get S.\n- Day 2: From S, again 0.7 → S, 0.3 → R. Say we get R.\n- Day 3: From R, 0.4 → S, 0.6 → R. Say we get R.\n- ...\n\nThe sequence {S, S, R, R, ...} is one **realization** of the Markov chain.\n\n## Why \"Memoryless\" Matters\n\nThe memoryless property makes Markov chains:\n- **Tractable** — easy to analyze mathematically\n- **Efficient** — need only track current state\n- **Widely applicable** — many real systems have this property (or approximate it)\n\n## Where You'll Find Markov Chains\n\n🌐 **Google PageRank** — Web pages as states, links as transitions\n\n📞 **Queueing Systems** — Customer counts as states, arrivals/departures as transitions\n\n🧬 **Genetics** — DNA mutations modeled as state changes\n\n🎮 **Game AI** — Game states transitioning based on player actions\n\n## Explore Convergence\n\nHere's a related question: if you flip a coin many times, does the proportion of heads converge to the true probability?\n\n**Spoiler:** Yes! This is the **Law of Large Numbers** in action.\n\n```component\n{\"name\":\"FlipConvergence\",\"props\":{\"p\":0.7,\"trials\":600,\"updateIntervalMs\":25,\"batch\":40,\"height\":400}}\n```\n\n**Try it:** Adjust the true probability (p) and watch convergence. This same idea applies to Markov chains — long-run frequencies converge to steady-state probabilities!\n\n## Your Turn\n\n**Practice Questions:**\n1. Draw a state diagram for a 3-state chain: {A, B, C} with transitions A→B (0.5), A→C (0.5), B→A (1.0), C→A (1.0).\n2. Explain why the Markov property is \"memoryless.\"\n3. Can you think of a real-world process that is NOT Markovian? (Hint: stock prices with trends)\n\n## The Adventure Begins\n\nYou've just entered the world of Markov chains:\n- **States** represent positions in the system\n- **Transitions** govern movement between states\n- **Memoryless** — only the present matters\n\n**Next:** We'll dig deeper into transition matrices and learn how to compute multi-step probabilities!\n",
+      "status": "published",
+      "order": 1,
+      "createdAt": "2025-10-25T11:37:21.531Z",
+      "updatedAt": "2025-11-06T12:00:00.000Z"
+    }
+  ]
+}

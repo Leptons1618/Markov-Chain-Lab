@@ -215,15 +215,17 @@ export default function MarkdownRenderer({ content }: { content: string }) {
   const rehypeKatex = libs?.rehypeKatex ?? null
   const katexModule = libs?.katexModule ?? null
 
-  // Build rehype-sanitize options (allow iframe https, code class)
+  // Build rehype-sanitize options (allow iframe https, code class, div with style)
   const rehypeSanitizeOptions = useMemo(() => {
     try {
       const schema = ((defaultSchema as any)?.default ?? defaultSchema) || {}
       const s = JSON.parse(JSON.stringify(schema))
-      s.tagNames = Array.from(new Set([...(s.tagNames || []), "iframe"]))
+      s.tagNames = Array.from(new Set([...(s.tagNames || []), "iframe", "div"]))
       s.attributes = s.attributes || {}
       s.attributes["iframe"] = Array.from(new Set([...(s.attributes["iframe"] || []), "src", "width", "height", "allow", "allowfullscreen", "frameborder", "title"]))
       s.attributes["code"] = Array.from(new Set([...(s.attributes["code"] || []), "class", "className"]))
+      s.attributes["div"] = Array.from(new Set([...(s.attributes["div"] || []), "style", "class", "className"]))
+      s.attributes["*"] = Array.from(new Set([...(s.attributes["*"] || []), "style"]))
       s.protocols = s.protocols || {}
       s.protocols["iframe"] = Array.from(new Set([...(s.protocols["iframe"] || []), "https"]))
       return [rehypeSanitize(s)]
@@ -341,6 +343,14 @@ export default function MarkdownRenderer({ content }: { content: string }) {
         if (!inline && lang === "solution") {
           return <CollapsibleSolution markdown={codeText} />
         }
+        // Generic React component embedding via fenced block
+        // Usage:
+        // ```component
+        // {"name":"FlipConvergence","props":{"trials":800,"updateIntervalMs":30}}
+        // ```
+        if (!inline && (lang === "component" || lang === "Component")) {
+          return <EmbedComponent code={codeText} />
+        }
 
         if (inline) {
           return <code className="rounded px-1 py-0.5 bg-muted text-sm">{children}</code>
@@ -423,6 +433,18 @@ export default function MarkdownRenderer({ content }: { content: string }) {
         return <p {...props} className={className}>{children}</p>
       },
       video: ({ node, ...props }: any) => <video {...props} controls className="rounded-lg shadow-md max-w-full h-auto" />,
+      blockquote: ({ children, ...props }: any) => (
+        <blockquote 
+          {...props} 
+          className="border-l-4 border-primary/50 pl-4 pr-4 py-2 my-6 italic bg-muted/30 rounded-r-md text-base leading-relaxed"
+        >
+          {children}
+        </blockquote>
+      ),
+      div: ({ node, children, ...props }: any) => {
+        // Allow div to render (already sanitized by rehype-sanitize)
+        return <div {...props}>{children}</div>
+      },
     }
     return base
   }, [mathMap, rehypeKatex, katexModule])
@@ -526,7 +548,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
         <div className="text-sm text-muted-foreground">{wordCount} words • ~{readingTimeMinutes} min</div>
       </div>
       <div>
-        <div ref={containerRef} className="prose max-w-none dark:prose-invert">
+        <div ref={containerRef} className="prose prose-lg md:prose-xl max-w-none lg:max-w-5xl xl:max-w-6xl mx-auto dark:prose-invert">
           {/* TOC at start of content (collapsed by default) */}
           {showToc && toc.length > 0 && (
             <div className="mb-4 p-3 border rounded bg-card">
@@ -582,6 +604,111 @@ export default function MarkdownRenderer({ content }: { content: string }) {
 /* -------------------------
    Helpers & subcomponents
    ------------------------- */
+
+// Registry of embeddable components for markdown. Components are lazy-loaded for performance.
+const componentRegistry: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
+  FlipConvergence: () => import("@/components/demos/FlipConvergence"),
+  FlipCard: () => import("@/components/demos/FlipCard"),
+}
+
+// Lightweight placeholder to avoid heavy work offscreen
+function ComponentSkeleton({ label = "Component" }: { label?: string }) {
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <div className="animate-pulse space-y-2">
+        <div className="h-4 w-32 bg-muted rounded" />
+        <div className="h-24 w-full bg-muted rounded" />
+      </div>
+      <div className="sr-only">Loading {label}…</div>
+    </div>
+  )
+}
+
+// Parse a fenced `component` block payload into { name, props }
+function parseComponentConfig(raw: string): { name: string; props?: any } | null {
+  const txt = (raw || "").trim()
+  if (!txt) return null
+  // Prefer JSON format
+  try {
+    const obj = JSON.parse(txt)
+    if (obj && typeof obj.name === "string") return { name: obj.name, props: obj.props ?? {} }
+  } catch {
+    // Fallback to simple key:value lines
+    const lines = txt.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+    const map: Record<string, string> = {}
+    for (const ln of lines) {
+      const m = ln.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/)
+      if (m) map[m[1]] = m[2]
+    }
+    if (map.name) {
+      let props: any = {}
+      if (map.props) {
+        try { props = JSON.parse(map.props) } catch { props = {} }
+      }
+      return { name: map.name, props }
+    }
+  }
+  return null
+}
+
+function EmbedComponent({ code }: { code: string }) {
+  const [cfg, setCfg] = useState<{ name: string; props?: any } | null>(null)
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    setCfg(parseComponentConfig(code))
+  }, [code])
+
+  // Mount only when visible to avoid unnecessary work
+  useEffect(() => {
+    const el = hostRef.current
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setVisible(true)
+      return
+    }
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          setVisible(true)
+          io.disconnect()
+          break
+        }
+      }
+    }, { root: null, rootMargin: "200px 0px", threshold: 0.01 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // Resolve loader from registry and memoize the lazy component unconditionally (hooks must not be conditional)
+  const loader = cfg?.name ? componentRegistry[cfg.name] : undefined
+  const LazyComp = React.useMemo(() => (loader ? React.lazy(loader) : null), [loader])
+
+  return (
+    <div ref={hostRef} className="not-prose my-4">
+      {/* Handle invalid config/name before attempting to render */}
+      {!cfg?.name ? (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 text-destructive p-3 text-sm">
+          {`Invalid component embed. Provide JSON like {"name":"FlipConvergence","props":{}}.`}
+        </div>
+      ) : !loader ? (
+        <div className="rounded-md border border-border bg-card p-3 text-sm">
+          Unknown component "{cfg.name}". Available: {Object.keys(componentRegistry).join(", ")}
+        </div>
+      ) : !LazyComp ? (
+        <ComponentSkeleton label={cfg.name} />
+      ) : visible ? (
+        <React.Suspense fallback={<ComponentSkeleton label={cfg.name} />}>
+          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <LazyComp {...(cfg.props as any)} />
+        </React.Suspense>
+      ) : (
+        <ComponentSkeleton label={cfg.name} />
+      )}
+    </div>
+  )
+}
 
 function extractText(children: any): string {
   if (!children) return ""
@@ -810,13 +937,17 @@ function BlockMath({ latex, id }: { latex: string; id: string }) {
 
   return (
     <div id={id} className="my-6 not-prose">
-      <div className="relative rounded-md border border-border bg-card p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="prose max-w-none">
-            {rendered ? <div dangerouslySetInnerHTML={{ __html: rendered }} /> : <pre className="whitespace-pre-wrap text-sm font-mono">{latex}</pre>}
+      <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto">
+        <div className="flex items-start gap-2 min-w-0">
+          <div className="prose max-w-none flex-1 min-w-0 overflow-x-auto">
+            {rendered ? (
+              <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: rendered }} />
+            ) : (
+              <pre className="whitespace-pre-wrap break-words text-sm font-mono overflow-x-auto">{latex}</pre>
+            )}
           </div>
 
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
             <CopyButton text={latex} variant="lambda" title="Copy LaTeX" ariaLabel="Copy LaTeX" className="px-2 py-1 text-xs rounded-md border" />
           </div>
         </div>
