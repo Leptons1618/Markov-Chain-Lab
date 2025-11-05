@@ -91,9 +91,22 @@ If you prefer full IaC control, use Amplify Gen 2 (TypeScript-based) to define h
 
 ## Environment variables
 
+🔐 **Security Note:** See [`SECURITY.md`](SECURITY.md) for detailed admin authentication setup.
+
+**Required for Admin Panel:**
+- `ADMIN_PASSWORD` - Strong password for admin authentication (server-only, NO prefix)
+  - Generate with: `openssl rand -base64 24`
+  - Set in Amplify console → App settings → Environment variables
+  - **NEVER** hardcode or commit this password
+
+**Optional:**
+- `NEXTAUTH_SECRET` - If using NextAuth.js for session management (server-only)
+- `ADMIN_ALLOWED_IPS` - Comma-separated IP whitelist for extra security (server-only)
+
+**General Rules:**
 - Client-exposed: prefix with `NEXT_PUBLIC_`
 - Server-only: plain names (no prefix). Set in Amplify console → App settings → Environment variables
-- Never commit `.env.production` to the repo
+- Never commit `.env.production` or `.env.local` to the repo
 
 ## Custom domains
 
@@ -108,6 +121,11 @@ If you prefer full IaC control, use Amplify Gen 2 (TypeScript-based) to define h
 
 ## Minimal checklist before going live
 
+- [ ] **🔐 SECURITY: Set up admin authentication** (see `SECURITY.md`)
+  - [ ] Set `ADMIN_PASSWORD` environment variable in Amplify
+  - [ ] Implement server-side auth API route
+  - [ ] Remove hardcoded password from client code
+  - [ ] Test login with production credentials
 - [ ] Replace local file writes with a DB or disable admin writes in prod
 - [ ] Remove `images.unoptimized` and configure remote image patterns if needed
 - [ ] Add `revalidate` to static-friendly routes and dynamic import heavy client components

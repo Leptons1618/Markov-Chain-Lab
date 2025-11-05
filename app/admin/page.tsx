@@ -18,6 +18,15 @@ export default function AdminPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(false)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
+
+  // Check session on mount
+  useEffect(() => {
+    const isAuth = sessionStorage.getItem('admin-authenticated')
+    if (isAuth === 'true') {
+      setIsAuthenticated(true)
+    }
+  }, [])
 
   // Load data when authenticated
   useEffect(() => {
@@ -44,15 +53,43 @@ export default function AdminPage() {
     }
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Simple password check (in production, use proper authentication)
-    if (password === "admin123") {
-      setIsAuthenticated(true)
-      setError("")
-    } else {
-      setError("Invalid password")
+    setIsAuthenticating(true)
+    setError("")
+
+    try {
+      const response = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.authenticated) {
+        setIsAuthenticated(true)
+        sessionStorage.setItem('admin-authenticated', 'true')
+        setPassword("") // Clear password from memory
+      } else {
+        setError(data.error || 'Invalid password')
+      }
+    } catch (error) {
+      console.error('Authentication error:', error)
+      setError('Authentication failed. Please try again.')
+    } finally {
+      setIsAuthenticating(false)
     }
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    sessionStorage.removeItem('admin-authenticated')
+    setPassword("")
+    setCourses([])
+    setAllLessons([])
   }
 
   if (!isAuthenticated) {
@@ -79,11 +116,19 @@ export default function AdminPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="cursor-text"
+                  disabled={isAuthenticating}
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full cursor-pointer">
-                Login to Dashboard
+              <Button type="submit" className="w-full cursor-pointer" disabled={isAuthenticating}>
+                {isAuthenticating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Authenticating...
+                  </>
+                ) : (
+                  'Login to Dashboard'
+                )}
               </Button>
             </form>
           </CardContent>
@@ -129,7 +174,7 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsAuthenticated(false)}
+                onClick={handleLogout}
                 className="cursor-pointer bg-transparent"
               >
                 <LogOut className="h-4 w-4 mr-2" />

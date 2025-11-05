@@ -183,9 +183,22 @@ Set app/environment variables in SWA configuration (portal) or via SWA CLI.
 
 ## Environment variables
 
+🔐 **Security Note:** See [`SECURITY.md`](SECURITY.md) for detailed admin authentication setup.
+
+**Required for Admin Panel:**
+- `ADMIN_PASSWORD` - Strong password for admin authentication (server-only, NO prefix)
+  - Generate with: `openssl rand -base64 24`
+  - Set in Azure Portal → Configuration → Application Settings (App Service) or Settings → Configuration (SWA)
+  - **NEVER** hardcode or commit this password
+
+**Optional:**
+- `NEXTAUTH_SECRET` - If using NextAuth.js for session management (server-only)
+- `ADMIN_ALLOWED_IPS` - Comma-separated IP whitelist for extra security (server-only)
+
+**General Rules:**
 - Client-exposed: prefix with `NEXT_PUBLIC_` (available in browser and server)
 - Server-only: no prefix; define in App Service/SWA settings (not committed)
-- Never commit `.env.production` to the repo.
+- Never commit `.env.production` or `.env.local` to the repo.
 
 ## Rollbacks
 

@@ -261,15 +261,15 @@ export default function AboutPage() {
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                <Mail className="h-4 w-4" />
+                <Mail href="mailto:anishgiri163@gmail.com" className="h-4 w-4" />
                 Contact Us
               </Button>
               <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                <Github className="h-4 w-4" />
+                <Github href="https://github.com/Leptons1618/Markov-Chain-Lab" className="h-4 w-4" />
                 View Source
               </Button>
               <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                <Linkedin className="h-4 w-4" />
+                <Linkedin href="https://www.linkedin.com/in/anish-giri-a4031723a/" className="h-4 w-4" />
                 Connect
               </Button>
             </div>

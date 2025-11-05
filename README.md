@@ -70,29 +70,64 @@ Key gaps (full list in `docs/GAPS.md`):
 - SEO metadata per-page missing; no sitemap/robots; no analytics
 - No tests/CI; no error boundaries; accessibility and i18n not audited
 
-## How to run locally
+## Local Development
 
-Prereqs: Node 18+ recommended.
-
-````pwsh
+```bash
 npm install
 npm run dev
-````
+```
 
-Then open http://localhost:3000.
+Navigate to `http://localhost:3000`.
 
-## Persistence (dev/local)
+### Security Setup (Admin Panel)
 
-Admin APIs under `app/api/admin/*` read/write course and lesson data through a centralized store. For local development, the store persists to `data/lms.json` and also lives in-memory for performance. If the JSON file is missing, it will be created automatically from seed data on first use.
+**⚠️ IMPORTANT:** The admin panel requires secure authentication before deploying to production.
 
-Notes:
+1. **Create `.env.local` file** (copy from `.env.example`):
+   ```bash
+   cp .env.example .env.local
+   ```
 
-- Path: `data/lms.json`
-- Scope: development/local use; not suitable for multi-user production
-- On each create/update/delete via the admin routes, the store is saved to disk
-- Dates are stored as ISO strings and revived on load
+2. **Set a strong admin password** in `.env.local`:
+   ```bash
+   # Generate a secure password (recommended)
+   openssl rand -base64 24
+   
+   # Then add to .env.local:
+   ADMIN_PASSWORD=your-generated-password-here
+   ```
 
-For production, migrate to a database (e.g., SQLite via Prisma, or Postgres/Supabase).
+3. **Implement server-side authentication** (see `docs/SECURITY.md` for complete guide):
+   - Create `/api/admin/auth` route for password verification
+   - Update admin page to call the auth API
+   - Never hardcode passwords in client code
+
+4. **For production deployment:**
+   - Set `ADMIN_PASSWORD` as environment variable in your hosting platform
+   - See deployment guides below for platform-specific instructions
+
+**Current Status:** Admin authentication uses a hardcoded password (`admin123`) which is **NOT SECURE** for production. Follow the security guide before deploying.
+
+📖 **Full Security Guide:** [`docs/SECURITY.md`](docs/SECURITY.md)
+
+## Persistence
+
+Currently uses local JSON file (`data/lms.json`). For production, plan to migrate to a database (PostgreSQL or MongoDB) with proper API endpoints.
+
+## Documentation
+
+Comprehensive guides for development, deployment, and security:
+
+- **[Security Guide](docs/SECURITY.md)** - 🔐 Admin authentication and production security (read this before deploying!)
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and technical decisions
+- **[Features](docs/FEATURES.md)** - Complete feature list and capabilities
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - Playwright test suite and visual regression
+- **[Deployment: AWS Amplify](docs/DEPLOYMENT_AWS_AMPLIFY.md)** - Step-by-step AWS deployment
+- **[Deployment: Azure](docs/DEPLOYMENT_AZURE.md)** - Azure Static Web Apps guide
+- **[Roadmap](docs/ROADMAP.md)** - Future plans and enhancements
+- **[Content Enhancement Plan](docs/CONTENT_ENHANCEMENT_PLAN.md)** - Educational content strategy
+- **[Lesson Outlines](docs/LESSON_OUTLINES.md)** - Detailed lesson structures
+- **[Research Sources](docs/SOURCES.md)** - Curated academic and educational resources
 
 ## Production plan (overview)
 
