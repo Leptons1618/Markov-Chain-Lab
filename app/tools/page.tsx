@@ -92,6 +92,33 @@ const defaultColors = [
   "#ec4899", // chart-5
 ]
 
+const PROBABILITY_SCALE = 1_000_000
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+
+const roundProbability = (value: number) => {
+  const clamped = clamp01(value)
+  return Math.round(clamped * PROBABILITY_SCALE) / PROBABILITY_SCALE
+}
+
+const distributeEvenly = (total: number, count: number): number[] => {
+  if (count <= 0) return []
+  const normalizedTotal = clamp01(total)
+  const shares: number[] = []
+  let distributed = 0
+
+  for (let i = 0; i < count; i++) {
+    const slotsRemaining = count - i
+    const remainingTotal = normalizedTotal - distributed
+    const share = i === count - 1 ? roundProbability(remainingTotal) : roundProbability(remainingTotal / slotsRemaining)
+    const safeShare = clamp01(share)
+    shares.push(safeShare)
+    distributed += safeShare
+  }
+
+  return shares
+}
+
 /**
  * Determine device type based on window width
  */
@@ -452,29 +479,34 @@ function ToolsContent() {
     const outgoing = transitions.filter((t) => t.from === fromId)
     const n = outgoing.length
     if (n === 0) return transitions
-    const equal = 1 / n
-    return transitions.map((t) => (t.from === fromId ? { ...t, probability: equal } : t))
+    const shares = distributeEvenly(1, n)
+    const shareMap: Record<string, number> = {}
+    outgoing.forEach((transition, idx) => {
+      shareMap[transition.id] = shares[idx] ?? 0
+    })
+
+    return transitions.map((t) => (t.from === fromId ? { ...t, probability: roundProbability(shareMap[t.id] ?? 0) } : t))
   }, [])
 
   const normalizeWithAnchor = useCallback(
     (transitions: Transition[], fromId: string, anchorId: string, anchorValue: number) => {
-      const clamped = Math.max(0, Math.min(1, anchorValue))
+      const clamped = clamp01(anchorValue)
       const outgoing = transitions.filter((t) => t.from === fromId)
       const others = outgoing.filter((t) => t.id !== anchorId)
       if (others.length === 0) {
         // Only one transition from this state
-        return transitions.map((t) => (t.id === anchorId ? { ...t, probability: 1 } : t))
+        return transitions.map((t) => (t.id === anchorId ? { ...t, probability: roundProbability(1) } : t))
       }
-      const otherSum = others.reduce((acc, t) => acc + t.probability, 0)
-      const remaining = Math.max(0, 1 - clamped)
+      const remaining = clamp01(1 - clamped)
+      const evenShares = distributeEvenly(remaining, others.length)
+      const shareMap: Record<string, number> = {}
+      others.forEach((transition, idx) => {
+        shareMap[transition.id] = evenShares[idx] ?? 0
+      })
       return transitions.map((t) => {
-        if (t.id === anchorId) return { ...t, probability: clamped }
+        if (t.id === anchorId) return { ...t, probability: roundProbability(clamped) }
         if (t.from !== fromId) return t
-        if (otherSum > 0) {
-          return { ...t, probability: (t.probability / otherSum) * remaining }
-        }
-        // If all others were zero, spread equally
-        return { ...t, probability: remaining / others.length }
+        return { ...t, probability: roundProbability(shareMap[t.id] ?? 0) }
       })
     },
     [],
@@ -631,10 +663,11 @@ function ToolsContent() {
 
   const updateTransitionProbability = useCallback(
     (transitionId: string, probability: number) => {
+      const sanitized = roundProbability(Number.isFinite(probability) ? probability : 0)
       setChain((prev) => {
         const target = prev.transitions.find((t) => t.id === transitionId)
         if (!target) return prev
-        const normalized = normalizeWithAnchor(prev.transitions, target.from, transitionId, probability)
+        const normalized = normalizeWithAnchor(prev.transitions, target.from, transitionId, sanitized)
         return { ...prev, transitions: normalized }
       })
     },
@@ -1071,23 +1104,24 @@ function ToolsContent() {
       </TabsList>
 
       <TabsContent value="build" className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium">Chain Builder</h3>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer">
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer shrink-0">
                   <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-xs">
+              <TooltipContent side="left" className="max-w-[min(300px,90vw)] z-50">
                 <div className="space-y-2">
-                  <p className="font-medium">Instructions:</p>
+                  <p className="font-medium text-sm">Instructions:</p>
                   <ul className="text-xs space-y-1">
                     <li>• Click on canvas to add states</li>
                     <li>• Click a state, then another to create transitions</li>
                     <li>• Use the properties panel to edit values</li>
-                    <li>• Drag on empty canvas to pan • Pinch/scroll to zoom</li>
+                    <li>• Drag on empty canvas to pan</li>
+                    <li>• Pinch/scroll to zoom</li>
                   </ul>
                 </div>
               </TooltipContent>
@@ -1097,7 +1131,7 @@ function ToolsContent() {
 
         {chain.states.length === 0 ? (
           <Card className="transition-all duration-200 border-dashed">
-            <CardContent className="p-6 text-center">
+            <CardContent className="p-4 sm:p-6 text-center">
               <div className="text-muted-foreground text-sm">
                 <p className="mb-2">No states yet</p>
                 <p className="text-xs opacity-75">Click on the canvas to add your first state</p>
@@ -1106,10 +1140,10 @@ function ToolsContent() {
           </Card>
         ) : chain.transitions.length === 0 ? (
           <Card className="transition-all duration-200 border-dashed">
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">Transitions</CardTitle>
             </CardHeader>
-            <CardContent className="text-center py-6">
+            <CardContent className="text-center py-4 sm:py-6">
               <div className="text-muted-foreground text-sm">
                 <p className="mb-2">No transitions yet</p>
                 <p className="text-xs opacity-75">Click a state, then click another to create a transition</p>
@@ -1118,52 +1152,123 @@ function ToolsContent() {
           </Card>
         ) : (
           <Card className="transition-all duration-200">
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">Transitions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+            <CardContent className="space-y-2 max-h-64 overflow-y-auto px-3 sm:px-6">
               {chain.transitions.map((transition) => {
                 const fromState = chain.states.find((s) => s.id === transition.from)
                 const toState = chain.states.find((s) => s.id === transition.to)
                 return (
                   <div
                     key={transition.id}
-                    className="flex items-center gap-2 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150"
+                    className="flex flex-col gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150 sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] sm:items-center sm:gap-4"
                   >
-                    <Badge variant="outline" className="text-xs font-mono shrink-0 min-w-[3rem] justify-center">
-                      {fromState?.name}
-                    </Badge>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <Badge variant="outline" className="text-xs font-mono shrink-0 min-w-[3rem] justify-center">
-                      {toState?.name}
-                    </Badge>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {/* State labels - Flexible width with truncation */}
+                    <div className="flex items-center gap-2 min-w-0 w-full">
+                      <TooltipProvider>
+                        <Tooltip delayDuration={500}>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs font-mono flex-1 min-w-0 justify-center truncate cursor-default">
+                              {fromState?.name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs z-50">
+                            {fromState?.name}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+
+                      <TooltipProvider>
+                        <Tooltip delayDuration={500}>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-xs font-mono flex-1 min-w-0 justify-center truncate cursor-default">
+                              {toState?.name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs z-50">
+                            {toState?.name}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
+                    {/* Controls - Flexible layout */}
+                    <div className="flex items-center gap-2 min-w-0 w-full">
+                      {/* Slider - Responsive width */}
                       <Slider
                         value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
-                        onValueChange={(values) => updateTransitionProbability(transition.id, values[0])}
+                        onValueChange={(values) => updateTransitionProbability(transition.id, roundProbability(values[0] ?? 0))}
                         min={0}
                         max={1}
                         step={0.01}
-                        className="flex-1 min-w-[80px] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:h-1"
+                        className="flex-1 min-w-[80px] [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5 [&_.bg-primary]:h-0.5"
                       />
-                      <Input
-                        type="number"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={Number.isFinite(transition.probability) ? transition.probability.toFixed(2) : "0.00"}
-                        onChange={(e) => updateTransitionProbability(transition.id, Number.parseFloat(e.target.value) || 0)}
-                        className="w-16 h-7 text-xs font-mono text-center transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
-                      />
+
+                      {/* Number input with custom controls */}
+                      <div className="relative shrink-0">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={Number.isFinite(transition.probability) ? transition.probability.toFixed(2) : "0.00"}
+                          onChange={(e) => {
+                            const parsed = Number.parseFloat(e.target.value)
+                            updateTransitionProbability(
+                              transition.id,
+                              roundProbability(Number.isFinite(parsed) ? parsed : 0),
+                            )
+                          }}
+                          className="w-[4.5rem] h-8 text-xs font-mono text-center pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l border-border/60">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newVal = Math.min(1, (transition.probability || 0) + 0.01)
+                              updateTransitionProbability(transition.id, roundProbability(newVal))
+                            }}
+                            className="flex-1 px-1 hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+                            aria-label="Increase probability"
+                          >
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newVal = Math.max(0, (transition.probability || 0) - 0.01)
+                              updateTransitionProbability(transition.id, roundProbability(newVal))
+                            }}
+                            className="flex-1 px-1 hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground border-t border-border/60 cursor-pointer"
+                            aria-label="Decrease probability"
+                          >
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTransition(transition.id)}
-                      className="h-7 w-7 shrink-0 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+
+                    {/* Delete button */}
+                    <div className="flex items-center justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteTransition(transition.id)}
+                        className="h-8 w-8 shrink-0 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                        aria-label="Delete transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 )
               })}
@@ -1925,6 +2030,7 @@ function ToolsContent() {
         </button>
 
         <main className="flex-1 relative overflow-hidden">
+          <TooltipProvider>
           {/* Redesigned Radial Toolbox - Wide Arc */}
           <div 
             ref={toolboxRef}
@@ -2395,7 +2501,6 @@ function ToolsContent() {
                         borderColor: state.color,
                         color: state.color,
                         willChange: draggingStateId === state.id ? 'transform' : 'auto',
-                        contain: 'layout style paint',
                         boxShadow: state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
                       }}
                       onPointerDown={(e) => {
@@ -2466,31 +2571,36 @@ function ToolsContent() {
                         }
                       }}
                     >
-                      <div className="relative w-full h-full flex items-center justify-center">
-                        {/* Initial state indicator - arrow pointing in */}
-                        {state.isInitial && (
-                          <div 
-                            className="absolute -left-8 top-1/2 -translate-y-1/2"
-                            style={{ color: state.color }}
-                          >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <path d="M5 12h14M12 5l7 7-7 7" />
-                            </svg>
-                          </div>
-                        )}
-                        
-                        {/* State name with tooltip */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                      <Tooltip delayDuration={300}>
+                        <TooltipTrigger asChild>
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            {/* Initial state indicator - arrow pointing in */}
+                            {state.isInitial && (
+                              <div 
+                                className="absolute -left-8 top-1/2 -translate-y-1/2"
+                                style={{ color: state.color }}
+                              >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M5 12h14M12 5l7 7-7 7" />
+                                </svg>
+                              </div>
+                            )}
+                            
+                            {/* State name */}
                             <span className="z-10 font-semibold max-w-[75%] truncate px-1">
                               {state.name}
                             </span>
-                          </TooltipTrigger>
-                          <TooltipContent 
-                            side="top" 
-                            className="bg-card/90 backdrop-blur-sm border-border/60 shadow-lg max-w-[280px]"
-                            sideOffset={8}
-                          >
+                            
+                            {/* Final state indicator - double circle border is handled by CSS */}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent 
+                          side="top" 
+                          className="bg-card/95 backdrop-blur-sm border-border/60 shadow-xl max-w-[280px] z-[9999] pointer-events-auto"
+                          sideOffset={16}
+                          collisionPadding={16}
+                          avoidCollisions={true}
+                        >
                             <div className="space-y-2 text-xs">
                               <div className="font-semibold text-sm border-b border-border/40 pb-1.5 mb-2">
                                 {state.name}
@@ -2546,9 +2656,6 @@ function ToolsContent() {
                             </div>
                           </TooltipContent>
                         </Tooltip>
-                        
-                        {/* Final state indicator - double circle border is handled by CSS */}
-                      </div>
                     </div>
                   </Popover.Trigger>
                   <Popover.Content side="top" sideOffset={10} className="z-50 rounded-lg border bg-card p-3 shadow-md w-auto min-w-[280px] max-w-[90vw]">
@@ -2698,7 +2805,7 @@ function ToolsContent() {
                                   </Badge>
                                   <Slider
                                     value={[Number.isFinite(t.probability) ? t.probability : 0]}
-                                    onValueChange={(values) => updateTransitionProbability(t.id, values[0])}
+                                    onValueChange={(values) => updateTransitionProbability(t.id, roundProbability(values[0] ?? 0))}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -2710,7 +2817,13 @@ function ToolsContent() {
                                     max={1}
                                     step={0.01}
                                     value={Number.isFinite(t.probability) ? t.probability.toFixed(2) : "0.00"}
-                                    onChange={(e) => updateTransitionProbability(t.id, Number.parseFloat(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                      const parsed = Number.parseFloat(e.target.value)
+                                      updateTransitionProbability(
+                                        t.id,
+                                        roundProbability(Number.isFinite(parsed) ? parsed : 0),
+                                      )
+                                    }}
                                     onPointerDown={(e) => e.stopPropagation()}
                                     onClick={(e) => e.stopPropagation()}
                                     className="w-16 h-7 text-xs font-mono text-center transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
@@ -2748,6 +2861,7 @@ function ToolsContent() {
               )}
             </div>
           </div>
+          </TooltipProvider>
         </main>
       </div>
 
