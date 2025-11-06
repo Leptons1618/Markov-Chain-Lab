@@ -133,8 +133,8 @@ export default function ExamplesPage() {
 
         <Tabs defaultValue="classic" className="space-y-8">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="classic">Classic Examples</TabsTrigger>
-            <TabsTrigger value="modern">Modern Applications</TabsTrigger>
+            <TabsTrigger value="classic" className="hover:cursor-pointer">Classic Examples</TabsTrigger>
+            <TabsTrigger value="modern" className="hover:cursor-pointer">Modern Applications</TabsTrigger>
           </TabsList>
 
           <TabsContent value="classic" className="space-y-6">

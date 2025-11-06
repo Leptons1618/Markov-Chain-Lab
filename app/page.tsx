@@ -22,19 +22,19 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/learn" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
                   Learn
                 </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/tools" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
                   Tools
                 </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
                   Examples
                 </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/practice" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
                   Practice
                 </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/about" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
                   About
                 </Link>
                 <ThemeSwitcher />

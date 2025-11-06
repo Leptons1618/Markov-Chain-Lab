@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useCallback, useEffect, Suspense, memo } from "react"
+import { useState, useRef, useCallback, useEffect, Suspense, memo, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +33,9 @@ import {
   Menu,
   X,
   Wrench,
+  Pencil,
+  Maximize2,
+  Check,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -178,7 +181,7 @@ function ToolsContent() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
-  const MIN_SCALE = 0.2
+  const MIN_SCALE = 0.1
   const MAX_SCALE = 3
   const canvasContentRef = useRef<HTMLDivElement>(null)
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
@@ -212,6 +215,142 @@ function ToolsContent() {
   // Track pinch gesture data
   const pinchRef = useRef<{ mid: { x: number; y: number }; dist: number } | null>(null)
   const [toolboxOpen, setToolboxOpen] = useState(false)
+  const [toolboxOpacity, setToolboxOpacity] = useState(0.4)
+  const [hoveredTool, setHoveredTool] = useState<number | null>(null)
+  const [mouseAngle, setMouseAngle] = useState<number>(0)
+  const toolboxTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const toolboxRef = useRef<HTMLDivElement | null>(null)
+  const [isToolboxLocked, setIsToolboxLocked] = useState(false)
+  const lastActiveTimeRef = useRef<number>(Date.now())
+
+  // Constants for radial menu
+  const RADIAL_TOOL_COUNT = 8
+
+  // Smooth opacity transition based on proximity and idle time
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!toolboxRef.current) return
+      
+      const rect = toolboxRef.current.getBoundingClientRect()
+      const centerX = rect.left + rect.width / 2
+      const centerY = rect.top + rect.height / 2
+      const distance = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2))
+      
+      // Auto-show tools on hover (if not locked) - stricter distance check
+      if (!isToolboxLocked && distance < 80) {
+        setToolboxOpen(true)
+        lastActiveTimeRef.current = Date.now()
+      } else if (!isToolboxLocked && distance > 120) {
+        setToolboxOpen(false)
+      }
+      
+      // Calculate angle for radial menu when open (wide 180-degree arc)
+      if (toolboxOpen) {
+        const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX)
+        setMouseAngle(angle)
+        
+        // Calculate which tool is being hovered based on angle
+        const toolCount = RADIAL_TOOL_COUNT
+        // Wide arc from bottom-right (45 deg) to top-left (225 deg)
+        const startAngle = Math.PI / 4 // 45 degrees
+        const endAngle = Math.PI * 1.25 // 225 degrees
+        const angleRange = endAngle - startAngle
+        const anglePerTool = angleRange / (toolCount - 1)
+        
+        // Only highlight if mouse is within the radial menu range (stricter)
+        if (distance > 40 && distance < 85) {
+          // Check if mouse angle is within the wide arc
+          let normalizedAngle = angle
+          if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI
+          
+          // Calculate tool index based on angle
+          let toolIndex = -1
+          for (let i = 0; i < toolCount; i++) {
+            const toolAngle = startAngle + i * anglePerTool
+            const angleDiff = Math.abs(normalizedAngle - toolAngle)
+            const angleDiffWrapped = Math.abs(normalizedAngle - toolAngle + 2 * Math.PI)
+            const minAngleDiff = Math.min(angleDiff, angleDiffWrapped)
+            
+            // Tool is highlighted if mouse is within 15 degrees of it
+            if (minAngleDiff < anglePerTool / 1.5) {
+              toolIndex = i
+              break
+            }
+          }
+          
+          setHoveredTool(toolIndex)
+          lastActiveTimeRef.current = Date.now()
+        } else {
+          setHoveredTool(null)
+        }
+      } else {
+        setHoveredTool(null)
+      }
+      
+      // Proximity-based opacity - only fade when idle AND toolbox is closed
+      const proximityThreshold = 150
+      const timeSinceActive = Date.now() - lastActiveTimeRef.current
+      const idleThreshold = 3000 // 3 seconds of idle time before fading
+      
+      // Clear any existing timeout
+      if (toolboxTimeoutRef.current) {
+        clearTimeout(toolboxTimeoutRef.current)
+        toolboxTimeoutRef.current = null
+      }
+      
+      // If toolbox is open or locked, keep it fully visible
+      if (toolboxOpen || isToolboxLocked) {
+        setToolboxOpacity(1)
+        lastActiveTimeRef.current = Date.now()
+      } else if (distance < proximityThreshold) {
+        // Mouse is near - keep it visible
+        setToolboxOpacity(1)
+        lastActiveTimeRef.current = Date.now()
+      } else if (timeSinceActive < idleThreshold) {
+        // Recently active - keep it visible for a while
+        setToolboxOpacity(1)
+        // Set timeout to start fading after idle threshold
+        toolboxTimeoutRef.current = setTimeout(() => {
+          if (!toolboxOpen && !isToolboxLocked) {
+            setToolboxOpacity(0.4)
+          }
+        }, idleThreshold - timeSinceActive)
+      } else {
+        // Been idle for a while - fade it
+        setToolboxOpacity(0.4)
+      }
+    }
+
+    const handleTouchStart = () => {
+      setToolboxOpacity(1)
+      lastActiveTimeRef.current = Date.now()
+      if (toolboxTimeoutRef.current) {
+        clearTimeout(toolboxTimeoutRef.current)
+        toolboxTimeoutRef.current = null
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('touchstart', handleTouchStart)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchstart', handleTouchStart)
+      if (toolboxTimeoutRef.current) {
+        clearTimeout(toolboxTimeoutRef.current)
+      }
+    }
+  }, [toolboxOpen, isToolboxLocked])
+
+  // Reset opacity and hoveredTool when toolbox closes
+  useEffect(() => {
+    if (!toolboxOpen) {
+      setHoveredTool(null)
+      setIsToolboxLocked(false)
+    }
+  }, [toolboxOpen])
+  const [editingStateId, setEditingStateId] = useState<string | null>(null)
+  const [editingStateName, setEditingStateName] = useState("")
 
   // Track changes to mark unsaved changes
   useEffect(() => {
@@ -920,13 +1059,13 @@ function ToolsContent() {
   const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze"; onChange: (val: "build" | "simulate" | "analyze") => void }) => (
     <Tabs value={value} onValueChange={(v) => onChange(v as any)} className="w-full">
       <TabsList className="grid w-full grid-cols-3 bg-muted/50">
-        <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200">
+        <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer">
           Build
         </TabsTrigger>
-        <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200">
+        <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer">
           Simulate
         </TabsTrigger>
-        <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200">
+        <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer">
           Analyze
         </TabsTrigger>
       </TabsList>
@@ -937,7 +1076,7 @@ function ToolsContent() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer">
                   <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
                 </Button>
               </TooltipTrigger>
@@ -956,7 +1095,28 @@ function ToolsContent() {
           </TooltipProvider>
         </div>
 
-        {chain.transitions.length > 0 && (
+        {chain.states.length === 0 ? (
+          <Card className="transition-all duration-200 border-dashed">
+            <CardContent className="p-6 text-center">
+              <div className="text-muted-foreground text-sm">
+                <p className="mb-2">No states yet</p>
+                <p className="text-xs opacity-75">Click on the canvas to add your first state</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : chain.transitions.length === 0 ? (
+          <Card className="transition-all duration-200 border-dashed">
+            <CardHeader>
+              <CardTitle className="text-base">Transitions</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-6">
+              <div className="text-muted-foreground text-sm">
+                <p className="mb-2">No transitions yet</p>
+                <p className="text-xs opacity-75">Click a state, then click another to create a transition</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
           <Card className="transition-all duration-200">
             <CardHeader>
               <CardTitle className="text-base">Transitions</CardTitle>
@@ -970,33 +1130,37 @@ function ToolsContent() {
                     key={transition.id}
                     className="flex items-center gap-2 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150"
                   >
-                    <span className="font-medium w-10 truncate">{fromState?.name}</span>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0 mx-1" />
-                    <span className="font-medium w-10 truncate">{toState?.name}</span>
-                    <div className="flex items-center gap-2 flex-1">
+                    <Badge variant="outline" className="text-xs font-mono shrink-0 min-w-[3rem] justify-center">
+                      {fromState?.name}
+                    </Badge>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <Badge variant="outline" className="text-xs font-mono shrink-0 min-w-[3rem] justify-center">
+                      {toState?.name}
+                    </Badge>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Slider
                         value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
                         onValueChange={(values) => updateTransitionProbability(transition.id, values[0])}
                         min={0}
                         max={1}
                         step={0.01}
-                        className="w-40"
+                        className="flex-1 min-w-[80px] [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_.bg-primary]:h-1"
                       />
                       <Input
                         type="number"
                         min="0"
                         max="1"
                         step="0.01"
-                        value={Number.isFinite(transition.probability) ? transition.probability : 0}
-                        onChange={(e) => updateTransitionProbability(transition.id, Number.parseFloat(e.target.value))}
-                        className="w-20 h-7 text-xs transition-all duration-150 focus:ring-2"
+                        value={Number.isFinite(transition.probability) ? transition.probability.toFixed(2) : "0.00"}
+                        onChange={(e) => updateTransitionProbability(transition.id, Number.parseFloat(e.target.value) || 0)}
+                        className="w-16 h-7 text-xs font-mono text-center transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
                       />
                     </div>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => deleteTransition(transition.id)}
-                      className="transition-all duration-150 hover:bg-destructive/10"
+                      className="h-7 w-7 shrink-0 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -1014,15 +1178,15 @@ function ToolsContent() {
             <CardTitle className="text-base">Simulation Controls</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button onClick={() => { setActiveTab("simulate"); startSimulation() }} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => { setActiveTab("simulate"); startSimulation() }} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150 flex-1 sm:flex-initial">
                 <Play className="mr-2 h-4 w-4" />
                 Start
               </Button>
-              <Button onClick={() => { setActiveTab("simulate"); stepSimulation() }} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); stepSimulation() }} disabled={!isSimulating || isAutoRunning} size="sm" className="transition-all duration-150 flex-1 sm:flex-initial">
                 Step
               </Button>
-              <Button onClick={() => { setActiveTab("simulate"); toggleAutoRun() }} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150">
+              <Button onClick={() => { setActiveTab("simulate"); toggleAutoRun() }} disabled={chain.states.length === 0} variant={isAutoRunning ? "default" : "secondary"} size="sm" className="transition-all duration-150 flex-1 sm:flex-initial">
                 {isAutoRunning ? (
                   <>
                     <Pause className="mr-2 h-4 w-4" />
@@ -1035,7 +1199,7 @@ function ToolsContent() {
                   </>
                 )}
               </Button>
-              <Button onClick={resetSimulation} variant="outline" size="sm" className="transition-all duration-150 bg-transparent">
+              <Button onClick={resetSimulation} variant="outline" size="sm" className="transition-all duration-150 bg-transparent flex-1 sm:flex-initial">
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Reset
               </Button>
@@ -1428,83 +1592,25 @@ function ToolsContent() {
     [getBaseCenterOffset, panOffset.x, panOffset.y, scale, scheduleViewUpdate],
   )
 
-  // Reset pan/zoom to defaults
+  // Reset pan/zoom to defaults (recenter view without clearing canvas)
   const resetView = useCallback(() => {
-    // Reset pan and zoom
+    // Just reset pan and zoom to default view
     scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
-    
-    // Clear all states and transitions
-    setChain({ states: [], transitions: [] })
-    
-    // Clear selections
-    setSelectedState(null)
-    setSelectedTransition(null)
-    
-    // Reset simulation
-    setIsSimulating(false)
-    setIsAutoRunning(false)
-    setSimulationStep(0)
-    setCurrentState(null)
-    setSimulationMetrics({
-      stateVisits: {},
-      transitionUsage: {},
-      pathHistory: [],
-    })
-    
-    // Clear any saved design reference
-    setOriginalExampleDesign(null)
-    
-    // Mark as no unsaved changes since we're starting fresh
-    setHasUnsavedChanges(false)
-    
-    // Clear auto-run interval if running
-    if (autoRunIntervalRef.current) {
-      clearInterval(autoRunIntervalRef.current)
-      autoRunIntervalRef.current = null
-    }
   }, [scheduleViewUpdate])
 
-  const onCanvasDoubleClick = useCallback(() => {
-    resetView()
-  }, [resetView])
+  // Radial menu tools configuration (must be after all action functions are defined)
+  const radialTools = useMemo(() => [
+    { icon: FilePlus, label: 'New Chain', action: newDesign },
+    { icon: Save, label: 'Save', action: saveDesign },
+    { icon: FolderOpen, label: 'Library', action: () => setLibraryOpen(true) },
+    { icon: Upload, label: 'Import', action: handleImportClick },
+    { icon: Download, label: 'Export', action: exportChain },
+    { icon: FileText, label: 'Report', action: exportReport },
+    { icon: RotateCcw, label: 'Reset', action: resetView },
+    { icon: Maximize2, label: 'Fit View', action: zoomToFit, disabled: chain.states.length === 0 },
+  ], [chain.states.length, newDesign, saveDesign, handleImportClick, exportChain, exportReport, resetView, zoomToFit])
 
-  // Double-tap support for touch
-  const onCanvasPointerUpForTap = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // Only primary or middle button
-      if (!(e.button === 0 || e.button === 1)) return
-      // If a node drag occurred, skip double-tap reset
-      if (didDragRef.current) {
-        lastTapTimeRef.current = 0 // Reset to prevent accidental double-tap after drag
-        return
-      }
-      
-      // Ignore if tap is on a node or interactive element
-      const target = e.target as HTMLElement
-      if (target.closest("[data-node-id]") || 
-          target.closest('button') || 
-          target.closest('[role="dialog"]') ||
-          target.closest('[data-radix-popper-content-wrapper]') ||
-          target.closest('[data-radix-portal]')) {
-        lastTapTimeRef.current = 0 // Reset since this isn't a canvas tap
-        return
-      }
-      
-      const now = Date.now()
-      const timeSinceLastTap = now - lastTapTimeRef.current
-      
-      if (timeSinceLastTap > 0 && timeSinceLastTap < 300) {
-        // Double-tap detected - reset view
-        resetView()
-        // Reset the timer to prevent triple-tap issues
-        lastTapTimeRef.current = 0
-      } else {
-        // Single tap - record the time
-        lastTapTimeRef.current = now
-      }
-    },
-    [resetView],
-  )
+  // Remove double-click/double-tap to reset view - now handled by button
 
   const handleSidebarResize = useCallback(
     (e: React.MouseEvent) => {
@@ -1629,9 +1735,31 @@ function ToolsContent() {
 
           <div className="space-y-6">
             <div className="animate-in fade-in-0 slide-in-from-top-2 duration-500">
-              <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                Chain Builder
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Chain Builder
+                </h2>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer">
+                        <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="max-w-xs">
+                      <div className="space-y-2">
+                        <p className="font-medium">Instructions:</p>
+                        <ul className="text-xs space-y-1">
+                          <li>• Click on canvas to add states</li>
+                          <li>• Click a state, then another to create transitions</li>
+                          <li>• Use the properties panel to edit values</li>
+                          <li>• Drag on empty canvas to pan • Pinch/scroll to zoom</li>
+                        </ul>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Create your own Markov chain by adding states and transitions
               </p>
@@ -1640,6 +1768,20 @@ function ToolsContent() {
             <SidebarTabs value={activeTab} onChange={setActiveTab} />
           </div>
         </aside>
+
+        {/* Reset Canvas Button - Mobile */}
+        <div className="lg:hidden fixed bottom-20 left-4 z-[60]">
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-14 w-14 rounded-2xl shadow-lg bg-card/95 backdrop-blur-xl border border-border/60 cursor-pointer hover:scale-105 transition-all duration-300"
+            onClick={resetView}
+            title="Reset view and clear canvas"
+            aria-label="Reset view and clear canvas"
+          >
+            <RotateCcw className="h-5 w-5" />
+          </Button>
+        </div>
 
         <div className="lg:hidden fixed bottom-20 right-4 z-[60]">
           <Popover.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -1733,7 +1875,7 @@ function ToolsContent() {
                   </Button>
                   <Button
                     variant="secondary"
-                    className="justify-start"
+                    className="justify-start cursor-pointer"
                     onClick={() => {
                       resetView()
                       setMobileMenuOpen(false)
@@ -1741,6 +1883,18 @@ function ToolsContent() {
                   >
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Reset View
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-start cursor-pointer disabled:cursor-not-allowed"
+                    onClick={() => {
+                      zoomToFit()
+                      setMobileMenuOpen(false)
+                    }}
+                    disabled={chain.states.length === 0}
+                  >
+                    <Maximize2 className="mr-2 h-4 w-4" />
+                    Fit to View
                   </Button>
                 </div>
                 <div className="border-t pt-4">
@@ -1771,132 +1925,129 @@ function ToolsContent() {
         </button>
 
         <main className="flex-1 relative overflow-hidden">
-          {/* Floating Toolbox Button */}
-          <div className="hidden lg:block absolute top-4 right-4 z-[60]">
-            <Popover.Root open={toolboxOpen} onOpenChange={setToolboxOpen}>
-              <Popover.Trigger asChild>
-                <Button
-                  size="icon"
-                  className="h-12 w-12 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-primary/90 to-primary hover:from-primary hover:to-primary/90 border border-primary/20 hover:scale-105"
-                  aria-label="Toggle toolbox"
-                >
-                  {toolboxOpen ? (
-                    <X className="h-5 w-5 stroke-[2.5]" />
-                  ) : (
-                    <Wrench className="h-5 w-5 stroke-[2.5]" />
-                  )}
-                </Button>
-              </Popover.Trigger>
-              <Popover.Content
-                side="bottom"
-                align="end"
-                className="z-[70] w-auto rounded-2xl border border-border/60 bg-card/95 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in-0 slide-in-from-top-2 duration-300"
-                sideOffset={8}
+          {/* Redesigned Radial Toolbox - Wide Arc */}
+          <div 
+            ref={toolboxRef}
+            className="hidden lg:block absolute top-10 right-10 z-[60] transition-opacity duration-300"
+            style={{ opacity: toolboxOpacity }}
+            onMouseEnter={() => {
+              setToolboxOpacity(1)
+              lastActiveTimeRef.current = Date.now()
+              if (!isToolboxLocked) {
+                setToolboxOpen(true)
+              }
+            }}
+            onMouseLeave={() => {
+              if (!isToolboxLocked) {
+                setToolboxOpen(false)
+              }
+            }}
+          >
+            <div className="relative">
+              {/* Center Button */}
+              <button
+                onClick={() => {
+                  setIsToolboxLocked(!isToolboxLocked)
+                  setToolboxOpen(true) // Always ensure it's open on click
+                  lastActiveTimeRef.current = Date.now()
+                }}
+                className="relative h-10 w-10 rounded-full shadow-lg transition-all duration-300 bg-gradient-to-br from-primary via-primary to-primary/90 hover:scale-110 cursor-pointer backdrop-blur-xl border-2 border-primary/20 group z-10"
+                aria-label="Toggle toolbox lock"
               >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3 pb-2 border-b">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Canvas Toolbox</span>
-                    <Badge variant="secondary" className="text-[10px]">Quick Actions</Badge>
-                  </div>
-                  <TooltipProvider delayDuration={150}>
-                    <div className="grid grid-cols-4 gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={newDesign}
-                      >
-                        <FilePlus className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">New Chain</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={saveDesign}
-                      >
-                        <Save className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Save</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={() => setLibraryOpen(true)}
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Library</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={handleImportClick}
-                      >
-                        <Upload className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Import JSON</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={exportChain}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Export JSON</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={exportReport}
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Export Report</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl border border-border/60 bg-background/70 hover:bg-primary/10"
-                        onClick={resetView}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Reset View</TooltipContent>
-                  </Tooltip>
-                    </div>
-                  </TooltipProvider>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
+                <div className="relative z-10 flex items-center justify-center transition-transform duration-300">
+                  {isToolboxLocked ? (
+                    <X className="h-4 w-4 text-primary-foreground" />
+                  ) : (
+                    <Wrench className="h-4 w-4 text-primary-foreground" />
+                  )}
                 </div>
-                <Popover.Arrow className="fill-card/95" />
-              </Popover.Content>
-            </Popover.Root>
+              </button>
+
+              {/* Tool Menu Items - Wide Arc */}
+              {toolboxOpen && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                  {radialTools.map((tool, index) => {
+                    const totalTools = radialTools.length
+                    // Wide arc from bottom-right (45 deg) to top-left (225 deg)
+                    const startAngle = Math.PI / 4 // 45 degrees
+                    const endAngle = Math.PI * 1.25 // 225 degrees
+                    const angleRange = endAngle - startAngle
+                    const anglePerTool = angleRange / (totalTools - 1)
+                    const angle = startAngle + index * anglePerTool
+                    const radius = 65 // A comfortable radius for the wider arc
+                    
+                    const x = Math.cos(angle) * radius
+                    const y = Math.sin(angle) * radius
+                    
+                    const isHovered = hoveredTool === index
+                    const isDisabled = tool.disabled
+
+                    return (
+                      <div
+                        key={index}
+                        className="absolute pointer-events-auto animate-in fade-in-0 zoom-in-75 duration-200"
+                        style={{
+                          left: `${x}px`,
+                          top: `${y}px`,
+                          transform: 'translate(-50%, -50%)',
+                          animationDelay: `${index * 20}ms`,
+                          opacity: hoveredTool !== null && !isHovered ? 0.5 : 1,
+                          transition: 'opacity 200ms ease-out, transform 200ms ease-out',
+                        }}
+                      >
+                        <div className="flex flex-col items-center gap-1.5">
+                          {/* Tool Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (!isDisabled) {
+                                tool.action()
+                                if (!isToolboxLocked) {
+                                  setToolboxOpen(false)
+                                }
+                              }
+                            }}
+                            disabled={isDisabled}
+                            className={`h-7 w-7 rounded-full border transition-all duration-200 flex items-center justify-center ${
+                              isHovered && !isDisabled
+                                ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-115'
+                                : isDisabled
+                                ? 'bg-muted/30 text-muted-foreground/40 border-border/20 cursor-not-allowed opacity-50'
+                                : 'bg-background/95 backdrop-blur-sm text-foreground border-border/40 hover:border-primary/40 cursor-pointer'
+                            }`}
+                            style={{
+                              transition: 'all 200ms ease-out',
+                            }}
+                          >
+                            <tool.icon className="h-3 w-3" />
+                          </button>
+                          
+                          {/* Tool Label - Show on hover */}
+                          {isHovered && (
+                            <div 
+                              className="absolute top-full mt-1 whitespace-nowrap animate-in fade-in-0 slide-in-from-top-1 duration-150"
+                              style={{
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              <div className={`px-2 py-1 rounded-md text-[10px] font-medium shadow-md ${
+                                isDisabled 
+                                  ? 'bg-muted/80 text-muted-foreground/60 border border-border/30'
+                                  : 'bg-primary/90 text-primary-foreground border border-primary/50'
+                              }`}>
+                                {tool.label}
+                                {isDisabled && <span className=" ml-1">(disabled)</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
           <div
             ref={canvasRef}
@@ -1906,12 +2057,8 @@ function ToolsContent() {
             onClick={handleCanvasClick}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
-            onPointerUp={(e) => {
-              onCanvasPointerUp(e)
-              onCanvasPointerUpForTap(e)
-            }}
+            onPointerUp={onCanvasPointerUp}
             onWheel={onCanvasWheel}
-            onDoubleClick={onCanvasDoubleClick}
             onContextMenu={(e) => e.preventDefault()}
           >
             <div
@@ -2332,8 +2479,73 @@ function ToolsContent() {
                           </div>
                         )}
                         
-                        {/* State name */}
-                        <span className="z-10 font-semibold">{state.name}</span>
+                        {/* State name with tooltip */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="z-10 font-semibold max-w-[75%] truncate px-1">
+                              {state.name}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            side="top" 
+                            className="bg-card/90 backdrop-blur-sm border-border/60 shadow-lg max-w-[280px]"
+                            sideOffset={8}
+                          >
+                            <div className="space-y-2 text-xs">
+                              <div className="font-semibold text-sm border-b border-border/40 pb-1.5 mb-2">
+                                {state.name}
+                              </div>
+                              
+                              {/* Incoming transitions */}
+                              {(() => {
+                                const incoming = chain.transitions.filter(t => t.to === state.id)
+                                return incoming.length > 0 ? (
+                                  <div>
+                                    <div className="font-medium text-muted-foreground mb-1">
+                                      Incoming ({incoming.length}):
+                                    </div>
+                                    <div className="pl-2 space-y-0.5">
+                                      {incoming.map(t => {
+                                        const fromState = chain.states.find(s => s.id === t.from)
+                                        return (
+                                          <div key={t.id} className="text-xs">
+                                            {fromState?.name || 'Unknown'} → {(t.probability * 100).toFixed(1)}%
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-muted-foreground/60 italic">No incoming transitions</div>
+                                )
+                              })()}
+                              
+                              {/* Outgoing transitions */}
+                              {(() => {
+                                const outgoing = chain.transitions.filter(t => t.from === state.id)
+                                return outgoing.length > 0 ? (
+                                  <div>
+                                    <div className="font-medium text-muted-foreground mb-1">
+                                      Outgoing ({outgoing.length}):
+                                    </div>
+                                    <div className="pl-2 space-y-0.5">
+                                      {outgoing.map(t => {
+                                        const toState = chain.states.find(s => s.id === t.to)
+                                        return (
+                                          <div key={t.id} className="text-xs">
+                                            → {toState?.name || 'Unknown'} {(t.probability * 100).toFixed(1)}%
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-muted-foreground/60 italic">No outgoing transitions</div>
+                                )
+                              })()}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
                         
                         {/* Final state indicator - double circle border is handled by CSS */}
                       </div>
@@ -2342,31 +2554,69 @@ function ToolsContent() {
                   <Popover.Content side="top" sideOffset={10} className="z-50 rounded-lg border bg-card p-3 shadow-md w-auto min-w-[280px] max-w-[90vw]">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <Input
-                            id={`state-name-${state.id}`}
-                            value={state.name}
-                            onChange={(e) => {
-                              setChain((prev) => ({
-                                ...prev,
-                                states: prev.states.map((s) => (s.id === state.id ? { ...s, name: e.target.value } : s)),
-                              }))
-                            }}
-                            onPointerDown={(e) => {
-                              e.stopPropagation()
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                            }}
-                            placeholder="State name"
-                            className="h-8 text-sm"
-                            autoFocus={false}
-                            readOnly
-                            onFocus={(e) => {
-                              // Remove readOnly when user explicitly focuses
-                              e.target.readOnly = false
-                            }}
-                          />
+                        <div className="flex-1 flex items-center gap-2">
+                          {editingStateId === state.id ? (
+                            <>
+                              <Input
+                                value={editingStateName}
+                                onChange={(e) => setEditingStateName(e.target.value)}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    setChain((prev) => ({
+                                      ...prev,
+                                      states: prev.states.map((s) => (s.id === state.id ? { ...s, name: editingStateName } : s)),
+                                    }))
+                                    setEditingStateId(null)
+                                    setEditingStateName("")
+                                  } else if (e.key === 'Escape') {
+                                    setEditingStateId(null)
+                                    setEditingStateName("")
+                                  }
+                                }}
+                                className="h-8 text-sm font-medium transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
+                                autoFocus
+                                placeholder="State name"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-green-500/10 cursor-pointer"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setChain((prev) => ({
+                                    ...prev,
+                                    states: prev.states.map((s) => (s.id === state.id ? { ...s, name: editingStateName } : s)),
+                                  }))
+                                  setEditingStateId(null)
+                                  setEditingStateName("")
+                                }}
+                                title="Save"
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-sm truncate">{state.name}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 hover:bg-primary/10 cursor-pointer"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingStateId(state.id)
+                                  setEditingStateName(state.name)
+                                }}
+                                title="Edit name"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                         <Button
                           size="sm"
@@ -2386,8 +2636,8 @@ function ToolsContent() {
                       </div>
                       
                       {/* State Type Controls */}
-                      <div className="flex items-center gap-4 pt-2 border-t">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-2 border-t">
+                        <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={state.isInitial || false}
@@ -2397,18 +2647,18 @@ function ToolsContent() {
                                 ...prev,
                                 states: prev.states.map((s) => 
                                   s.id === state.id 
-                                    ? { ...s, isInitial: e.target.checked }
+                                    ? { ...s, isInitial: e.target.checked, isFinal: e.target.checked ? false : s.isFinal }
                                     : s
                                 ),
                               }))
                             }}
-                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
                             className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                           <span className="text-xs font-medium">Initial State</span>
                         </label>
                         
-                        <label className="flex items-center gap-2 cursor-pointer">
+                        <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={state.isFinal || false}
@@ -2418,47 +2668,57 @@ function ToolsContent() {
                                 ...prev,
                                 states: prev.states.map((s) => 
                                   s.id === state.id 
-                                    ? { ...s, isFinal: e.target.checked }
+                                    ? { ...s, isFinal: e.target.checked, isInitial: e.target.checked ? false : s.isInitial }
                                     : s
                                 ),
                               }))
                             }}
-                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
                             className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                           <span className="text-xs font-medium">Final State</span>
                         </label>
                       </div>
                       
-                      <div className="space-y-2 pt-1 border-t">
-                        <Label className="text-xs text-muted-foreground">Outgoing Probabilities</Label>
-                        {chain.transitions
-                          .filter((t) => t.from === state.id)
-                          .map((t) => {
-                            const to = chain.states.find((s) => s.id === t.to)
-                            return (
-                              <div key={t.id} className="flex items-center gap-2 text-xs">
-                                <span className="w-10 font-medium">{to?.name}</span>
-                                <Slider
-                                  value={[Number.isFinite(t.probability) ? t.probability : 0]}
-                                  onValueChange={(values) => updateTransitionProbability(t.id, values[0])}
-                                  min={0}
-                                  max={1}
-                                  step={0.01}
-                                  className="w-40"
-                                />
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={1}
-                                  step={0.01}
-                                  value={Number.isFinite(t.probability) ? t.probability : 0}
-                                  onChange={(e) => updateTransitionProbability(t.id, Number.parseFloat(e.target.value))}
-                                  className="w-16 h-7"
-                                />
-                              </div>
-                            )
-                          })}
+                      <div className="space-y-3 pt-2 border-t">
+                        <Label className="text-xs font-medium text-muted-foreground">Outgoing Probabilities</Label>
+                        {chain.transitions.filter((t) => t.from === state.id).length === 0 ? (
+                          <div className="text-center py-3 text-muted-foreground text-xs">
+                            No outgoing transitions
+                          </div>
+                        ) : (
+                          chain.transitions
+                            .filter((t) => t.from === state.id)
+                            .map((t) => {
+                              const to = chain.states.find((s) => s.id === t.to)
+                              return (
+                                <div key={t.id} className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs font-mono shrink-0 min-w-[2.5rem] justify-center">
+                                    {to?.name}
+                                  </Badge>
+                                  <Slider
+                                    value={[Number.isFinite(t.probability) ? t.probability : 0]}
+                                    onValueChange={(values) => updateTransitionProbability(t.id, values[0])}
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    className="flex-1 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_.bg-primary]:h-1.5"
+                                  />
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={Number.isFinite(t.probability) ? t.probability.toFixed(2) : "0.00"}
+                                    onChange={(e) => updateTransitionProbability(t.id, Number.parseFloat(e.target.value) || 0)}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-16 h-7 text-xs font-mono text-center transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
+                                  />
+                                </div>
+                              )
+                            })
+                        )}
                       </div>
                     </div>
                   </Popover.Content>
@@ -2480,7 +2740,7 @@ function ToolsContent() {
                         Click anywhere on the canvas to add your first state
                       </p>
                       <p className="text-muted-foreground text-xs sm:text-sm mt-2 opacity-75">
-                        Drag to pan • Pinch/scroll to zoom • Double‑tap/double‑click to reset
+                        Drag to pan • Pinch/scroll to zoom
                       </p>
                     </CardContent>
                   </Card>

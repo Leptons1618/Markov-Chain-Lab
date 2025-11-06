@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,16 +36,16 @@ export default function AboutPage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/learn" className="text-muted-foreground hover:text-foreground hover:pointer hover:underline transition-colors">
                   Learn
                 </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/tools" className="text-muted-foreground hover:text-foreground hover:pointer hover:underline transition-colors">
                   Tools
                 </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/examples" className="text-muted-foreground hover:text-foreground hover:pointer hover:underline transition-colors">
                   Examples
                 </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/practice" className="text-muted-foreground hover:text-foreground hover:pointer hover:underline transition-colors">
                   Practice
                 </Link>
                 <Link href="/about" className="text-foreground font-medium transition-colors">
@@ -260,16 +262,16 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                <Mail href="mailto:anishgiri163@gmail.com" className="h-4 w-4" />
+              <Button variant="outline" className="flex items-center gap-2 bg-transparent hover:cursor-pointer"   onClick={() => window.location.href = "mailto:anishgiri163@gmail.com"}>
+                <Mail className="h-4 w-4" />
                 Contact Us
               </Button>
-              <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                <Github href="https://github.com/Leptons1618/Markov-Chain-Lab" className="h-4 w-4" />
+              <Button variant="outline" className="flex items-center gap-2 bg-transparent hover:cursor-pointer" onClick={() => window.open("https://github.com/Leptons1618/Markov-Chain-Lab")}>
+                <Github className="h-4 w-4" />
                 View Source
               </Button>
-              <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                <Linkedin href="https://www.linkedin.com/in/anish-giri-a4031723a/" className="h-4 w-4" />
+              <Button variant="outline" className="flex items-center gap-2 bg-transparent hover:cursor-pointer" onClick={() => window.open("https://www.linkedin.com/in/anish-giri-a4031723a/")}>
+                <Linkedin className="h-4 w-4" />
                 Connect
               </Button>
             </div>

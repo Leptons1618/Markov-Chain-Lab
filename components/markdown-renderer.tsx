@@ -353,26 +353,26 @@ export default function MarkdownRenderer({ content }: { content: string }) {
         }
 
         if (inline) {
-          return <code className="rounded px-1 py-0.5 bg-muted text-sm">{children}</code>
+          return <code className="rounded px-1 py-0.5 bg-muted text-sm break-words" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{children}</code>
         }
 
         const lines = codeText.split(/\r?\n/)
 
         return (
-          <div className="not-prose relative my-4">
+          <div className="not-prose relative my-4 max-w-full">
             <div className="flex justify-between items-center mb-2">
               <div className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{lang || "code"}</div>
               <CopyButton text={codeText} title="Copy code" ariaLabel="Copy code" className="text-xs px-2 py-0.5 rounded-md border bg-background hover:bg-muted" />
             </div>
 
-            <div className="overflow-auto rounded-md border border-border bg-card text-sm">
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr' }}>
+            <div className="overflow-auto rounded-md border border-border bg-card text-sm max-w-full">
+              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr', maxWidth: '100%' }}>
                 <ol className="text-xs leading-5 text-muted-foreground px-2 py-3" style={{ margin: 0 }}>
                   {lines.map((_, i) => (
                     <li key={i} style={{ listStyle: 'decimal', textAlign: 'right', paddingRight: 8 }}>{i + 1}</li>
                   ))}
                 </ol>
-                <pre className="m-0 p-3 overflow-x-auto" style={{ whiteSpace: 'pre-wrap' }}>
+                <pre className="m-0 p-3 overflow-x-auto" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', maxWidth: '100%' }}>
                   <code className={className} {...props}>
                     {codeText}
                   </code>
@@ -416,11 +416,11 @@ export default function MarkdownRenderer({ content }: { content: string }) {
             return <BlockMath latex={latex} id={id} />
           }
           return (
-            <div id={id} className="my-6 not-prose">
-              <div className="relative rounded-md border border-border bg-card p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <pre className="whitespace-pre-wrap text-sm font-mono">{latex}</pre>
-                  <div className="flex flex-col items-end gap-2">
+            <div id={id} className="my-6 not-prose max-w-full">
+              <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-2 max-w-full">
+                  <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto flex-1 min-w-0 max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{latex}</pre>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0 self-start sm:self-auto">
                     <CopyButton text={latex} variant="lambda" title="Copy LaTeX" ariaLabel="Copy LaTeX" className="px-2 py-1 text-xs rounded-md border" />
                   </div>
                 </div>
@@ -936,18 +936,18 @@ function BlockMath({ latex, id }: { latex: string; id: string }) {
   // copy handled by CopyButton component
 
   return (
-    <div id={id} className="my-6 not-prose">
-      <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto">
-        <div className="flex items-start gap-2 min-w-0">
-          <div className="prose max-w-none flex-1 min-w-0 overflow-x-auto">
+    <div id={id} className="my-6 not-prose max-w-full">
+      <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full">
+        <div className="flex flex-col sm:flex-row items-start gap-2 min-w-0 max-w-full">
+          <div className="prose max-w-none flex-1 min-w-0 overflow-x-auto w-full">
             {rendered ? (
-              <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: rendered }} />
+              <div className="overflow-x-auto max-w-full" style={{ overflowWrap: 'anywhere' }} dangerouslySetInnerHTML={{ __html: rendered }} />
             ) : (
-              <pre className="whitespace-pre-wrap break-words text-sm font-mono overflow-x-auto">{latex}</pre>
+              <pre className="whitespace-pre-wrap break-words text-sm font-mono overflow-x-auto max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{latex}</pre>
             )}
           </div>
 
-          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <div className="flex flex-col items-end gap-2 flex-shrink-0 self-start sm:self-auto">
             <CopyButton text={latex} variant="lambda" title="Copy LaTeX" ariaLabel="Copy LaTeX" className="px-2 py-1 text-xs rounded-md border" />
           </div>
         </div>
