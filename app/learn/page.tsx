@@ -8,8 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { BookOpen, ChevronRight, Clock, CheckCircle, PlayCircle, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { MobileNav } from "@/components/mobile-nav"
+import { MainNav } from "@/components/main-nav"
+import { estimateLessonTime, formatEstimatedTime } from "@/lib/utils"
+import { getRewardStats } from "@/lib/rewards"
+import { RewardsDisplay } from "@/components/rewards-display"
+import { useAuth } from "@/components/auth/auth-provider"
+import { syncProgressToSupabase } from "@/lib/progress-sync"
 
 // Progress tracking types
 interface LessonProgress {
@@ -30,6 +34,7 @@ export default function LearnPage() {
   const [progress, setProgress] = useState<ProgressData>({})
   // Prefetched lessons per course to compute progress instantly and avoid flicker when switching
   const [courseLessonsMap, setCourseLessonsMap] = useState<Record<string, Lesson[]>>({})
+  const { user, isGuest } = useAuth()
 
   // Load progress from localStorage
   useEffect(() => {
@@ -43,12 +48,36 @@ export default function LearnPage() {
     }
   }, [])
 
-  // Save progress to localStorage whenever it changes
+  // Save progress to localStorage and sync to Supabase when authenticated
   useEffect(() => {
     if (Object.keys(progress).length > 0) {
       localStorage.setItem('markov-learn-progress', JSON.stringify(progress))
+      
+      // Sync to Supabase if authenticated (not guest mode)
+      if (user && !isGuest) {
+        syncProgressToSupabase(progress).catch((error) => {
+          console.error('Failed to sync progress to Supabase:', error)
+        })
+      }
     }
-  }, [progress])
+  }, [progress, user, isGuest])
+
+  // Listen for lesson completion events to refresh progress
+  useEffect(() => {
+    const handleLessonCompleted = () => {
+      const savedProgress = localStorage.getItem('markov-learn-progress')
+      if (savedProgress) {
+        try {
+          setProgress(JSON.parse(savedProgress))
+        } catch (e) {
+          console.error('Failed to parse progress data', e)
+        }
+      }
+    }
+
+    window.addEventListener('lesson-completed', handleLessonCompleted)
+    return () => window.removeEventListener('lesson-completed', handleLessonCompleted)
+  }, [])
 
   // Fetch courses on mount
   useEffect(() => {
@@ -142,6 +171,13 @@ export default function LearnPage() {
   // Check if all lessons in current course are completed
   const isCourseCompleted = lessons.length > 0 && lessons.every((l) => isLessonCompleted(l.id))
 
+  // Calculate reward stats - create course to lessons mapping
+  const courseLessonsMapForRewards: Record<string, string[]> = {}
+  Object.entries(courseLessonsMap).forEach(([courseId, lessons]) => {
+    courseLessonsMapForRewards[courseId] = lessons.map(l => l.id)
+  })
+  const rewardStats = getRewardStats(progress, courseLessonsMapForRewards)
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -156,41 +192,7 @@ export default function LearnPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-foreground font-medium transition-colors">
-                  Learn
-                </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Tools
-                </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Examples
-                </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Practice
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About
-                </Link>
-                <ThemeSwitcher />
-              </div>
-              <MobileNav currentPath="/learn" />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/learn" showOverallProgress={true} overallProgress={globalProgress} />
 
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar */}
@@ -269,18 +271,17 @@ export default function LearnPage() {
               </div>
               <h1 className="text-3xl font-bold">{currentCourse?.title}</h1>
               <p className="text-lg text-muted-foreground">{currentCourse?.description}</p>
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <Progress value={selectedCourseProgress} className="w-32 transition-all duration-500" />
-                  <span className="text-sm font-medium">{Math.round(selectedCourseProgress)}% complete</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Overall</span>
-                  <Progress value={globalProgress} className="w-24 transition-all duration-300" />
-                  <span className="font-medium text-foreground">{Math.round(globalProgress)}%</span>
+                  <span className="text-sm text-muted-foreground">Course Progress</span>
+                  <Progress value={selectedCourseProgress} className="w-40 transition-all duration-500" />
+                  <span className="text-sm font-medium">{Math.round(selectedCourseProgress)}%</span>
                 </div>
               </div>
             </div>
+
+            {/* Rewards Display */}
+            <RewardsDisplay stats={rewardStats} compact={true} />
 
             {/* Course Completion Badge */}
             {isCourseCompleted && (
@@ -331,7 +332,7 @@ export default function LearnPage() {
                             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                <span>~15 min</span>
+                                <span>{formatEstimatedTime(estimateLessonTime(lesson.content))}</span>
                               </div>
                               {completed && (
                                 <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">

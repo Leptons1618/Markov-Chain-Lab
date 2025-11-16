@@ -4,8 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { RefreshCw, CheckCircle, AlertCircle } from "lucide-react"
-import Link from "next/link"
+import { RefreshCw, CheckCircle, AlertCircle, Info, Loader2 } from "lucide-react"
 
 interface SyncLog {
   id: string
@@ -16,36 +15,15 @@ interface SyncLog {
 }
 
 export default function ContentSyncPage() {
-  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([
-    {
-      id: "1",
-      action: "Updated",
-      content: "Probability Refresher Lesson",
-      status: "success",
-      timestamp: "2 minutes ago",
-    },
-    {
-      id: "2",
-      action: "Created",
-      content: "Markov Chain Basics Course",
-      status: "success",
-      timestamp: "1 hour ago",
-    },
-    {
-      id: "3",
-      action: "Linked",
-      content: "Weather Example to Basics Course",
-      status: "pending",
-      timestamp: "3 hours ago",
-    },
-    {
-      id: "4",
-      action: "Published",
-      content: "Advanced Topics Module",
-      status: "success",
-      timestamp: "1 day ago",
-    },
-  ])
+  const [syncLogs] = useState<SyncLog[]>([])
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSync = async () => {
+    setSyncing(true)
+    // TODO: Implement actual sync logic
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    setSyncing(false)
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -61,55 +39,30 @@ export default function ContentSyncPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/admin" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">Admin</span>
-              </Link>
-              <nav className="hidden md:flex items-center gap-6">
-                <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Dashboard
-                </Link>
-                <Link href="/admin/courses" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Courses
-                </Link>
-                <Link href="/admin/content-sync" className="text-foreground font-medium transition-colors">
-                  Sync
-                </Link>
-                <Link href="/admin/settings" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Settings
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button className="cursor-pointer">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sync Now
-              </Button>
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="cursor-pointer">
-                  View Site
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="space-y-8">
+    <div className="space-y-8">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold">Content Synchronization</h1>
             <p className="text-muted-foreground">Track all content updates and synchronization activities</p>
           </div>
+
+          {/* Sync Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Manual Synchronization</CardTitle>
+              <CardDescription>Trigger content synchronization manually</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <Button onClick={handleSync} disabled={syncing} className="cursor-pointer">
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+                  {syncing ? "Syncing..." : "Sync Now"}
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {syncing ? "Synchronizing content..." : "Click to sync all content"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Sync Summary */}
           <div className="grid md:grid-cols-3 gap-4">
@@ -117,7 +70,7 @@ export default function ContentSyncPage() {
               <CardContent className="pt-6">
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">Total Syncs</p>
-                  <p className="text-3xl font-bold">24</p>
+                  <p className="text-3xl font-bold">{syncLogs.length}</p>
                 </div>
               </CardContent>
             </Card>
@@ -125,7 +78,9 @@ export default function ContentSyncPage() {
               <CardContent className="pt-6">
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">Successful</p>
-                  <p className="text-3xl font-bold text-green-600">22</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {syncLogs.filter((l) => l.status === "success").length}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -133,7 +88,9 @@ export default function ContentSyncPage() {
               <CardContent className="pt-6">
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-3xl font-bold text-yellow-600">2</p>
+                  <p className="text-3xl font-bold text-yellow-600">
+                    {syncLogs.filter((l) => l.status === "pending").length}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -146,33 +103,41 @@ export default function ContentSyncPage() {
               <CardDescription>Recent content synchronization activities</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {syncLogs.map((log) => (
-                  <div key={log.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                    <div className="flex items-center gap-3 flex-1">
-                      {getStatusIcon(log.status)}
-                      <div>
-                        <p className="font-medium">
-                          {log.action} {log.content}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{log.timestamp}</p>
+              {syncLogs.length === 0 ? (
+                <div className="text-center py-12">
+                  <Info className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground mb-2">No synchronization logs yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Sync logs will appear here after you perform synchronization operations
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {syncLogs.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                      <div className="flex items-center gap-3 flex-1">
+                        {getStatusIcon(log.status)}
+                        <div>
+                          <p className="font-medium">
+                            {log.action} {log.content}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{log.timestamp}</p>
+                        </div>
                       </div>
+                      <Badge
+                        variant={
+                          log.status === "success" ? "default" : log.status === "pending" ? "secondary" : "destructive"
+                        }
+                        className="capitalize"
+                      >
+                        {log.status}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={
-                        log.status === "success" ? "default" : log.status === "pending" ? "secondary" : "destructive"
-                      }
-                      className="capitalize"
-                    >
-                      {log.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
     </div>
   )
 }

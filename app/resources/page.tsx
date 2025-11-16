@@ -22,8 +22,7 @@ import {
   Star,
 } from "lucide-react"
 import Link from "next/link"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { MobileNav } from "@/components/mobile-nav"
+import { MainNav } from "@/components/main-nav"
 
 interface Resource {
   id: string
@@ -40,66 +39,160 @@ interface Resource {
 }
 
 const resources: Resource[] = [
+  // Free Textbooks & Books
   {
-    id: "norris-book",
-    title: "Markov Chains",
-    description: "Comprehensive textbook covering theory and applications of Markov chains",
+    id: "grinstead-snell",
+    title: "Introduction to Probability (Grinstead & Snell)",
+    description: "Free probability textbook covering foundations, random variables, and Markov chains",
     type: "book",
     category: "theory",
-    difficulty: "intermediate",
-    author: "J.R. Norris",
+    difficulty: "beginner",
+    url: "https://math.dartmouth.edu/~prob/prob/prob.pdf",
+    author: "Charles M. Grinstead & J. Laurie Snell",
     year: 1997,
     rating: 4.8,
-    free: false,
+    free: true,
   },
+  // Free Courses
   {
-    id: "mit-course",
+    id: "mit-stochastic",
     title: "MIT 6.262: Discrete Stochastic Processes",
-    description: "Complete course materials including lectures, assignments, and solutions",
+    description: "Complete MIT course materials including video lectures, assignments, and solutions",
     type: "course",
     category: "theory",
     difficulty: "advanced",
-    url: "https://ocw.mit.edu",
+    url: "https://ocw.mit.edu/courses/6-262-discrete-stochastic-processes-spring-2011/",
     author: "MIT OpenCourseWare",
-    year: 2023,
+    year: 2011,
     rating: 4.9,
     free: true,
   },
   {
-    id: "python-markov",
+    id: "stanford-probability",
+    title: "CS109: Probability for Computer Scientists",
+    description: "Stanford's free probability course with Markov chains and applications",
+    type: "course",
+    category: "theory",
+    difficulty: "intermediate",
+    url: "https://web.stanford.edu/class/archive/cs/cs109/cs109.1218/",
+    author: "Stanford University",
+    year: 2021,
+    rating: 4.8,
+    free: true,
+  },
+  {
+    id: "coursera-stochastic",
+    title: "Stochastic Processes (Coursera)",
+    description: "Free course on stochastic processes including Markov chains and applications",
+    type: "course",
+    category: "theory",
+    difficulty: "intermediate",
+    url: "https://www.coursera.org/learn/stochasticprocesses",
+    author: "National Research University",
+    rating: 4.7,
+    free: true,
+  },
+  // Open Source Software
+  {
+    id: "pymc",
     title: "PyMC: Probabilistic Programming in Python",
-    description: "Python library for Bayesian statistical modeling and probabilistic machine learning",
+    description: "Open-source Python library for Bayesian statistical modeling and MCMC",
     type: "software",
     category: "software",
     difficulty: "intermediate",
-    url: "https://pymc.io",
+    url: "https://www.pymc.io/",
+    rating: 4.8,
+    free: true,
+  },
+  {
+    id: "pymc-github",
+    title: "PyMC GitHub Repository",
+    description: "Source code and documentation for PyMC probabilistic programming library",
+    type: "software",
+    category: "software",
+    difficulty: "intermediate",
+    url: "https://github.com/pymc-devs/pymc",
+    rating: 4.8,
+    free: true,
+  },
+  {
+    id: "markovchain-r",
+    title: "markovchain R Package",
+    description: "Open-source R package for analyzing and visualizing discrete-time Markov chains",
+    type: "software",
+    category: "software",
+    difficulty: "beginner",
+    url: "https://cran.r-project.org/package=markovchain",
+    rating: 4.6,
+    free: true,
+  },
+  {
+    id: "markovchain-github",
+    title: "markovchain GitHub Repository",
+    description: "Source code for the markovchain R package with examples and documentation",
+    type: "software",
+    category: "software",
+    difficulty: "beginner",
+    url: "https://github.com/spedygiorgio/markovchain",
+    rating: 4.6,
+    free: true,
+  },
+  {
+    id: "networkx",
+    title: "NetworkX: Network Analysis in Python",
+    description: "Open-source Python library for network analysis including PageRank and Markov chains",
+    type: "software",
+    category: "software",
+    difficulty: "intermediate",
+    url: "https://networkx.org/",
     rating: 4.7,
     free: true,
   },
   {
-    id: "r-markov",
-    title: "markovchain R Package",
-    description: "R package for analyzing and visualizing Markov chains",
+    id: "networkx-github",
+    title: "NetworkX GitHub Repository",
+    description: "Source code for NetworkX with graph algorithms and Markov chain implementations",
     type: "software",
     category: "software",
-    difficulty: "beginner",
-    url: "https://cran.r-project.org",
-    rating: 4.5,
+    difficulty: "intermediate",
+    url: "https://github.com/networkx/networkx",
+    rating: 4.7,
     free: true,
   },
   {
-    id: "youtube-series",
-    title: "Markov Chains Explained Visually",
-    description: "Video series explaining Markov chain concepts with animations",
-    type: "video",
-    category: "theory",
-    difficulty: "beginner",
-    url: "https://youtube.com",
-    author: "3Blue1Brown",
-    year: 2022,
+    id: "scipy",
+    title: "SciPy: Scientific Computing in Python",
+    description: "Open-source library with statistical functions and Markov chain utilities",
+    type: "software",
+    category: "software",
+    difficulty: "intermediate",
+    url: "https://scipy.org/",
+    rating: 4.8,
+    free: true,
+  },
+  {
+    id: "stan",
+    title: "Stan: Probabilistic Programming Language",
+    description: "Open-source platform for statistical modeling with advanced MCMC algorithms",
+    type: "software",
+    category: "software",
+    difficulty: "advanced",
+    url: "https://mc-stan.org/",
     rating: 4.9,
     free: true,
   },
+  {
+    id: "julia-markov",
+    title: "MarkovChainHammer.jl",
+    description: "Julia package for Markov chain analysis and simulation",
+    type: "software",
+    category: "software",
+    difficulty: "intermediate",
+    url: "https://github.com/pevnak/MarkovChainHammer.jl",
+    rating: 4.5,
+    free: true,
+  },
+  // Free Papers
   {
     id: "pagerank-paper",
     title: "The PageRank Citation Ranking: Bringing Order to the Web",
@@ -107,22 +200,77 @@ const resources: Resource[] = [
     type: "paper",
     category: "applications",
     difficulty: "advanced",
+    url: "https://ilpubs.stanford.edu:8090/422/1/1999-66.pdf",
     author: "Page, Brin, Motwani, Winograd",
     year: 1999,
+    rating: 4.9,
+    free: true,
+  },
+  {
+    id: "metropolis-paper",
+    title: "Equation of State Calculations by Fast Computing Machines",
+    description: "Original Metropolis-Hastings MCMC algorithm paper (1953)",
+    type: "paper",
+    category: "applications",
+    difficulty: "advanced",
+    url: "https://doi.org/10.1063/1.1699114",
+    author: "Metropolis, Rosenbluth, Rosenbluth, Teller, Teller",
+    year: 1953,
     rating: 4.8,
     free: true,
   },
   {
-    id: "stackoverflow",
-    title: "Stack Overflow - Markov Chains Tag",
-    description: "Community Q&A for Markov chain programming and implementation questions",
-    type: "website",
-    category: "community",
-    difficulty: "intermediate",
-    url: "https://stackoverflow.com",
-    rating: 4.6,
+    id: "hmm-tutorial",
+    title: "A Tutorial on Hidden Markov Models",
+    description: "Comprehensive tutorial on HMMs with applications to speech recognition",
+    type: "paper",
+    category: "applications",
+    difficulty: "advanced",
+    url: "https://www.cs.ubc.ca/~murphyk/Bayes/rabiner.pdf",
+    author: "Rabiner & Juang",
+    year: 1986,
+    rating: 4.7,
     free: true,
   },
+  // Free Videos
+  {
+    id: "3b1b-markov",
+    title: "Markov Chains - 3Blue1Brown",
+    description: "Beautiful visual explanation of Markov chains with animations",
+    type: "video",
+    category: "theory",
+    difficulty: "beginner",
+    url: "https://www.youtube.com/watch?v=i3AkTO9HLXo",
+    author: "3Blue1Brown",
+    year: 2022,
+    rating: 4.9,
+    free: true,
+  },
+  {
+    id: "khan-probability",
+    title: "Khan Academy: Probability and Statistics",
+    description: "Free video series covering probability foundations and stochastic processes",
+    type: "video",
+    category: "theory",
+    difficulty: "beginner",
+    url: "https://www.khanacademy.org/math/statistics-probability",
+    author: "Khan Academy",
+    rating: 4.7,
+    free: true,
+  },
+  {
+    id: "mit-videos",
+    title: "MIT 6.262 Video Lectures",
+    description: "Complete video lecture series for discrete stochastic processes",
+    type: "video",
+    category: "theory",
+    difficulty: "advanced",
+    url: "https://ocw.mit.edu/courses/6-262-discrete-stochastic-processes-spring-2011/video_galleries/video-lectures/",
+    author: "MIT OpenCourseWare",
+    rating: 4.9,
+    free: true,
+  },
+  // Free Websites & Tools
   {
     id: "wolfram-demo",
     title: "Wolfram Demonstrations: Markov Chains",
@@ -130,8 +278,75 @@ const resources: Resource[] = [
     type: "website",
     category: "applications",
     difficulty: "beginner",
-    url: "https://demonstrations.wolfram.com",
-    rating: 4.4,
+    url: "https://demonstrations.wolfram.com/topic.html?topic=Markov+Chains",
+    rating: 4.5,
+    free: true,
+  },
+  {
+    id: "desmos-markov",
+    title: "Desmos: Markov Chain Calculator",
+    description: "Interactive Markov chain calculator and visualizer",
+    type: "website",
+    category: "applications",
+    difficulty: "beginner",
+    url: "https://www.desmos.com/calculator",
+    rating: 4.6,
+    free: true,
+  },
+  {
+    id: "jupyter-notebooks",
+    title: "Jupyter Notebooks for Markov Chains",
+    description: "Collection of free Jupyter notebooks demonstrating Markov chain concepts",
+    type: "website",
+    category: "applications",
+    difficulty: "intermediate",
+    url: "https://github.com/topics/markov-chains",
+    rating: 4.5,
+    free: true,
+  },
+  // Community Resources
+  {
+    id: "stackoverflow-markov",
+    title: "Stack Overflow - Markov Chains",
+    description: "Community Q&A for Markov chain programming and implementation questions",
+    type: "website",
+    category: "community",
+    difficulty: "intermediate",
+    url: "https://stackoverflow.com/questions/tagged/markov-chains",
+    rating: 4.6,
+    free: true,
+  },
+  {
+    id: "math-stackexchange",
+    title: "Mathematics Stack Exchange - Markov Chains",
+    description: "Mathematical Q&A community for Markov chain theory questions",
+    type: "website",
+    category: "community",
+    difficulty: "intermediate",
+    url: "https://math.stackexchange.com/questions/tagged/markov-chains",
+    rating: 4.7,
+    free: true,
+  },
+  {
+    id: "stats-stackexchange",
+    title: "Cross Validated - Stochastic Processes",
+    description: "Statistics Q&A community for stochastic processes and MCMC questions",
+    type: "website",
+    category: "community",
+    difficulty: "intermediate",
+    url: "https://stats.stackexchange.com/questions/tagged/stochastic-processes",
+    rating: 4.7,
+    free: true,
+  },
+  {
+    id: "reddit-statistics",
+    title: "r/statistics - Markov Chains",
+    description: "Reddit community discussion on statistics and Markov chains",
+    type: "website",
+    category: "community",
+    difficulty: "intermediate",
+    url: "https://www.reddit.com/r/statistics/",
+    rating: 4.5,
     free: true,
   },
 ]
@@ -208,41 +423,7 @@ export default function ResourcesPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Learn
-                </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Tools
-                </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Examples
-                </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Practice
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About
-                </Link>
-                <ThemeSwitcher />
-              </div>
-              <MobileNav currentPath="/resources" />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/resources" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -449,9 +630,25 @@ export default function ResourcesPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span>Math Stack Exchange</span>
+                      <span>Mathematics Stack Exchange</span>
                       <Button variant="outline" size="sm" asChild>
-                        <a href="https://math.stackexchange.com" target="_blank" rel="noopener noreferrer">
+                        <a href="https://math.stackexchange.com/questions/tagged/markov-chains" target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Cross Validated (Stats)</span>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://stats.stackexchange.com/questions/tagged/stochastic-processes" target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Stack Overflow</span>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://stackoverflow.com/questions/tagged/markov-chains" target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </Button>
@@ -460,14 +657,6 @@ export default function ResourcesPage() {
                       <span>Reddit r/statistics</span>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://reddit.com/r/statistics" target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Cross Validated</span>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href="https://stats.stackexchange.com" target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </Button>
@@ -486,7 +675,7 @@ export default function ResourcesPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span>PyMC</span>
+                      <span>PyMC (Python)</span>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://github.com/pymc-devs/pymc" target="_blank" rel="noopener noreferrer">
                           <Github className="h-3 w-3" />
@@ -502,9 +691,17 @@ export default function ResourcesPage() {
                       </Button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>NetworkX</span>
+                      <span>NetworkX (Python)</span>
                       <Button variant="outline" size="sm" asChild>
                         <a href="https://github.com/networkx/networkx" target="_blank" rel="noopener noreferrer">
+                          <Github className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Stan (C++)</span>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://github.com/stan-dev/stan" target="_blank" rel="noopener noreferrer">
                           <Github className="h-3 w-3" />
                         </a>
                       </Button>
@@ -517,7 +714,7 @@ export default function ResourcesPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Youtube className="h-5 w-5" />
-                    Video Channels
+                    Free Video Channels
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -546,6 +743,14 @@ export default function ResourcesPage() {
                         </a>
                       </Button>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span>StatQuest</span>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="https://youtube.com/@statquest" target="_blank" rel="noopener noreferrer">
+                          <Youtube className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -553,34 +758,34 @@ export default function ResourcesPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    Software Tools
+                    <Code className="h-5 w-5" />
+                    Free Software Tools
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span>Python + NumPy</span>
+                      <span>Python + NumPy + SciPy</span>
                       <Badge variant="secondary" className="text-xs">
-                        Free
+                        Free & Open Source
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>R + markovchain</span>
                       <Badge variant="secondary" className="text-xs">
-                        Free
+                        Free & Open Source
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>MATLAB</span>
-                      <Badge variant="outline" className="text-xs">
-                        Paid
+                      <span>Julia + MarkovChainHammer</span>
+                      <Badge variant="secondary" className="text-xs">
+                        Free & Open Source
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Mathematica</span>
-                      <Badge variant="outline" className="text-xs">
-                        Paid
+                      <span>Jupyter Notebooks</span>
+                      <Badge variant="secondary" className="text-xs">
+                        Free & Open Source
                       </Badge>
                     </div>
                   </div>

@@ -5,35 +5,19 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { BookOpen, Plus, Settings, LogOut, Loader2 } from "lucide-react"
+import { BookOpen, Plus, Settings, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
   const [courses, setCourses] = useState<Course[]>([])
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(false)
-  const [isAuthenticating, setIsAuthenticating] = useState(false)
 
-  // Check session on mount
+  // Load data on mount
   useEffect(() => {
-    const isAuth = sessionStorage.getItem('admin-authenticated')
-    if (isAuth === 'true') {
-      setIsAuthenticated(true)
-    }
+    loadDashboardData()
   }, [])
-
-  // Load data when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadDashboardData()
-    }
-  }, [isAuthenticated])
 
   const loadDashboardData = async () => {
     setLoading(true)
@@ -53,144 +37,12 @@ export default function AdminPage() {
     }
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsAuthenticating(true)
-    setError("")
-
-    try {
-      const response = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.authenticated) {
-        setIsAuthenticated(true)
-        sessionStorage.setItem('admin-authenticated', 'true')
-        setPassword("") // Clear password from memory
-      } else {
-        setError(data.error || 'Invalid password')
-      }
-    } catch (error) {
-      console.error('Authentication error:', error)
-      setError('Authentication failed. Please try again.')
-    } finally {
-      setIsAuthenticating(false)
-    }
-  }
-
-  const handleLogout = () => {
-    setIsAuthenticated(false)
-    sessionStorage.removeItem('admin-authenticated')
-    setPassword("")
-    setCourses([])
-    setAllLessons([])
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">M</span>
-              </div>
-              <span className="font-semibold text-lg">MarkovLearn Admin</span>
-            </div>
-            <CardDescription>Content Management System</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Admin Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter admin password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="cursor-text"
-                  disabled={isAuthenticating}
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full cursor-pointer" disabled={isAuthenticating}>
-                {isAuthenticating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Authenticating...
-                  </>
-                ) : (
-                  'Login to Dashboard'
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
+  // Admin dashboard
   return (
-    <div className="min-h-screen bg-background">
-      {/* Admin Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/admin" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">Admin</span>
-              </Link>
-              <nav className="hidden md:flex items-center gap-6">
-                <Link href="/admin" className="text-foreground font-medium transition-colors">
-                  Dashboard
-                </Link>
-                <Link href="/admin/courses" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Courses
-                </Link>
-                <Link href="/admin/content-sync" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Sync
-                </Link>
-                <Link href="/admin/settings" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Settings
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="cursor-pointer">
-                  View Site
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="cursor-pointer bg-transparent"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Admin Dashboard */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="space-y-8">
+    <div className="space-y-8">
           {/* Welcome Section */}
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold">Content Management Dashboard</h1>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Manage courses, lessons, and educational content</p>
           </div>
 
@@ -300,7 +152,5 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
   )
 }

@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { MobileNav } from "@/components/mobile-nav"
+import { MainNav } from "@/components/main-nav"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
 import { BookOpen, CheckCircle, Clock, Lightbulb, Loader2 } from "lucide-react"
 
@@ -236,41 +235,7 @@ export default function PracticePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Learn
-                </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Tools
-                </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Examples
-                </Link>
-                <Link href="/practice" className="text-foreground font-medium transition-colors">
-                  Practice
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About
-                </Link>
-                <ThemeSwitcher />
-              </div>
-              <MobileNav currentPath="/practice" />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/practice" />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <header className="space-y-3">

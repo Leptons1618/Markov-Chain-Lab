@@ -55,7 +55,39 @@
                 }
             ]
         },
-        "explanation": "This classic example models weather patterns where sunny days tend to persist (70% probability of staying sunny), while rainy days are also somewhat persistent (60% probability of staying rainy). The model demonstrates the Markov property: tomorrow's weather depends only on today's weather, not on previous days."
+        "explanation": "This classic example models weather patterns where sunny days tend to persist (70% probability of staying sunny), while rainy days are also somewhat persistent (60% probability of staying rainy). The model demonstrates the Markov property: tomorrow's weather depends only on today's weather, not on previous days.",
+        "lessonConnections": [
+            {
+                "lessonId": "chains-1",
+                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
+                "connection": "This example perfectly illustrates the Markov property introduced in this lesson. The weather model shows how the future state (tomorrow's weather) depends only on the current state (today's weather), not on the sequence of previous days."
+            },
+            {
+                "lessonId": "chains-2",
+                "lessonTitle": "The Chapman-Kolmogorov Equations: Predicting the Future",
+                "connection": "Use this example to practice computing multi-step transition probabilities. What's the probability it's sunny 3 days from now if today is sunny? Compute P³ to find out!"
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "This weather chain converges to a stationary distribution: π(Sunny) = 4/7 ≈ 57.1% and π(Rainy) = 3/7 ≈ 42.9%. This means in the long run, regardless of today's weather, about 57% of days will be sunny."
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P = [[0.7, 0.3], [0.4, 0.6]]",
+            "stationaryDistribution": "π = [4/7, 3/7] ≈ [0.571, 0.429]",
+            "keyInsights": [
+                "The chain is irreducible and aperiodic, guaranteeing convergence to the stationary distribution",
+                "The stationary distribution can be found by solving π = πP with the constraint π₁ + π₂ = 1",
+                "This is a time-homogeneous Markov chain (transition probabilities don't change over time)"
+            ]
+        },
+        "realWorldContext": "Meteorologists use similar models (often with more states like cloudy, partly cloudy) to predict weather patterns. While real weather depends on many factors (pressure systems, temperature gradients), the Markov approximation captures the 'memory' of weather systems—sunny periods tend to persist, as do rainy periods.",
+        "practiceQuestions": [
+            "If today is sunny, what's the probability it's sunny 2 days from now? (Hint: Compute P²)",
+            "What's the expected number of sunny days in a 100-day period?",
+            "If you observe 100 consecutive days and count sunny vs rainy, what fraction should converge to?"
+        ]
     },
     {
         "id": "random-walk",
@@ -158,7 +190,34 @@
                 }
             ]
         },
-        "explanation": "This 1D random-walk has five positions. Interior positions (−1, 0, 1) move left or right with equal probability 0.5. The extremes are reflective: Position −2 always moves inward to −1, and Position 2 always moves inward to 1. The model demonstrates the Markov property because the next position depends only on the current position, not the path that led there."
+        "explanation": "This 1D random-walk has five positions. Interior positions (−1, 0, 1) move left or right with equal probability 0.5. The extremes are reflective: Position −2 always moves inward to −1, and Position 2 always moves inward to 1. The model demonstrates the Markov property because the next position depends only on the current position, not the path that led there.",
+        "lessonConnections": [
+            {
+                "lessonId": "chains-1",
+                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
+                "connection": "Random walks are the quintessential Markov chain example. Each step depends only on the current position—the 'memoryless' property in action. This example shows how boundaries (reflective walls) can be incorporated into Markov models."
+            },
+            {
+                "lessonId": "foundations-3",
+                "lessonTitle": "Random Variables and Expectations",
+                "connection": "Random walks connect probability theory to stochastic processes. The position at time n is a random variable, and we can compute expectations, variances, and long-run distributions."
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P has reflective boundaries: P(-2→-1) = 1, P(2→1) = 1, and for interior states P(i→i±1) = 0.5",
+            "stationaryDistribution": "For symmetric random walks with reflective boundaries, the stationary distribution is uniform: π = [1/5, 1/5, 1/5, 1/5, 1/5]",
+            "keyInsights": [
+                "Reflective boundaries prevent the walker from escaping—this makes the chain irreducible",
+                "The uniform stationary distribution reflects the symmetry of the problem",
+                "Random walks are fundamental to understanding diffusion, Brownian motion, and many physical processes"
+            ]
+        },
+        "realWorldContext": "Random walks model countless phenomena: stock prices (with drift), particle diffusion, genetic drift in populations, and even the path of a drunk person! The reflective boundaries here model constraints—like a particle bouncing between walls or a stock price constrained by circuit breakers.",
+        "practiceQuestions": [
+            "Starting from position 0, what's the probability of reaching position 2 before returning to 0?",
+            "What's the expected number of steps to return to position 0 starting from position 0?",
+            "How does the stationary distribution change if we make the boundaries absorbing instead of reflective?"
+        ]
     },
     {
         "id": "monopoly",
@@ -328,7 +387,34 @@
                 }
             ]
         },
-        "explanation": "This simplified Monopoly chain moves a player forward by a small number of squares according to typical dice-sum likelihoods collapsed into three move sizes. From each square the next square is chosen probabilistically (here approximated by a 60/30/10 split to reflect common mid-range sums). The Markov property holds because the next location depends only on the current square, not how the player reached it. This model is useful for analysing landing frequencies and strategy."
+        "explanation": "This simplified Monopoly chain moves a player forward by a small number of squares according to typical dice-sum likelihoods collapsed into three move sizes. From each square the next square is chosen probabilistically (here approximated by a 60/30/10 split to reflect common mid-range sums). The Markov property holds because the next location depends only on the current square, not how the player reached it. This model is useful for analysing landing frequencies and strategy.",
+        "lessonConnections": [
+            {
+                "lessonId": "chains-1",
+                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
+                "connection": "Board games like Monopoly are perfect examples of Markov chains! Your position depends only on where you are now and the dice roll—not on how you got there. This example shows how games can be analyzed probabilistically."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "The stationary distribution tells you which squares are landed on most frequently in the long run. This is crucial for Monopoly strategy—buy properties that have high stationary probability!"
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P encodes dice roll probabilities: from each square, transitions reflect likely dice sums (60% common moves, 30% medium, 10% rare)",
+            "stationaryDistribution": "The stationary distribution π gives the long-run frequency of landing on each square—essential for strategic property acquisition",
+            "keyInsights": [
+                "This is a finite-state Markov chain with all states communicating (irreducible)",
+                "The stationary distribution reveals which properties are most valuable",
+                "Real Monopoly has 40 squares and more complex transitions (including 'Go to Jail')"
+            ]
+        },
+        "realWorldContext": "Game theorists use Markov chains to analyze board games, card games, and strategic situations. Understanding landing frequencies helps players make optimal decisions. Similar analysis applies to any game with probabilistic movement—from Snakes & Ladders to video game level design.",
+        "practiceQuestions": [
+            "Which square has the highest stationary probability? Why?",
+            "How would adding 'Go to Jail' affect the stationary distribution?",
+            "If you could buy only one property, which should you choose based on the stationary distribution?"
+        ]
     },
     {
         "id": "queue-system",
@@ -461,7 +547,34 @@
                 }
             ]
         },
-        "explanation": "This birth–death-style chain approximates arrivals and services in a discrete-time setting. From states 0–3 an arrival (probability 0.6) increases queue length, a service (0.3) decreases it, and otherwise the state remains the same (0.1). The '4+' state aggregates all larger queues: arrivals keep the system in 4+ (0.7 aggregated self-loop), services reduce it to 3 (0.3). The next-state distribution depends only on the current queue length (Markov property)."
+        "explanation": "This birth–death-style chain approximates arrivals and services in a discrete-time setting. From states 0–3 an arrival (probability 0.6) increases queue length, a service (0.3) decreases it, and otherwise the state remains the same (0.1). The '4+' state aggregates all larger queues: arrivals keep the system in 4+ (0.7 aggregated self-loop), services reduce it to 3 (0.3). The next-state distribution depends only on the current queue length (Markov property).",
+        "lessonConnections": [
+            {
+                "lessonId": "ctmc-2",
+                "lessonTitle": "Queueing Systems: When Waiting Becomes Mathematics",
+                "connection": "This discrete-time queue is a simplified version of the M/M/1 queue studied in continuous-time. The same principles apply: arrivals increase queue length, services decrease it. The stationary distribution tells you the long-run probability of different queue lengths."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "The stationary distribution of this queue reveals the long-run probability of having 0, 1, 2, 3, or 4+ customers. This is crucial for capacity planning—if π(4+) is high, you need more servers!"
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P is a birth-death process: transitions only occur to neighboring states (n→n+1 for arrivals, n→n-1 for services)",
+            "stationaryDistribution": "For stable queues (arrival rate < service rate), π exists and can be computed recursively",
+            "keyInsights": [
+                "This is a discrete-time approximation of continuous-time queueing systems",
+                "The '4+' state aggregates all larger queues—a common modeling technique",
+                "Stability requires that the arrival rate is less than the service rate on average"
+            ]
+        },
+        "realWorldContext": "Queueing models are everywhere: call centers (customers = callers, servers = operators), restaurants (customers = diners, servers = tables), internet routers (customers = packets, servers = transmission capacity). Understanding queue behavior helps design efficient systems and predict wait times.",
+        "practiceQuestions": [
+            "What's the probability the queue is empty in steady state?",
+            "If arrivals increase to 0.7, what happens to the stationary distribution?",
+            "How would adding a second server change the transition probabilities?"
+        ]
     },
     {
         "id": "pagerank",
@@ -605,7 +718,39 @@
                 }
             ]
         },
-        "explanation": "Pages A, B, C link to other pages (A→{B,C}, B→{C}, C→{A,D}). Page D is a dangling page (no outgoing links), modeled here as teleporting uniformly to all pages. Using damping factor 0.85, each outgoing link receives 0.85*(1/outdegree) plus 0.15*(1/4) teleport probability; non-linked pages receive only the teleport component (0.0375). Dangling nodes distribute probability uniformly (0.25 each). The stationary distribution (PageRank) is the long-run visit frequency over pages."
+        "explanation": "Pages A, B, C link to other pages (A→{B,C}, B→{C}, C→{A,D}). Page D is a dangling page (no outgoing links), modeled here as teleporting uniformly to all pages. Using damping factor 0.85, each outgoing link receives 0.85*(1/outdegree) plus 0.15*(1/4) teleport probability; non-linked pages receive only the teleport component (0.0375). Dangling nodes distribute probability uniformly (0.25 each). The stationary distribution (PageRank) is the long-run visit frequency over pages.",
+        "lessonConnections": [
+            {
+                "lessonId": "markov-simulations-2",
+                "lessonTitle": "PageRank: How Google Ranks the Web",
+                "connection": "This is a miniature version of Google's PageRank algorithm! The stationary distribution gives the importance (PageRank) of each page. Pages with high PageRank are ranked higher in search results. This example demonstrates the random surfer model with damping."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "PageRank is literally the stationary distribution of the web's Markov chain. Pages that many important pages link to have high stationary probability. The damping factor (0.85) ensures the chain is irreducible and converges."
+            },
+            {
+                "lessonId": "chains-2",
+                "lessonTitle": "The Chapman-Kolmogorov Equations: Predicting the Future",
+                "connection": "Google computes PageRank using power iteration: π^(n+1) = π^(n) · P. This is exactly computing P^n and letting n→∞ to find the stationary distribution!"
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P = α·P_links + (1-α)·(1/N)·1·1^T where α=0.85 (damping), P_links encodes actual links, and the second term is uniform teleportation",
+            "stationaryDistribution": "The PageRank vector π satisfies π = π·P. Pages with high π_i are more important",
+            "keyInsights": [
+                "Damping factor (0.85) prevents the surfer from getting stuck in isolated parts of the web",
+                "Dangling pages (no outgoing links) are handled by uniform teleportation",
+                "The algorithm scales to billions of pages using sparse matrix techniques and distributed computation"
+            ]
+        },
+        "realWorldContext": "PageRank revolutionized web search in 1998. Before PageRank, search engines relied on keyword matching. PageRank introduced the idea that links are 'votes'—a page linked by many important pages must be important itself. This self-reinforcing definition created a powerful ranking system that Google still uses (along with hundreds of other signals) today.",
+        "practiceQuestions": [
+            "Which page has the highest PageRank? Why?",
+            "What happens to PageRank if we remove the link from C to A?",
+            "How does the damping factor affect the ranking? What if α = 0.5 vs α = 0.95?"
+        ]
     },
     {
         "id": "stock-model",
@@ -700,7 +845,39 @@
                 }
             ]
         },
-        "explanation": "This three-state regime-switching model captures market behavior: Bull markets are persistent (75% stay), Bears are persistent (70% stay), and Stable periods have moderate persistence (60%). Transitions reflect realistic regime shifts: Bull→Stable (15%), Stable→Bull/Bear (20% each), Bear→Stable (20%). The Markov property means the next market regime depends only on the current regime, supporting risk models and regime-aware strategies."
+        "explanation": "This three-state regime-switching model captures market behavior: Bull markets are persistent (75% stay), Bears are persistent (70% stay), and Stable periods have moderate persistence (60%). Transitions reflect realistic regime shifts: Bull→Stable (15%), Stable→Bull/Bear (20% each), Bear→Stable (20%). The Markov property means the next market regime depends only on the current regime, supporting risk models and regime-aware strategies.",
+        "lessonConnections": [
+            {
+                "lessonId": "chains-1",
+                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
+                "connection": "Regime-switching models assume that market states (Bull/Bear/Stable) follow a Markov chain. While controversial (do markets really have no memory?), these models are widely used in finance for risk management and portfolio optimization."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "The stationary distribution tells you the long-run probability of each market regime. This is crucial for portfolio allocation—if Bear markets occur 30% of the time in steady state, you should hedge accordingly."
+            },
+            {
+                "lessonId": "stochastic-advanced-1",
+                "lessonTitle": "Martingales: Fair Games and Stopping Times",
+                "connection": "Stock prices themselves are often modeled as martingales (in efficient markets), but the underlying market regime follows a Markov chain. This creates regime-dependent return distributions."
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P encodes regime persistence and transitions. High diagonal entries (0.75, 0.70, 0.60) show regimes are sticky",
+            "stationaryDistribution": "π gives long-run regime frequencies. Can be computed by solving π = πP",
+            "keyInsights": [
+                "Regime-switching models combine Markov chains (for regimes) with return distributions (conditional on regime)",
+                "The persistence of regimes (high diagonal probabilities) reflects market psychology and economic cycles",
+                "These models are used in options pricing, risk management, and algorithmic trading"
+            ]
+        },
+        "realWorldContext": "Financial markets exhibit regime behavior: bull markets (rising prices, optimism), bear markets (falling prices, pessimism), and stable periods. Regime-switching models help investors adapt strategies to market conditions. However, the Markov assumption is debated—do markets really have no memory, or do past regimes influence future ones?",
+        "practiceQuestions": [
+            "What's the stationary distribution? Which regime dominates in the long run?",
+            "If you're in a Bull market, what's the probability of a Bear market in 2 periods?",
+            "How would you modify this model to include a 'Crash' regime with different transition probabilities?"
+        ]
     },
     {
         "id": "dna-sequence",
@@ -844,7 +1021,34 @@
                 }
             ]
         },
-        "explanation": "This nucleotide Markov chain models base-to-base transitions with a bias for CG pairs: G↔C transitions are elevated (35% each) to capture CG island behavior. A and T have larger self-loop probabilities reflecting AT-rich stretches. The chain satisfies the Markov property: the next nucleotide depends only on the current one. Such models are used in gene prediction and motif detection."
+        "explanation": "This nucleotide Markov chain models base-to-base transitions with a bias for CG pairs: G↔C transitions are elevated (35% each) to capture CG island behavior. A and T have larger self-loop probabilities reflecting AT-rich stretches. The chain satisfies the Markov property: the next nucleotide depends only on the current one. Such models are used in gene prediction and motif detection.",
+        "lessonConnections": [
+            {
+                "lessonId": "chains-1",
+                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
+                "connection": "DNA sequences can be modeled as Markov chains where each nucleotide depends only on the previous one. While real DNA has longer-range dependencies, first-order Markov models are surprisingly effective for many applications."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "The stationary distribution gives the long-run nucleotide frequencies. In this model, CG islands (regions with many C-G pairs) have different stationary distributions than AT-rich regions, which is biologically meaningful."
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P encodes nucleotide transition probabilities. CG bias: P(G→C) = P(C→G) = 0.35 (elevated). AT persistence: P(A→A) = P(T→T) = 0.4",
+            "stationaryDistribution": "π reflects long-run nucleotide frequencies, which vary by genomic region (CG islands vs AT-rich regions)",
+            "keyInsights": [
+                "First-order Markov models capture local sequence structure but miss longer-range dependencies",
+                "CG islands are regions with elevated CG content, important for gene regulation",
+                "Hidden Markov Models (HMMs) extend this to model sequences with hidden states (e.g., coding vs non-coding regions)"
+            ]
+        },
+        "realWorldContext": "Bioinformaticians use Markov models to analyze DNA sequences, predict genes, identify regulatory regions, and study evolution. The CG bias reflects biological reality: CG dinucleotides are often methylated (chemically modified), affecting gene expression. More sophisticated models (HMMs) combine Markov chains with observed sequences to find hidden patterns.",
+        "practiceQuestions": [
+            "What's the stationary distribution? Does it reflect the CG bias?",
+            "If you observe the sequence 'ATGC', what's its probability under this model?",
+            "How would you modify this model to distinguish between coding and non-coding DNA regions?"
+        ]
     },
     {
         "id": "nlp-model",
@@ -1037,6 +1241,33 @@
                 }
             ]
         },
-        "explanation": "This POS-tag Markov model encodes typical English local structure: Articles usually lead to adjectives or nouns (Article→Adjective 0.4, →Noun 0.55). Adjectives often lead to nouns (0.6). Nouns commonly lead to verbs (0.6). Verbs tend to lead to nouns (objects) or adverbs. Adverbs often return to verbs. The next POS depends only on the current POS (Markov property), which makes this model useful for simple language generation and part-of-speech prediction."
+        "explanation": "This POS-tag Markov model encodes typical English local structure: Articles usually lead to adjectives or nouns (Article→Adjective 0.4, →Noun 0.55). Adjectives often lead to nouns (0.6). Nouns commonly lead to verbs (0.6). Verbs tend to lead to nouns (objects) or adverbs. Adverbs often return to verbs. The next POS depends only on the current POS (Markov property), which makes this model useful for simple language generation and part-of-speech prediction.",
+        "lessonConnections": [
+            {
+                "lessonId": "chains-1",
+                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
+                "connection": "Natural language can be modeled as a Markov chain where each word's part-of-speech depends only on the previous word's part-of-speech. This is a fundamental assumption in many NLP models, though real language has longer-range dependencies."
+            },
+            {
+                "lessonId": "stochastic-advanced-2",
+                "lessonTitle": "Markov Decision Processes: When Control Meets Probability",
+                "connection": "Hidden Markov Models (HMMs) extend POS-tagging by treating the POS sequence as hidden states and words as observations. The Viterbi algorithm (an MDP-like dynamic programming method) finds the most likely POS sequence."
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P encodes POS transition probabilities. Reflects English grammar: Article→Noun (0.55), Noun→Verb (0.6), Verb→Noun (0.5)",
+            "stationaryDistribution": "π gives long-run POS frequencies, reflecting the distribution of parts of speech in English text",
+            "keyInsights": [
+                "First-order Markov models capture local grammatical structure but miss long-range dependencies",
+                "Hidden Markov Models (HMMs) combine POS Markov chains with word emission probabilities",
+                "Modern NLP uses more sophisticated models (transformers, neural networks) but Markov models remain foundational"
+            ]
+        },
+        "realWorldContext": "POS-tagging is used in chatbots, machine translation, text-to-speech systems, and grammar checkers. While modern NLP uses deep learning, Markov models and their extensions (HMMs) were foundational. They're still used in resource-constrained applications and as components of larger systems.",
+        "practiceQuestions": [
+            "What's the most likely POS sequence for 'The quick brown fox'?",
+            "How would you extend this model to predict actual words, not just POS tags?",
+            "What are the limitations of assuming only first-order dependencies in language?"
+        ]
     }
 ]

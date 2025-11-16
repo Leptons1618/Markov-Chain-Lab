@@ -1,94 +1,115 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, use } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, Play, RotateCcw, BarChart3, BookOpen, Calculator } from "lucide-react"
+import { ArrowLeft, Play, RotateCcw, BarChart3, BookOpen, Calculator, Link as LinkIcon, Lightbulb, HelpCircle } from "lucide-react"
 import Link from "next/link"
 
-// Sample detailed case study for weather model
-const caseStudyData = {
-  weather: {
-    title: "Weather Prediction Model",
-    description: "A comprehensive analysis of a 2-state Markov chain for weather forecasting",
-    difficulty: "beginner",
-    estimatedTime: "15 minutes",
-    sections: [
-      {
-        id: "problem",
-        title: "Problem Statement",
-        content: `
-          Imagine you're planning outdoor events and need to predict tomorrow's weather based on today's conditions. 
-          Historical data shows that weather patterns have memory - sunny days tend to be followed by more sunny days, 
-          and rainy days often come in clusters.
-        `,
-      },
-      {
-        id: "model",
-        title: "Mathematical Model",
-        content: `
-          We model weather as a 2-state Markov chain with states S = {Sunny, Rainy}.
-          The transition matrix P represents the probability of weather changes:
-          
-          P = [0.7  0.3]
-              [0.4  0.6]
-              
-          Where P[i,j] is the probability of transitioning from state i to state j.
-        `,
-      },
-      {
-        id: "analysis",
-        title: "Steady-State Analysis",
-        content: `
-          To find the long-term weather distribution, we solve πP = π where π is the steady-state vector.
-          
-          Setting up the equations:
-          0.7π₁ + 0.4π₂ = π₁
-          0.3π₁ + 0.6π₂ = π₂
-          π₁ + π₂ = 1
-          
-          Solving: π₁ = 4/7 ≈ 0.571 (Sunny), π₂ = 3/7 ≈ 0.429 (Rainy)
-        `,
-      },
-    ],
-  },
+interface LessonConnection {
+  lessonId: string
+  lessonTitle: string
+  connection: string
 }
 
-export default function CaseStudyPage({ params }: { params: { id: string } }) {
+interface Example {
+  id: string
+  title: string
+  description: string
+  difficulty: string
+  explanation: string
+  lessonConnections?: LessonConnection[]
+  mathematicalDetails?: {
+    transitionMatrix?: string
+    stationaryDistribution?: string
+    keyInsights?: string[]
+  }
+  realWorldContext?: string
+  practiceQuestions?: string[]
+  applications?: string[]
+}
+
+export default function CaseStudyPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const [example, setExample] = useState<Example | null>(null)
+  const [loading, setLoading] = useState(true)
   const [currentSection, setCurrentSection] = useState(0)
   const [simulationData, setSimulationData] = useState<number[]>([])
   const [isSimulating, setIsSimulating] = useState(false)
 
-  const caseStudy = caseStudyData.weather // Default to weather case study
+  useEffect(() => {
+    fetch("/api/examples")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          const found = data.data.find((ex: Example) => ex.id === id)
+          if (found) {
+            setExample(found)
+            // Create sections dynamically
+            const sections = []
+            if (found.explanation) sections.push({ id: "overview", title: "Overview", content: found.explanation })
+            if (found.mathematicalDetails) sections.push({ id: "mathematics", title: "Mathematical Details", content: found.mathematicalDetails })
+            if (found.realWorldContext) sections.push({ id: "context", title: "Real-World Context", content: found.realWorldContext })
+            setSections(sections)
+          }
+        }
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Failed to load example:", err)
+        setLoading(false)
+      })
+  }, [id])
+
+  const [sections, setSections] = useState<any[]>([])
 
   const runSimulation = () => {
+    if (!example) return
     setIsSimulating(true)
     const steps = 100
     const data: number[] = []
-    let currentState = 0 // Start with Sunny (0)
+    let currentState = 0
 
+    // Simple simulation logic (would need to be adapted per example)
     for (let i = 0; i < steps; i++) {
       data.push(currentState)
-      // Transition based on probabilities
       const random = Math.random()
-      if (currentState === 0) {
-        // Currently Sunny
-        currentState = random < 0.7 ? 0 : 1
-      } else {
-        // Currently Rainy
-        currentState = random < 0.4 ? 0 : 1
-      }
+      // Simplified transition logic
+      currentState = random < 0.5 ? 0 : 1
     }
 
     setSimulationData(data)
     setIsSimulating(false)
   }
 
-  const sunnyDays = simulationData.filter((state) => state === 0).length
-  const rainyDays = simulationData.filter((state) => state === 1).length
-  const totalDays = simulationData.length
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading example...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!example) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Example not found</h1>
+          <Button asChild>
+            <Link href="/examples">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Examples
+            </Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,10 +124,14 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <Progress value={((currentSection + 1) / caseStudy.sections.length) * 100} className="w-32" />
-              <span className="text-sm text-muted-foreground">
-                {currentSection + 1} of {caseStudy.sections.length}
-              </span>
+              {sections.length > 0 && (
+                <>
+                  <Progress value={((currentSection + 1) / sections.length) * 100} className="w-32" />
+                  <span className="text-sm text-muted-foreground">
+                    {currentSection + 1} of {sections.length}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -116,144 +141,172 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
         {/* Header */}
         <div className="space-y-4 mb-8">
           <div className="flex items-center gap-2">
-            <Badge variant="outline">{caseStudy.difficulty}</Badge>
-            <Badge variant="secondary">{caseStudy.estimatedTime}</Badge>
+            <Badge variant="outline">{example.difficulty}</Badge>
+            {example.applications && example.applications.length > 0 && (
+              <Badge variant="secondary">{example.applications.length} Applications</Badge>
+            )}
           </div>
-          <h1 className="text-3xl font-bold">{caseStudy.title}</h1>
-          <p className="text-lg text-muted-foreground">{caseStudy.description}</p>
+          <h1 className="text-3xl font-bold">{example.title}</h1>
+          <p className="text-lg text-muted-foreground">{example.description}</p>
         </div>
 
-        {/* Section Navigation */}
-        <div className="flex gap-2 mb-8 overflow-x-auto">
-          {caseStudy.sections.map((section, index) => (
-            <Button
-              key={section.id}
-              variant={currentSection === index ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCurrentSection(index)}
-              className="whitespace-nowrap"
-            >
-              {index + 1}. {section.title}
-            </Button>
-          ))}
-        </div>
-
-        {/* Current Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {currentSection === 0 && <BookOpen className="h-5 w-5" />}
-              {currentSection === 1 && <Calculator className="h-5 w-5" />}
-              {currentSection === 2 && <BarChart3 className="h-5 w-5" />}
-              {caseStudy.sections[currentSection].title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm max-w-none">
-              <div className="whitespace-pre-line text-foreground leading-relaxed">
-                {caseStudy.sections[currentSection].content}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Interactive Simulation */}
-        {currentSection === 2 && (
-          <Card className="mb-8">
+        {/* Lesson Connections */}
+        {example.lessonConnections && example.lessonConnections.length > 0 && (
+          <Card className="mb-8 border-primary/20 bg-primary/5">
             <CardHeader>
-              <CardTitle>Interactive Simulation</CardTitle>
-              <CardDescription>
-                Run a 100-day weather simulation to see the steady-state distribution in action
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <LinkIcon className="h-5 w-5" />
+                Related Lessons
+              </CardTitle>
+              <CardDescription>Explore these lessons to deepen your understanding of this example</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Button onClick={runSimulation} disabled={isSimulating}>
-                  {isSimulating ? (
-                    <>
-                      <RotateCcw className="mr-2 h-4 w-4 animate-spin" />
-                      Simulating...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-2 h-4 w-4" />
-                      Run Simulation
-                    </>
-                  )}
-                </Button>
-                {totalDays > 0 && <div className="text-sm text-muted-foreground">{totalDays} days simulated</div>}
-              </div>
-
-              {totalDays > 0 && (
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Sunny Days</span>
-                        <span className="text-lg font-bold text-primary">{sunnyDays}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {((sunnyDays / totalDays) * 100).toFixed(1)}% (Expected: 57.1%)
-                      </div>
-                    </Card>
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Rainy Days</span>
-                        <span className="text-lg font-bold text-accent">{rainyDays}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {((rainyDays / totalDays) * 100).toFixed(1)}% (Expected: 42.9%)
-                      </div>
-                    </Card>
-                  </div>
-
-                  {/* Simple visualization */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Weather Pattern (Last 50 days)</h4>
-                    <div className="flex gap-1 overflow-x-auto">
-                      {simulationData.slice(-50).map((state, index) => (
-                        <div
-                          key={index}
-                          className={`w-3 h-8 rounded-sm ${state === 0 ? "bg-primary" : "bg-accent"}`}
-                          title={state === 0 ? "Sunny" : "Rainy"}
-                        />
-                      ))}
+            <CardContent className="space-y-4">
+              {example.lessonConnections.map((connection, idx) => (
+                <div key={idx} className="p-4 rounded-lg bg-card border border-border">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-2">{connection.lessonTitle}</h4>
+                      <p className="text-sm text-muted-foreground">{connection.connection}</p>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-primary rounded-sm" />
-                        <span>Sunny</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-accent rounded-sm" />
-                        <span>Rainy</span>
-                      </div>
-                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/learn/${connection.lessonId.split("-")[0]}/${connection.lessonId}`}>
+                        View Lesson
+                        <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                      </Link>
+                    </Button>
                   </div>
                 </div>
-              )}
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section Navigation */}
+        {sections.length > 0 && (
+          <div className="flex gap-2 mb-8 overflow-x-auto">
+            {sections.map((section, index) => (
+              <Button
+                key={section.id}
+                variant={currentSection === index ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentSection(index)}
+                className="whitespace-nowrap"
+              >
+                {index + 1}. {section.title}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Current Section */}
+        {sections.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {currentSection === 0 && <BookOpen className="h-5 w-5" />}
+                {currentSection === 1 && <Calculator className="h-5 w-5" />}
+                {currentSection === 2 && <BarChart3 className="h-5 w-5" />}
+                {sections[currentSection]?.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none">
+                {currentSection === 1 && example.mathematicalDetails ? (
+                  <div className="space-y-4">
+                    {example.mathematicalDetails.transitionMatrix && (
+                      <div>
+                        <h4 className="font-semibold mb-2">Transition Matrix</h4>
+                        <code className="block p-3 bg-muted rounded-lg text-sm">{example.mathematicalDetails.transitionMatrix}</code>
+                      </div>
+                    )}
+                    {example.mathematicalDetails.stationaryDistribution && (
+                      <div>
+                        <h4 className="font-semibold mb-2">Stationary Distribution</h4>
+                        <code className="block p-3 bg-muted rounded-lg text-sm">{example.mathematicalDetails.stationaryDistribution}</code>
+                      </div>
+                    )}
+                    {example.mathematicalDetails.keyInsights && example.mathematicalDetails.keyInsights.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-2 flex items-center gap-2">
+                          <Lightbulb className="h-4 w-4" />
+                          Key Insights
+                        </h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          {example.mathematicalDetails.keyInsights.map((insight, idx) => (
+                            <li key={idx}>{insight}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-line text-foreground leading-relaxed">
+                    {typeof sections[currentSection]?.content === "string"
+                      ? sections[currentSection].content
+                      : JSON.stringify(sections[currentSection]?.content, null, 2)}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Practice Questions */}
+        {example.practiceQuestions && example.practiceQuestions.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                Practice Questions
+              </CardTitle>
+              <CardDescription>Test your understanding with these questions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal list-inside space-y-3">
+                {example.practiceQuestions.map((question, idx) => (
+                  <li key={idx} className="text-sm leading-relaxed">
+                    {question}
+                  </li>
+                ))}
+              </ol>
             </CardContent>
           </Card>
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-            disabled={currentSection === 0}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Previous
-          </Button>
-          <Button
-            onClick={() => setCurrentSection(Math.min(caseStudy.sections.length - 1, currentSection + 1))}
-            disabled={currentSection === caseStudy.sections.length - 1}
-          >
-            Next
-            <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
-          </Button>
-        </div>
+        {sections.length > 0 && (
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
+              disabled={currentSection === 0}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              onClick={() => setCurrentSection(Math.min(sections.length - 1, currentSection + 1))}
+              disabled={currentSection === sections.length - 1}
+            >
+              Next
+              <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+            </Button>
+          </div>
+        )}
+
+        {/* Call to Action */}
+        <Card className="mt-8 bg-primary/5 border-primary/20">
+          <CardContent className="p-6 text-center space-y-4">
+            <h3 className="text-xl font-semibold">Ready to Experiment?</h3>
+            <p className="text-muted-foreground">Open this example in the Chain Builder to explore it interactively</p>
+            <Button asChild>
+              <Link href={`/tools?example=${id}`}>
+                Open in Chain Builder
+                <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

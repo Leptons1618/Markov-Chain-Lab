@@ -46,8 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { MobileNav } from "@/components/mobile-nav"
+import { MainNav } from "@/components/main-nav"
 
 interface State {
   id: string
@@ -1155,7 +1154,13 @@ function ToolsContent() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Transitions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-64 overflow-y-auto px-3 sm:px-6">
+            <CardContent 
+              className="space-y-2 overflow-y-auto px-3 sm:px-6"
+              style={{ 
+                maxHeight: `${Math.min(chain.transitions.length * 80 + 20, 600)}px`,
+                minHeight: chain.transitions.length > 0 ? '120px' : 'auto'
+              }}
+            >
               {chain.transitions.map((transition) => {
                 const fromState = chain.states.find((s) => s.id === transition.from)
                 const toState = chain.states.find((s) => s.id === transition.to)
@@ -1169,12 +1174,12 @@ function ToolsContent() {
                       <TooltipProvider>
                         <Tooltip delayDuration={500}>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline" className="text-xs font-mono flex-1 min-w-0 justify-center truncate cursor-default">
-                              {fromState?.name}
+                            <Badge variant="outline" className="text-xs font-mono flex-1 min-w-0 justify-start truncate cursor-default px-2 py-1">
+                              {fromState?.name || 'Unknown'}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs z-50">
-                            {fromState?.name}
+                            {fromState?.name || 'Unknown'}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1184,12 +1189,12 @@ function ToolsContent() {
                       <TooltipProvider>
                         <Tooltip delayDuration={500}>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline" className="text-xs font-mono flex-1 min-w-0 justify-center truncate cursor-default">
-                              {toState?.name}
+                            <Badge variant="outline" className="text-xs font-mono flex-1 min-w-0 justify-start truncate cursor-default px-2 py-1">
+                              {toState?.name || 'Unknown'}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs z-50">
-                            {toState?.name}
+                            {toState?.name || 'Unknown'}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1222,7 +1227,7 @@ function ToolsContent() {
                               roundProbability(Number.isFinite(parsed) ? parsed : 0),
                             )
                           }}
-                          className="w-[4.5rem] h-8 text-xs font-mono text-center pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-[4.5rem] h-8 text-xs font-mono text-left pl-2 pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l border-border/60">
                           <button
@@ -1786,41 +1791,7 @@ function ToolsContent() {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm z-50 flex-shrink-0">
-        <div className="max-w-full px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Learn
-                </Link>
-                <Link href="/tools" className="text-foreground font-medium transition-colors">
-                  Tools
-                </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Examples
-                </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Practice
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About
-                </Link>
-                <ThemeSwitcher />
-              </div>
-              <MobileNav currentPath="/tools" />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/tools" />
 
       <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
       <div className="flex flex-1 overflow-hidden">
@@ -2120,7 +2091,7 @@ function ToolsContent() {
                                 ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-115'
                                 : isDisabled
                                 ? 'bg-muted/30 text-muted-foreground/40 border-border/20 cursor-not-allowed opacity-50'
-                                : 'bg-background/95 backdrop-blur-sm text-foreground border-border/40 hover:border-primary/40 cursor-pointer'
+                                : 'bg-card/95 backdrop-blur-sm text-card-foreground border-border/40 hover:border-primary/40 cursor-pointer shadow-sm'
                             }`}
                             style={{
                               transition: 'all 200ms ease-out',
