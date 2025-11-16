@@ -34,7 +34,6 @@ See docs for deeper details:
 - `docs/ROADMAP.md`
 - `docs/SOURCES.md`
 - `docs/LESSON_OUTLINES.md`
- - `docs/PERFORMANCE_PREDEPLOY.md` – pre-deployment performance, reliability, and security plan
 
 ## Sample and markup data inventory
 
@@ -59,12 +58,9 @@ High-level summary (details in `docs/FEATURES.md`):
 
 Key gaps (full list in `docs/GAPS.md`):
 
-- No persistent storage (user progress, quizzes, saved chains)
-- No authentication or user profiles
 - Chain Builder lacks validation/normalization, import/export, and analysis tools (n-step, stationary dist., hitting times)
 - Lessons are hard-coded; no markdown/MDX pipeline; no citation rendering
 - Incomplete routes: `app/learn/[module]/[lesson]` folder exists but no page; query param links are stubbed
-- Theming provider exists but not wired; unused dependencies
 - SEO metadata per-page missing; no sitemap/robots; no analytics
 - No tests/CI; no error boundaries; accessibility and i18n not audited
 
@@ -77,52 +73,45 @@ npm run dev
 
 Navigate to `http://localhost:3000`.
 
-### Security Setup (Admin Panel)
+### Authentication Setup
 
-**⚠️ IMPORTANT:** The admin panel requires secure authentication before deploying to production.
+The application uses **Supabase** for authentication and user management.
 
 1. **Create `.env.local` file** (copy from `.env.example`):
    ```bash
    cp .env.example .env.local
    ```
 
-2. **Set a strong admin password** in `.env.local`:
-   ```bash
-   # Generate a secure password (recommended)
-   openssl rand -base64 24
-   
-   # Then add to .env.local:
-   ADMIN_PASSWORD=your-generated-password-here
-   ```
+2. **Set up Supabase credentials** in `.env.local`:
+   - Get your Supabase project URL and keys from [Supabase Dashboard](https://app.supabase.com)
+   - Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - Add `SUPABASE_SERVICE_ROLE_KEY` (required for admin authentication)
 
-3. **Implement server-side authentication** (see `docs/SECURITY.md` for complete guide):
-   - Create `/api/admin/auth` route for password verification
-   - Update admin page to call the auth API
-   - Never hardcode passwords in client code
+3. **Set up admin users** (see `docs/ADMIN_SETUP.md` for complete guide):
+   - Admin users are managed through the `admin_users` table in Supabase
+   - Use the SQL editor or admin setup page to grant admin access
 
-4. **For deployment:**
-   - Set `ADMIN_PASSWORD` as environment variable in your hosting platform
-
-**Current Status:** Admin authentication uses a hardcoded password (`admin123`) which is **NOT SECURE**. Follow the security guide before deploying.
-
-📖 **Full Security Guide:** [`docs/SECURITY.md`](docs/SECURITY.md)
+📖 **Full Setup Guides:**
+- **[Admin Setup](docs/ADMIN_SETUP.md)** - Admin authentication and user management
+- **[Authentication Setup](docs/AUTHENTICATION_SETUP.md)** - User authentication configuration
 
 ## Persistence
 
-Currently uses local JSON file (`data/lms.json`). For future, plan to migrate to a database (PostgreSQL or MongoDB) with proper API endpoints.
+User progress and admin data are stored in **Supabase** (PostgreSQL). Content data is currently stored in JSON files (`data/lms.json`) and managed through the admin panel.
 
 ## Documentation
 
-Comprehensive guides for development and security:
+Comprehensive guides for development and setup:
 
-- **[Security Guide](docs/SECURITY.md)** - 🔐 Admin authentication and security setup
+- **[Admin Setup](docs/ADMIN_SETUP.md)** - Admin authentication and user management
+- **[Authentication Setup](docs/AUTHENTICATION_SETUP.md)** - User authentication configuration
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and technical decisions
 - **[Features](docs/FEATURES.md)** - Complete feature list and capabilities
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - Playwright test suite and visual regression
 - **[Roadmap](docs/ROADMAP.md)** - Future plans and enhancements
-- **[Content Enhancement Plan](docs/CONTENT_ENHANCEMENT_PLAN.md)** - Educational content strategy
 - **[Lesson Outlines](docs/LESSON_OUTLINES.md)** - Detailed lesson structures
 - **[Research Sources](docs/SOURCES.md)** - Curated academic and educational resources
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Production plan (overview)
 
