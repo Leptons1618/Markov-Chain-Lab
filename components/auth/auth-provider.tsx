@@ -257,6 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name?: string) => {
     try {
       const supabase = createClient()
+      // Get site URL from environment variable or fallback to window.location.origin
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -265,6 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: name || email.split('@')[0],
             full_name: name || email.split('@')[0],
           },
+          emailRedirectTo: `${siteUrl}/auth/callback`,
         },
       })
       return { error }
@@ -276,10 +279,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       const supabase = createClient()
+      // Get site URL from environment variable or fallback to window.location.origin
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${siteUrl}/auth/callback`,
         },
       })
     } catch (error) {
@@ -333,8 +338,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = async (email: string) => {
     try {
       const supabase = createClient()
+      // Get site URL from environment variable or fallback to window.location.origin
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${siteUrl}/auth/reset-password`,
       })
       return { error }
     } catch (error) {

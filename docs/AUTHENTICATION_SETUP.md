@@ -37,7 +37,10 @@ This application uses Supabase for authentication with support for:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
    ```
+   
+   **Important:** `NEXT_PUBLIC_SITE_URL` is used for authentication redirects. Set it to your production URL when deploying.
 
 ### 4. Set Up Database Schema
 
@@ -59,9 +62,14 @@ This creates:
 2. Enable **Google** provider
 3. Add your Google OAuth credentials:
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create OAuth 2.0 credentials
-   - Add authorized redirect URI: `https://your-project.supabase.co/auth/v1/callback`
+   - Create OAuth 2.0 credentials (or edit existing ones)
+   - **CRITICAL:** Add ALL authorized redirect URIs:
+     - `https://your-project.supabase.co/auth/v1/callback` (Supabase callback - REQUIRED)
+     - `https://your-production-domain.com/auth/callback` (Your production app - REQUIRED)
+     - `http://localhost:3000/auth/callback` (Local development - optional)
    - Copy Client ID and Client Secret to Supabase
+   
+**Important:** Google OAuth requires the exact redirect URI to be registered. If you're getting "localhost refused to connect" errors, make sure your production URL is added to Google Cloud Console's authorized redirect URIs.
 
 ### 6. Configure Email Templates (Optional)
 
@@ -73,11 +81,16 @@ This creates:
 
 ### 7. Set Up Redirect URLs
 
-1. Go to **Authentication** → **URL Configuration**
-2. Add your site URL (e.g., `http://localhost:3000` for development)
-3. Add redirect URLs:
-   - `http://localhost:3000/auth/callback` (development)
-   - `https://yourdomain.com/auth/callback` (production)
+**IMPORTANT: This is critical for production deployments!**
+
+1. Go to **Authentication** → **URL Configuration** in Supabase dashboard
+2. Set your **Site URL** to your production domain (e.g., `https://your-app.amplifyapp.com`)
+3. Add redirect URLs (you can add multiple):
+   - `http://localhost:3000/auth/callback` (for local development)
+   - `https://your-production-domain.com/auth/callback` (for production)
+   - `https://your-app.amplifyapp.com/auth/callback` (if using AWS Amplify)
+
+**Note:** The redirect URL must match exactly, including the protocol (http/https) and trailing path.
 
 ## Features
 
@@ -135,8 +148,57 @@ When users sign in:
 
 ## Production Deployment
 
-1. Set environment variables in your hosting platform
-2. Update redirect URLs in Supabase dashboard
-3. Enable HTTPS (required for OAuth)
-4. Test authentication flow thoroughly
-5. Monitor Supabase dashboard for errors
+### AWS Amplify Deployment Checklist
+
+1. **Set Environment Variables in AWS Amplify:**
+   - Go to your Amplify app → **App settings** → **Environment variables**
+   - Add:
+     - `NEXT_PUBLIC_SUPABASE_URL` = Your Supabase project URL
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = Your Supabase anon key
+     - `SUPABASE_SERVICE_ROLE_KEY` = Your Supabase service role key (for admin features)
+     - `NEXT_PUBLIC_SITE_URL` = Your Amplify app URL (e.g., `https://main.xxxxx.amplifyapp.com`)
+   
+   **CRITICAL:** `NEXT_PUBLIC_SITE_URL` must be set to your production domain. This ensures email confirmation links and OAuth redirects work correctly.
+
+2. **Configure Supabase Redirect URLs:**
+   - Go to Supabase Dashboard → **Authentication** → **URL Configuration**
+   - Set **Site URL** to your Amplify app URL (e.g., `https://main.xxxxx.amplifyapp.com`)
+   - Add **Redirect URLs**:
+     - `https://your-amplify-app.amplifyapp.com/auth/callback`
+     - `http://localhost:3000/auth/callback` (for local development)
+
+3. **Update Google OAuth Redirect URIs:**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to **APIs & Services** → **Credentials**
+   - Click on your OAuth 2.0 Client ID
+   - Under **Authorized redirect URIs**, add:
+     - `https://your-project.supabase.co/auth/v1/callback` (Supabase callback)
+     - `https://your-amplify-app.amplifyapp.com/auth/callback` (Your production app)
+   - Click **Save**
+
+4. **Verify Configuration:**
+   - Ensure HTTPS is enabled (Amplify provides this automatically)
+   - Test the authentication flow in production
+   - Check browser console for any errors
+   - Monitor Supabase dashboard → **Authentication** → **Logs** for issues
+
+### Common Production Issues
+
+**"localhost refused to connect" error:**
+- ✅ **MOST IMPORTANT:** Set `NEXT_PUBLIC_SITE_URL` environment variable in Amplify to your production URL (e.g., `https://main.xxxxx.amplifyapp.com`)
+- ✅ Check Supabase URL Configuration has your production URL
+- ✅ Check Google Cloud Console has your production redirect URI
+- ✅ Verify all environment variables are set correctly in Amplify
+- ✅ Clear browser cache and try again
+- ✅ After setting `NEXT_PUBLIC_SITE_URL`, redeploy your Amplify app
+
+**Email confirmation not sending:**
+- ✅ Ensure `NEXT_PUBLIC_SITE_URL` is set correctly in Amplify
+- ✅ Check Supabase → Authentication → Email Templates are enabled
+- ✅ Verify email confirmation is enabled in Supabase → Authentication → Settings
+- ✅ Check Supabase → Authentication → Logs for email sending errors
+
+**OAuth redirects to wrong domain:**
+- The code now uses `NEXT_PUBLIC_SITE_URL` environment variable (with fallback to `window.location.origin`)
+- Ensure `NEXT_PUBLIC_SITE_URL` is set correctly in Amplify
+- Verify Supabase Site URL matches your production domain exactly
