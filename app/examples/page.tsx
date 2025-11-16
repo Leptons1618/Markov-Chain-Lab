@@ -22,8 +22,7 @@ import {
   BarChart3,
 } from "lucide-react"
 import Link from "next/link"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { MobileNav } from "@/components/mobile-nav"
+import { MainNav } from "@/components/main-nav"
 
 interface Example {
   id: string
@@ -85,41 +84,7 @@ export default function ExamplesPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Learn
-                </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Tools
-                </Link>
-                <Link href="/examples" className="text-foreground font-medium transition-colors">
-                  Examples
-                </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Practice
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About
-                </Link>
-                <ThemeSwitcher />
-              </div>
-              <MobileNav currentPath="/examples" />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/examples" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -208,11 +173,17 @@ export default function ExamplesPage() {
                         </div>
                       </div>
                       {selectedExample?.id === example.id && (
-                        <div className="pt-3 border-t border-border/60">
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Button asChild className="w-full sm:w-auto">
+                        <div className="pt-3 border-t border-border/60 space-y-3">
+                          <div onClick={(e) => e.stopPropagation()} className="flex flex-wrap gap-2">
+                            <Button asChild className="flex-1 sm:flex-none">
                               <Link href={`/tools?example=${example.id}`}>
                                 Open in Chain Builder
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="outline" asChild className="flex-1 sm:flex-none">
+                              <Link href={`/examples/${example.id}`}>
+                                View Details
                                 <ArrowRight className="ml-2 h-4 w-4" />
                               </Link>
                             </Button>
@@ -295,11 +266,17 @@ export default function ExamplesPage() {
                         </div>
                       </div>
                       {selectedExample?.id === example.id && (
-                        <div className="pt-3 border-t border-border/60">
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Button asChild className="w-full sm:w-auto">
+                        <div className="pt-3 border-t border-border/60 space-y-3">
+                          <div onClick={(e) => e.stopPropagation()} className="flex flex-wrap gap-2">
+                            <Button asChild className="flex-1 sm:flex-none">
                               <Link href={`/tools?example=${example.id}`}>
                                 Open in Chain Builder
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="outline" asChild className="flex-1 sm:flex-none">
+                              <Link href={`/examples/${example.id}`}>
+                                View Details
                                 <ArrowRight className="ml-2 h-4 w-4" />
                               </Link>
                             </Button>

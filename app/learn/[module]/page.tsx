@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, ArrowRight, CheckCircle, Lightbulb, Calculator, RotateCcw } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle, Lightbulb, Calculator, RotateCcw, Clock } from "lucide-react"
 import Link from "next/link"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { fetchLesson, fetchLessonsByCourse, fetchCourses, type Lesson, type Course } from "@/lib/lms"
 import MarkdownRenderer from "@/components/markdown-renderer"
+import { estimateLessonTime, formatEstimatedTime } from "@/lib/utils"
+import { useAuth } from "@/components/auth/auth-provider"
+import { syncProgressToSupabase } from "@/lib/progress-sync"
 
 export default function LessonPage({ params }: { params: any }) {
   const [lesson, setLesson] = useState<Lesson | null>(null)
@@ -17,6 +20,7 @@ export default function LessonPage({ params }: { params: any }) {
   const [courses, setCourses] = useState<Course[]>([])
   const [isLessonCompleted, setIsLessonCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { user, isGuest } = useAuth()
   const [coinFlips, setCoinFlips] = useState({
     heads: 0,
     tails: 0,
@@ -111,7 +115,7 @@ export default function LessonPage({ params }: { params: any }) {
   const currentCourseIndex = currentCourseId ? courses.findIndex(c => c.id === currentCourseId) : -1
   const nextCourse = currentCourseIndex >= 0 && currentCourseIndex < courses.length - 1 ? courses[currentCourseIndex + 1] : null
 
-  const markLessonComplete = () => {
+  const markLessonComplete = async () => {
     setIsLessonCompleted(true)
     
     // Save to localStorage
@@ -122,6 +126,20 @@ export default function LessonPage({ params }: { params: any }) {
       lastAccessedAt: new Date().toISOString()
     }
     localStorage.setItem('markov-learn-progress', JSON.stringify(progress))
+    
+    // Sync to Supabase if authenticated (not guest mode)
+    if (user && !isGuest) {
+      try {
+        await syncProgressToSupabase(progress)
+      } catch (error) {
+        console.error('Failed to sync progress to Supabase:', error)
+      }
+    }
+    
+    // Trigger a custom event to notify other components (like rewards)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('lesson-completed', { detail: { lessonId } }))
+    }
   }
 
   const flipCoin = () => {
@@ -192,10 +210,11 @@ export default function LessonPage({ params }: { params: any }) {
                 <span className="text-sm">Back to Learn</span>
               </Link>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground hidden sm:inline">Module:</span>
               <Progress value={progressPercentage} className="w-32 transition-all duration-500" />
-              <span className="text-sm text-muted-foreground">
-                {currentLessonIndex + 1} of {totalLessons}
+              <span className="text-sm font-medium">
+                {currentLessonIndex + 1}/{totalLessons}
               </span>
             </div>
           </div>
@@ -205,8 +224,16 @@ export default function LessonPage({ params }: { params: any }) {
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-8 space-y-8">
         <div className="space-y-4">
           <Badge variant="outline">{lesson.title}</Badge>
-          <h1 className="text-3xl font-bold">{lesson.title}</h1>
-          <p className="text-lg text-muted-foreground">{lesson.description}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{lesson.title}</h1>
+              <p className="text-lg text-muted-foreground mt-2">{lesson.description}</p>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{formatEstimatedTime(estimateLessonTime(lesson.content))}</span>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-8">
@@ -248,19 +275,6 @@ export default function LessonPage({ params }: { params: any }) {
             </Button>
           )}
 
-          <div className="flex items-center gap-2">
-            {isLessonCompleted ? (
-              <>
-                <CheckCircle className="h-5 w-5 text-primary" />
-                <span className="text-sm">Lesson Complete</span>
-              </>
-            ) : (
-              <>
-                <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
-                <span className="text-sm text-muted-foreground">In Progress</span>
-              </>
-            )}
-          </div>
 
           {nextLesson ? (
             <Link href={`/learn/${nextLesson.id}`}>

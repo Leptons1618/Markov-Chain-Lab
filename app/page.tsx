@@ -1,49 +1,17 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowRight, Calculator, Users } from "lucide-react"
 import Link from "next/link"
-import { ThemeSwitcher } from "@/components/theme-switcher"
-import { MobileNav } from "@/components/mobile-nav"
+import { MainNav } from "@/components/main-nav"
+import { Logo } from "@/components/logo"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">MarkovLearn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-6">
-                <Link href="/learn" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
-                  Learn
-                </Link>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
-                  Tools
-                </Link>
-                <Link href="/examples" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
-                  Examples
-                </Link>
-                <Link href="/practice" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
-                  Practice
-                </Link>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground hover:underline hover:cursor-pointer transition-colors">
-                  About
-                </Link>
-                <ThemeSwitcher />
-              </div>
-              <MobileNav currentPath="/" />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/" />
 
       {/* Hero Section */}
       <section className="relative py-12 sm:py-16 lg:py-32">
@@ -169,12 +137,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             <div className="space-y-3 sm:space-y-4 col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold">MarkovLearn</span>
-              </div>
+              <Logo variant="icon" showText={true} />
               <p className="text-sm text-muted-foreground">
                 Making advanced mathematics accessible through interactive learning.
               </p>

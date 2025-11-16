@@ -163,50 +163,21 @@ export default function LessonEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/admin" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="font-semibold text-lg">Admin</span>
-              </Link>
-              <nav className="hidden md:flex items-center gap-2">
-                <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Dashboard
-                </Link>
-                <span className="text-muted-foreground">/</span>
-                <Link href="/admin/courses" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Courses
-                </Link>
-                <span className="text-muted-foreground">/</span>
-                <Link href={`/admin/courses/${courseId}`} className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Course
-                </Link>
-                <span className="text-muted-foreground">/</span>
-                <span className="text-foreground font-medium text-sm">
-                  {lessonData?.title || 'Edit Lesson'}
-                </span>
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              {saveStatus === "saving" && <span className="text-sm text-muted-foreground">Saving...</span>}
-              {saveStatus === "saved" && <span className="text-sm text-green-600">Saved</span>}
-              <Button onClick={handleSave} disabled={isSaving} className="cursor-pointer">
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save"}
-              </Button>
-            </div>
+    <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Edit Lesson</h1>
+            <p className="text-muted-foreground mt-1">{lessonData?.title || 'Loading...'}</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {saveStatus === "saving" && <span className="text-sm text-muted-foreground">Saving...</span>}
+            {saveStatus === "saved" && <span className="text-sm text-green-600">Saved</span>}
+            <Button onClick={handleSave} disabled={isSaving} className="cursor-pointer">
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
           </div>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -222,7 +193,7 @@ export default function LessonEditorPage() {
             </Link>
           </Card>
         ) : lessonData ? (
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6">
             {/* Editor */}
             <div className="lg:col-span-2 space-y-6">
               <Card>
@@ -388,7 +359,6 @@ export default function LessonEditorPage() {
             </div>
           </div>
         ) : null}
-      </div>
     </div>
   )
 }

@@ -1,0 +1,37 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="2.5" orient="auto">
+      <polygon points="0 0, 8 2.5, 0 5" fill="url(#logoGradient)" />
+    </marker>
+  </defs>
+  
+  <!-- Background circle with gradient -->
+  <circle cx="60" cy="60" r="56" fill="url(#logoGradient)" opacity="0.15"/>
+  
+  <!-- Four state nodes forming a cycle (Markov chain representation) -->
+  <!-- Top state -->
+  <circle cx="60" cy="28" r="10" fill="url(#logoGradient)" stroke="white" stroke-width="2"/>
+  
+  <!-- Right state -->
+  <circle cx="92" cy="60" r="10" fill="url(#logoGradient)" stroke="white" stroke-width="2"/>
+  
+  <!-- Bottom state -->
+  <circle cx="60" cy="92" r="10" fill="url(#logoGradient)" stroke="white" stroke-width="2"/>
+  
+  <!-- Left state -->
+  <circle cx="28" cy="60" r="10" fill="url(#logoGradient)" stroke="white" stroke-width="2"/>
+  
+  <!-- Transition arrows (clockwise cycle) -->
+  <path d="M 68 32 Q 80 40 88 52" stroke="url(#logoGradient)" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M 88 68 Q 80 80 68 88" stroke="url(#logoGradient)" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M 52 88 Q 40 80 32 68" stroke="url(#logoGradient)" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M 32 52 Q 40 40 52 32" stroke="url(#logoGradient)" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- Center learning symbol (book/graduation cap) -->
+  <circle cx="60" cy="60" r="6" fill="white" opacity="0.9"/>
+  <path d="M 56 58 L 64 58 L 64 62 L 56 62 Z" fill="url(#logoGradient)" opacity="0.8"/>
+</svg>
