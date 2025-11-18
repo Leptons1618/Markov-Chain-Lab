@@ -231,10 +231,10 @@ export default function IdentityManagerPage() {
   }, [searchTerm, pageSize])
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Identity Manager</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold">Identity Manager</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Manage users, view their progress, and control admin access
         </p>
       </div>
@@ -247,18 +247,18 @@ export default function IdentityManagerPage() {
       )}
 
       {/* Search and Page Size Controls */}
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search users by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 cursor-text"
+            className="pl-10 cursor-text w-full"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Show:</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
           <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
             <SelectTrigger className="w-20">
               <SelectValue />
@@ -286,69 +286,163 @@ export default function IdentityManagerPage() {
         </Card>
       ) : (
         <>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Last Sign In</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                          <User className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <div className="font-medium">{user.name}</div>
-                          {user.id === currentUser?.id && (
-                            <span className="text-xs text-muted-foreground">(You)</span>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{user.email}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 min-w-[120px]">
-                        <div className="flex-1">
-                          <div className="text-xs text-muted-foreground mb-1">
-                            {user.progress.completedLessons}/{user.progress.totalLessons}
+          {/* Desktop/Tablet Table View */}
+          <Card className="hidden md:block overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[150px]">User</TableHead>
+                    <TableHead className="min-w-[200px]">Email</TableHead>
+                    <TableHead className="min-w-[140px]">Progress</TableHead>
+                    <TableHead className="min-w-[100px]">Role</TableHead>
+                    <TableHead className="text-right min-w-[400px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4 text-primary" />
                           </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary transition-all"
-                              style={{ width: `${user.progress.percentage}%` }}
-                            />
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{user.name}</div>
+                            {user.id === currentUser?.id && (
+                              <span className="text-xs text-muted-foreground">(You)</span>
+                            )}
                           </div>
                         </div>
-                        <span className="text-xs font-medium min-w-[2.5rem]">
-                          {user.progress.percentage}%
-                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm truncate block max-w-[200px]">{user.email}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 min-w-[120px]">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              {user.progress.completedLessons}/{user.progress.totalLessons}
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary transition-all"
+                                style={{ width: `${user.progress.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="text-xs font-medium shrink-0">
+                            {user.progress.percentage}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {user.isAdmin ? (
+                          <Badge variant="default" className="gap-1">
+                            <ShieldCheck className="h-3 w-3" />
+                            Admin
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">User</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                          <Link href={`/admin/identity/${user.id}`}>
+                            <Button variant="outline" size="sm" className="gap-2 shrink-0">
+                              <Eye className="h-4 w-4" />
+                              <span>Details</span>
+                            </Button>
+                          </Link>
+                          <Button
+                            variant={user.isAdmin ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => toggleAdminRole(user.id, user.isAdmin)}
+                            disabled={updating === user.id || user.id === currentUser?.id}
+                            className="gap-2 shrink-0"
+                          >
+                            {updating === user.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Updating...</span>
+                              </>
+                            ) : user.isAdmin ? (
+                              <>
+                                <Shield className="h-4 w-4" />
+                                <span>Remove Admin</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck className="h-4 w-4" />
+                                <span>Make Admin</span>
+                              </>
+                            )}
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" disabled={actionLoading === user.id} className="shrink-0">
+                                {actionLoading === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreVertical className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => sendResetPassword(user.id)}
+                                disabled={actionLoading === user.id}
+                              >
+                                <Mail className="h-4 w-4 mr-2" />
+                                Send Reset Password
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setResetProgressDialogOpen(user.id)}
+                                disabled={actionLoading === user.id}
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Reset Progress
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeleteDialogOpen(user.id)}
+                                disabled={actionLoading === user.id || user.id === currentUser?.id}
+                                variant="destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {paginatedUsers.map((user) => (
+              <Card key={user.id} className="p-4">
+                <div className="space-y-4">
+                  {/* User Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                        <User className="h-5 w-5 text-primary" />
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {user.lastSignIn
-                          ? new Date(user.lastSignIn).toLocaleDateString()
-                          : 'Never'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">{user.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                        {user.id === currentUser?.id && (
+                          <span className="text-xs text-muted-foreground">(You)</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
                       {user.isAdmin ? (
                         <Badge variant="default" className="gap-1">
                           <ShieldCheck className="h-3 w-3" />
@@ -357,82 +451,116 @@ export default function IdentityManagerPage() {
                       ) : (
                         <Badge variant="outline">User</Badge>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link href={`/admin/identity/${user.id}`}>
-                          <Button variant="outline" size="sm" className="gap-2">
-                            <Eye className="h-4 w-4" />
-                            Details
-                          </Button>
-                        </Link>
-                        <Button
-                          variant={user.isAdmin ? "outline" : "default"}
-                          size="sm"
-                          onClick={() => toggleAdminRole(user.id, user.isAdmin)}
-                          disabled={updating === user.id || user.id === currentUser?.id}
-                          className="gap-2"
-                        >
-                          {updating === user.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Updating...
-                            </>
-                          ) : user.isAdmin ? (
-                            <>
-                              <Shield className="h-4 w-4" />
-                              Remove Admin
-                            </>
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">
+                        {user.progress.completedLessons}/{user.progress.totalLessons} ({user.progress.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${user.progress.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">Joined</div>
+                      <div className="font-medium">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Last Sign In</div>
+                      <div className="font-medium">
+                        {user.lastSignIn
+                          ? new Date(user.lastSignIn).toLocaleDateString()
+                          : 'Never'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <Link href={`/admin/identity/${user.id}`} className="flex-1 min-w-[120px]">
+                      <Button variant="outline" size="sm" className="w-full gap-2">
+                        <Eye className="h-4 w-4" />
+                        Details
+                      </Button>
+                    </Link>
+                    <Button
+                      variant={user.isAdmin ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => toggleAdminRole(user.id, user.isAdmin)}
+                      disabled={updating === user.id || user.id === currentUser?.id}
+                      className="flex-1 min-w-[120px] gap-2"
+                    >
+                      {updating === user.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : user.isAdmin ? (
+                        <>
+                          <Shield className="h-4 w-4" />
+                          Remove Admin
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-4 w-4" />
+                          Make Admin
+                        </>
+                      )}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" disabled={actionLoading === user.id} className="shrink-0">
+                          {actionLoading === user.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <>
-                              <ShieldCheck className="h-4 w-4" />
-                              Make Admin
-                            </>
+                            <MoreVertical className="h-4 w-4" />
                           )}
                         </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" disabled={actionLoading === user.id}>
-                              {actionLoading === user.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <MoreVertical className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => sendResetPassword(user.id)}
-                              disabled={actionLoading === user.id}
-                            >
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send Reset Password
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setResetProgressDialogOpen(user.id)}
-                              disabled={actionLoading === user.id}
-                            >
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Reset Progress
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setDeleteDialogOpen(user.id)}
-                              disabled={actionLoading === user.id || user.id === currentUser?.id}
-                              variant="destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete User
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => sendResetPassword(user.id)}
+                          disabled={actionLoading === user.id}
+                        >
+                          <Mail className="h-4 w-4 mr-2" />
+                          Send Reset Password
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setResetProgressDialogOpen(user.id)}
+                          disabled={actionLoading === user.id}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Reset Progress
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setDeleteDialogOpen(user.id)}
+                          disabled={actionLoading === user.id || user.id === currentUser?.id}
+                          variant="destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
 
           {/* Delete User Dialog */}
           <AlertDialog open={deleteDialogOpen !== null} onOpenChange={(open) => !open && setDeleteDialogOpen(null)}>
@@ -475,91 +603,89 @@ export default function IdentityManagerPage() {
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of{" "}
-                {filteredUsers.length} users
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-10"
-                        >
-                          {page}
-                        </Button>
-                      )
-                    } else if (page === currentPage - 2 || page === currentPage + 2) {
-                      return <span key={page} className="px-2">...</span>
-                    }
-                    return null
-                  })}
+          {/* Pagination - Always show if there are users */}
+          {filteredUsers.length > 0 && (
+            <Card className="p-4">
+              <div className="flex flex-col gap-4">
+                <div className="text-sm text-muted-foreground text-center sm:text-left">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of{" "}
+                  {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'}
+                  {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
+                {totalPages > 1 ? (
+                  <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="w-full sm:w-auto"
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1 flex-wrap justify-center">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-10"
+                            >
+                              {page}
+                            </Button>
+                          )
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return <span key={page} className="px-2 text-muted-foreground">...</span>
+                        }
+                        return null
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="w-full sm:w-auto"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground text-center sm:text-left">
+                    All users displayed
+                  </div>
+                )}
               </div>
-            </div>
+            </Card>
           )}
         </>
       )}
 
-      {/* Summary Stats */}
+      {/* Summary Stats - Single Chip */}
       {!loading && users.length > 0 && (
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{users.length}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-primary">
-                {users.filter(u => u.isAdmin).length}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Active Learners</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-green-600">
-                {users.filter(u => u.progress.totalLessons > 0).length}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="flex flex-wrap items-center gap-3 justify-center sm:justify-start">
+          <Badge variant="outline" className="px-4 py-2 text-sm font-medium gap-2">
+            <User className="h-4 w-4" />
+            <span className="font-semibold">{users.length}</span>
+            <span className="text-muted-foreground">Total Users</span>
+          </Badge>
+          <Badge variant="outline" className="px-4 py-2 text-sm font-medium gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <span className="font-semibold text-primary">{users.filter(u => u.isAdmin).length}</span>
+            <span className="text-muted-foreground">Admins</span>
+          </Badge>
+          <Badge variant="outline" className="px-4 py-2 text-sm font-medium gap-2">
+            <User className="h-4 w-4 text-green-600" />
+            <span className="font-semibold text-green-600">{users.filter(u => u.progress.totalLessons > 0).length}</span>
+            <span className="text-muted-foreground">Active Learners</span>
+          </Badge>
         </div>
       )}
     </div>

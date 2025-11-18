@@ -259,6 +259,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     await signOut()
   }, [signOut])
 
+  // Auto sign out when user is deleted - MUST be before any conditional returns
+  useEffect(() => {
+    if (userDeleted) {
+      // Auto sign out after a short delay
+      const timer = setTimeout(() => {
+        handleLogout()
+      }, 3000) // 3 second delay to show message
+
+      return () => clearTimeout(timer)
+    }
+  }, [userDeleted, handleLogout])
+
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/courses", label: "Courses" },
@@ -276,18 +288,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </div>
     )
   }
-
-  // Auto sign out when user is deleted
-  useEffect(() => {
-    if (userDeleted) {
-      // Auto sign out after a short delay
-      const timer = setTimeout(() => {
-        handleLogout()
-      }, 3000) // 3 second delay to show message
-
-      return () => clearTimeout(timer)
-    }
-  }, [userDeleted, handleLogout])
 
   if (userDeleted) {
     // User account was deleted

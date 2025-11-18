@@ -43,7 +43,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session first to check if user is authenticated
     // This ensures that if user signed in while in guest mode, we detect it
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      // Handle refresh token errors gracefully
       if (error) {
+        const errorCode = error.code || ''
+        const errorMessage = error.message?.toLowerCase() || ''
+        
+        // Refresh token errors are expected when tokens expire - handle silently
+        if (errorCode === 'refresh_token_not_found' || 
+            errorMessage.includes('refresh_token') ||
+            errorMessage.includes('invalid refresh token')) {
+          // Silent fail - user will need to sign in again
+          const guest = isGuestMode()
+          setIsGuest(guest)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        
+        // Log other errors
         console.error('Error getting session:', error)
         // Check guest mode as fallback
         const guest = isGuestMode()
@@ -95,7 +112,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }, 1000)
       }
-    }).catch((error) => {
+    }).catch((error: any) => {
+      // Handle refresh token errors gracefully
+      const errorCode = error?.code || ''
+      const errorMessage = error?.message?.toLowerCase() || ''
+      
+      if (errorCode === 'refresh_token_not_found' || 
+          errorMessage.includes('refresh_token') ||
+          errorMessage.includes('invalid refresh token')) {
+        // Silent fail - user will need to sign in again
+        const guest = isGuestMode()
+        setIsGuest(guest)
+        setUser(null)
+        setLoading(false)
+        return
+      }
+      
+      // Log other errors
       console.error('Failed to get session:', error)
       setUser(null)
       setLoading(false)
@@ -105,6 +138,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Handle refresh token errors gracefully
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        // Token refresh failed - clear invalid session
+        setUser(null)
+        setIsGuest(false)
+        setGuestMode(false)
+        if (typeof window !== 'undefined') {
+          sessionStorage.clear()
+        }
+        return
+      }
       const newUser = session?.user ?? null
       
       // Handle sign out event

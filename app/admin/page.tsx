@@ -124,22 +124,57 @@ export default function AdminPage() {
                     </Button>
                   </Link>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {allLessons
-                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                    .slice(0, 3)
-                    .map((lesson) => {
+              ) : (() => {
+                // Filter lessons updated in the last 3 days
+                const threeDaysAgo = new Date()
+                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+                
+                const recentLessons = allLessons
+                  .filter(lesson => {
+                    const updatedDate = new Date(lesson.updatedAt)
+                    return updatedDate >= threeDaysAgo
+                  })
+                  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                
+                if (recentLessons.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No content updated in the last 3 days</p>
+                    </div>
+                  )
+                }
+                
+                return (
+                  <div className="space-y-4">
+                    {recentLessons.map((lesson) => {
                       const course = courses.find(c => c.id === lesson.courseId)
+                      const updatedDate = new Date(lesson.updatedAt)
+                      const formattedDate = updatedDate.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })
+                      const formattedTime = updatedDate.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })
+                      
                       return (
-                        <div key={lesson.id} className="flex items-center justify-between py-3 border-b border-border">
-                          <div>
-                            <p className="font-medium">{lesson.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {course?.title} • Modified {new Date(lesson.updatedAt).toLocaleDateString()}
-                            </p>
+                        <div key={lesson.id} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{lesson.title}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <p className="text-sm text-muted-foreground">
+                                {course?.title}
+                              </p>
+                              <span className="text-muted-foreground">•</span>
+                              <p className="text-sm text-muted-foreground">
+                                Updated {formattedDate} at {formattedTime}
+                              </p>
+                            </div>
                           </div>
-                          <Link href={`/admin/courses/${lesson.courseId}/lessons/${lesson.id}`}>
+                          <Link href={`/admin/courses/${lesson.courseId}/lessons/${lesson.id}`} className="ml-4 shrink-0">
                             <Button variant="outline" size="sm" className="cursor-pointer bg-transparent">
                               Edit
                             </Button>
@@ -147,8 +182,9 @@ export default function AdminPage() {
                         </div>
                       )
                     })}
-                </div>
-              )}
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
         </div>
