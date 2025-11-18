@@ -1,28 +1,28 @@
 [
     {
-        "id": "weather",
-        "title": "Weather Prediction Model",
-        "description": "A simple 2-state model predicting sunny and rainy days based on current weather",
+        "id": "pushkin-poetry",
+        "title": "Pushkin's Poetry: The First Markov Chain",
+        "description": "Recreate Andrey Markov's 1906 analysis of vowel-consonant patterns in Pushkin's 'Eugene Onegin'—the very first application of Markov chains!",
         "category": "classic",
         "difficulty": "beginner",
         "applications": [
-            "Meteorology",
-            "Agriculture Planning",
-            "Event Planning"
+            "Literary Analysis",
+            "Historical Mathematics",
+            "Pattern Recognition"
         ],
         "interactiveDemo": true,
         "design": {
             "states": [
                 {
-                    "id": "sunny",
-                    "name": "Sunny",
+                    "id": "vowel",
+                    "name": "Vowel",
                     "x": 700,
                     "y": 650,
                     "color": "#fbbf24"
                 },
                 {
-                    "id": "rainy",
-                    "name": "Rainy",
+                    "id": "consonant",
+                    "name": "Consonant",
                     "x": 1300,
                     "y": 650,
                     "color": "#60a5fa"
@@ -30,564 +30,72 @@
             ],
             "transitions": [
                 {
-                    "id": "sunny-sunny",
-                    "from": "sunny",
-                    "to": "sunny",
-                    "probability": 0.7
+                    "id": "vowel-vowel",
+                    "from": "vowel",
+                    "to": "vowel",
+                    "probability": 0.125
                 },
                 {
-                    "id": "sunny-rainy",
-                    "from": "sunny",
-                    "to": "rainy",
-                    "probability": 0.3
+                    "id": "vowel-consonant",
+                    "from": "vowel",
+                    "to": "consonant",
+                    "probability": 0.875
                 },
                 {
-                    "id": "rainy-sunny",
-                    "from": "rainy",
-                    "to": "sunny",
-                    "probability": 0.4
+                    "id": "consonant-vowel",
+                    "from": "consonant",
+                    "to": "vowel",
+                    "probability": 0.667
                 },
                 {
-                    "id": "rainy-rainy",
-                    "from": "rainy",
-                    "to": "rainy",
-                    "probability": 0.6
+                    "id": "consonant-consonant",
+                    "from": "consonant",
+                    "to": "consonant",
+                    "probability": 0.333
                 }
             ]
         },
-        "explanation": "This classic example models weather patterns where sunny days tend to persist (70% probability of staying sunny), while rainy days are also somewhat persistent (60% probability of staying rainy). The model demonstrates the Markov property: tomorrow's weather depends only on today's weather, not on previous days.",
+        "explanation": "In 1906, Andrey Markov manually analyzed 20,000 letters from Pushkin's poem 'Eugene Onegin', categorizing them as vowels or consonants. He discovered that the probability of the next letter depended only on the current letter—the Markov property! This simple two-state chain captured the rhythmic structure of Russian poetry and launched an entire field of mathematics.",
         "lessonConnections": [
+            {
+                "lessonId": "history-1",
+                "lessonTitle": "Andrey Markov and the Birth of Memoryless Processes",
+                "connection": "This is the exact example Markov used in his 1906 paper! Experience the historical moment when Markov chains were born."
+            },
             {
                 "lessonId": "chains-1",
                 "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
-                "connection": "This example perfectly illustrates the Markov property introduced in this lesson. The weather model shows how the future state (tomorrow's weather) depends only on the current state (today's weather), not on the sequence of previous days."
-            },
-            {
-                "lessonId": "chains-2",
-                "lessonTitle": "The Chapman-Kolmogorov Equations: Predicting the Future",
-                "connection": "Use this example to practice computing multi-step transition probabilities. What's the probability it's sunny 3 days from now if today is sunny? Compute P³ to find out!"
-            },
-            {
-                "lessonId": "chains-3",
-                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
-                "connection": "This weather chain converges to a stationary distribution: π(Sunny) = 4/7 ≈ 57.1% and π(Rainy) = 3/7 ≈ 42.9%. This means in the long run, regardless of today's weather, about 57% of days will be sunny."
+                "connection": "This example perfectly demonstrates the Markov property: the next letter depends only on the current letter, not the entire history."
             }
         ],
         "mathematicalDetails": {
-            "transitionMatrix": "P = [[0.7, 0.3], [0.4, 0.6]]",
-            "stationaryDistribution": "π = [4/7, 3/7] ≈ [0.571, 0.429]",
+            "transitionMatrix": "P = [[0.125, 0.875], [0.667, 0.333]]",
+            "stationaryDistribution": "π = [0.432, 0.568] - In the long run, about 43% vowels and 57% consonants",
             "keyInsights": [
-                "The chain is irreducible and aperiodic, guaranteeing convergence to the stationary distribution",
-                "The stationary distribution can be found by solving π = πP with the constraint π₁ + π₂ = 1",
-                "This is a time-homogeneous Markov chain (transition probabilities don't change over time)"
+                "Markov manually counted 20,000 letters—imagine doing this by hand!",
+                "The chain reveals the rhythmic structure of Russian poetry",
+                "This was the first real-world application of Markov chains"
             ]
         },
-        "realWorldContext": "Meteorologists use similar models (often with more states like cloudy, partly cloudy) to predict weather patterns. While real weather depends on many factors (pressure systems, temperature gradients), the Markov approximation captures the 'memory' of weather systems—sunny periods tend to persist, as do rainy periods.",
+        "realWorldContext": "Markov's analysis showed that even artistic works like poetry follow mathematical laws. Today, similar techniques analyze DNA sequences, music, and language patterns. The Markov property—that the future depends only on the present—is everywhere in nature and art.",
         "practiceQuestions": [
-            "If today is sunny, what's the probability it's sunny 2 days from now? (Hint: Compute P²)",
-            "What's the expected number of sunny days in a 100-day period?",
-            "If you observe 100 consecutive days and count sunny vs rainy, what fraction should converge to?"
-        ]
-    },
-    {
-        "id": "random-walk",
-        "title": "Random Walk",
-        "description": "A simple 1D random walk with five positions and reflective boundaries.",
-        "category": "classic",
-        "difficulty": "beginner",
-        "applications": [
-            "Stock Prices",
-            "Brownian Motion",
-            "Diffusion Processes"
-        ],
-        "interactiveDemo": true,
-        "design": {
-            "states": [
-                {
-                    "id": "pos-2",
-                    "name": "Position -2",
-                    "x": 350,
-                    "y": 750,
-                    "color": "#fb923c"
-                },
-                {
-                    "id": "pos-1",
-                    "name": "Position -1",
-                    "x": 675,
-                    "y": 750,
-                    "color": "#fbbf24"
-                },
-                {
-                    "id": "pos0",
-                    "name": "Position 0",
-                    "x": 1000,
-                    "y": 750,
-                    "color": "#60a5fa"
-                },
-                {
-                    "id": "pos1",
-                    "name": "Position 1",
-                    "x": 1325,
-                    "y": 750,
-                    "color": "#34d399"
-                },
-                {
-                    "id": "pos2",
-                    "name": "Position 2",
-                    "x": 1650,
-                    "y": 750,
-                    "color": "#a78bfa"
-                }
-            ],
-            "transitions": [
-                {
-                    "id": "pos-2-pos-1",
-                    "from": "pos-2",
-                    "to": "pos-1",
-                    "probability": 1.0
-                },
-                {
-                    "id": "pos-1-pos-2",
-                    "from": "pos-1",
-                    "to": "pos-2",
-                    "probability": 0.5
-                },
-                {
-                    "id": "pos-1-pos0",
-                    "from": "pos-1",
-                    "to": "pos0",
-                    "probability": 0.5
-                },
-                {
-                    "id": "pos0-pos-1",
-                    "from": "pos0",
-                    "to": "pos-1",
-                    "probability": 0.5
-                },
-                {
-                    "id": "pos0-pos1",
-                    "from": "pos0",
-                    "to": "pos1",
-                    "probability": 0.5
-                },
-                {
-                    "id": "pos1-pos0",
-                    "from": "pos1",
-                    "to": "pos0",
-                    "probability": 0.5
-                },
-                {
-                    "id": "pos1-pos2",
-                    "from": "pos1",
-                    "to": "pos2",
-                    "probability": 0.5
-                },
-                {
-                    "id": "pos2-pos1",
-                    "from": "pos2",
-                    "to": "pos1",
-                    "probability": 1.0
-                }
-            ]
-        },
-        "explanation": "This 1D random-walk has five positions. Interior positions (−1, 0, 1) move left or right with equal probability 0.5. The extremes are reflective: Position −2 always moves inward to −1, and Position 2 always moves inward to 1. The model demonstrates the Markov property because the next position depends only on the current position, not the path that led there.",
-        "lessonConnections": [
-            {
-                "lessonId": "chains-1",
-                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
-                "connection": "Random walks are the quintessential Markov chain example. Each step depends only on the current position—the 'memoryless' property in action. This example shows how boundaries (reflective walls) can be incorporated into Markov models."
-            },
-            {
-                "lessonId": "foundations-3",
-                "lessonTitle": "Random Variables and Expectations",
-                "connection": "Random walks connect probability theory to stochastic processes. The position at time n is a random variable, and we can compute expectations, variances, and long-run distributions."
-            }
-        ],
-        "mathematicalDetails": {
-            "transitionMatrix": "P has reflective boundaries: P(-2→-1) = 1, P(2→1) = 1, and for interior states P(i→i±1) = 0.5",
-            "stationaryDistribution": "For symmetric random walks with reflective boundaries, the stationary distribution is uniform: π = [1/5, 1/5, 1/5, 1/5, 1/5]",
-            "keyInsights": [
-                "Reflective boundaries prevent the walker from escaping—this makes the chain irreducible",
-                "The uniform stationary distribution reflects the symmetry of the problem",
-                "Random walks are fundamental to understanding diffusion, Brownian motion, and many physical processes"
-            ]
-        },
-        "realWorldContext": "Random walks model countless phenomena: stock prices (with drift), particle diffusion, genetic drift in populations, and even the path of a drunk person! The reflective boundaries here model constraints—like a particle bouncing between walls or a stock price constrained by circuit breakers.",
-        "practiceQuestions": [
-            "Starting from position 0, what's the probability of reaching position 2 before returning to 0?",
-            "What's the expected number of steps to return to position 0 starting from position 0?",
-            "How does the stationary distribution change if we make the boundaries absorbing instead of reflective?"
-        ]
-    },
-    {
-        "id": "monopoly",
-        "title": "Monopoly (Simplified 6-State Board)",
-        "description": "A highly simplified 6-square Monopoly sub-board with dice-based movement probabilities.",
-        "category": "classic",
-        "difficulty": "intermediate",
-        "applications": [
-            "Game Theory",
-            "Probability Analysis",
-            "Strategy Optimization"
-        ],
-        "interactiveDemo": false,
-        "design": {
-            "states": [
-                {
-                    "id": "go",
-                    "name": "Go",
-                    "x": 1000,
-                    "y": 250,
-                    "color": "#fbbf24"
-                },
-                {
-                    "id": "mediterranean",
-                    "name": "Mediterranean Ave",
-                    "x": 1300,
-                    "y": 430,
-                    "color": "#f87171"
-                },
-                {
-                    "id": "community",
-                    "name": "Community Chest",
-                    "x": 1150,
-                    "y": 760,
-                    "color": "#94a3b8"
-                },
-                {
-                    "id": "baltic",
-                    "name": "Baltic Ave",
-                    "x": 850,
-                    "y": 760,
-                    "color": "#fb923c"
-                },
-                {
-                    "id": "income-tax",
-                    "name": "Income Tax",
-                    "x": 700,
-                    "y": 430,
-                    "color": "#60a5fa"
-                },
-                {
-                    "id": "reading-railroad",
-                    "name": "Reading Railroad",
-                    "x": 1000,
-                    "y": 600,
-                    "color": "#34d399"
-                }
-            ],
-            "transitions": [
-                {
-                    "id": "go-mediterranean",
-                    "from": "go",
-                    "to": "mediterranean",
-                    "probability": 0.6
-                },
-                {
-                    "id": "go-community",
-                    "from": "go",
-                    "to": "community",
-                    "probability": 0.3
-                },
-                {
-                    "id": "go-baltic",
-                    "from": "go",
-                    "to": "baltic",
-                    "probability": 0.1
-                },
-                {
-                    "id": "mediterranean-community",
-                    "from": "mediterranean",
-                    "to": "community",
-                    "probability": 0.6
-                },
-                {
-                    "id": "mediterranean-baltic",
-                    "from": "mediterranean",
-                    "to": "baltic",
-                    "probability": 0.3
-                },
-                {
-                    "id": "mediterranean-income-tax",
-                    "from": "mediterranean",
-                    "to": "income-tax",
-                    "probability": 0.1
-                },
-                {
-                    "id": "community-baltic",
-                    "from": "community",
-                    "to": "baltic",
-                    "probability": 0.6
-                },
-                {
-                    "id": "community-reading-railroad",
-                    "from": "community",
-                    "to": "reading-railroad",
-                    "probability": 0.3
-                },
-                {
-                    "id": "community-go",
-                    "from": "community",
-                    "to": "go",
-                    "probability": 0.1
-                },
-                {
-                    "id": "baltic-income-tax",
-                    "from": "baltic",
-                    "to": "income-tax",
-                    "probability": 0.6
-                },
-                {
-                    "id": "baltic-reading-railroad",
-                    "from": "baltic",
-                    "to": "reading-railroad",
-                    "probability": 0.3
-                },
-                {
-                    "id": "baltic-go",
-                    "from": "baltic",
-                    "to": "go",
-                    "probability": 0.1
-                },
-                {
-                    "id": "income-tax-reading-railroad",
-                    "from": "income-tax",
-                    "to": "reading-railroad",
-                    "probability": 0.7
-                },
-                {
-                    "id": "income-tax-go",
-                    "from": "income-tax",
-                    "to": "go",
-                    "probability": 0.2
-                },
-                {
-                    "id": "income-tax-mediterranean",
-                    "from": "income-tax",
-                    "to": "mediterranean",
-                    "probability": 0.1
-                },
-                {
-                    "id": "reading-railroad-go",
-                    "from": "reading-railroad",
-                    "to": "go",
-                    "probability": 0.5
-                },
-                {
-                    "id": "reading-railroad-mediterranean",
-                    "from": "reading-railroad",
-                    "to": "mediterranean",
-                    "probability": 0.3
-                },
-                {
-                    "id": "reading-railroad-community",
-                    "from": "reading-railroad",
-                    "to": "community",
-                    "probability": 0.2
-                }
-            ]
-        },
-        "explanation": "This simplified Monopoly chain moves a player forward by a small number of squares according to typical dice-sum likelihoods collapsed into three move sizes. From each square the next square is chosen probabilistically (here approximated by a 60/30/10 split to reflect common mid-range sums). The Markov property holds because the next location depends only on the current square, not how the player reached it. This model is useful for analysing landing frequencies and strategy.",
-        "lessonConnections": [
-            {
-                "lessonId": "chains-1",
-                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
-                "connection": "Board games like Monopoly are perfect examples of Markov chains! Your position depends only on where you are now and the dice roll—not on how you got there. This example shows how games can be analyzed probabilistically."
-            },
-            {
-                "lessonId": "chains-3",
-                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
-                "connection": "The stationary distribution tells you which squares are landed on most frequently in the long run. This is crucial for Monopoly strategy—buy properties that have high stationary probability!"
-            }
-        ],
-        "mathematicalDetails": {
-            "transitionMatrix": "P encodes dice roll probabilities: from each square, transitions reflect likely dice sums (60% common moves, 30% medium, 10% rare)",
-            "stationaryDistribution": "The stationary distribution π gives the long-run frequency of landing on each square—essential for strategic property acquisition",
-            "keyInsights": [
-                "This is a finite-state Markov chain with all states communicating (irreducible)",
-                "The stationary distribution reveals which properties are most valuable",
-                "Real Monopoly has 40 squares and more complex transitions (including 'Go to Jail')"
-            ]
-        },
-        "realWorldContext": "Game theorists use Markov chains to analyze board games, card games, and strategic situations. Understanding landing frequencies helps players make optimal decisions. Similar analysis applies to any game with probabilistic movement—from Snakes & Ladders to video game level design.",
-        "practiceQuestions": [
-            "Which square has the highest stationary probability? Why?",
-            "How would adding 'Go to Jail' affect the stationary distribution?",
-            "If you could buy only one property, which should you choose based on the stationary distribution?"
-        ]
-    },
-    {
-        "id": "queue-system",
-        "title": "Queueing System (Discrete Approximation)",
-        "description": "A small birth–death queue with an aggregate 4+ customers state to illustrate stability and blocking.",
-        "category": "classic",
-        "difficulty": "intermediate",
-        "applications": [
-            "Call Centers",
-            "Restaurant Management",
-            "Traffic Flow"
-        ],
-        "interactiveDemo": true,
-        "design": {
-            "states": [
-                {
-                    "id": "q0",
-                    "name": "0 customers",
-                    "x": 1000,
-                    "y": 300,
-                    "color": "#34d399"
-                },
-                {
-                    "id": "q1",
-                    "name": "1 customer",
-                    "x": 1000,
-                    "y": 540,
-                    "color": "#60a5fa"
-                },
-                {
-                    "id": "q2",
-                    "name": "2 customers",
-                    "x": 1000,
-                    "y": 780,
-                    "color": "#fbbf24"
-                },
-                {
-                    "id": "q3",
-                    "name": "3 customers",
-                    "x": 1000,
-                    "y": 1020,
-                    "color": "#fb923c"
-                },
-                {
-                    "id": "q4plus",
-                    "name": "4+ customers",
-                    "x": 1000,
-                    "y": 1260,
-                    "color": "#f87171"
-                }
-            ],
-            "transitions": [
-                {
-                    "id": "q0-q1",
-                    "from": "q0",
-                    "to": "q1",
-                    "probability": 0.6
-                },
-                {
-                    "id": "q0-q0",
-                    "from": "q0",
-                    "to": "q0",
-                    "probability": 0.4
-                },
-                {
-                    "id": "q1-q2",
-                    "from": "q1",
-                    "to": "q2",
-                    "probability": 0.6
-                },
-                {
-                    "id": "q1-q0",
-                    "from": "q1",
-                    "to": "q0",
-                    "probability": 0.3
-                },
-                {
-                    "id": "q1-q1",
-                    "from": "q1",
-                    "to": "q1",
-                    "probability": 0.1
-                },
-                {
-                    "id": "q2-q3",
-                    "from": "q2",
-                    "to": "q3",
-                    "probability": 0.6
-                },
-                {
-                    "id": "q2-q1",
-                    "from": "q2",
-                    "to": "q1",
-                    "probability": 0.3
-                },
-                {
-                    "id": "q2-q2",
-                    "from": "q2",
-                    "to": "q2",
-                    "probability": 0.1
-                },
-                {
-                    "id": "q3-q4plus",
-                    "from": "q3",
-                    "to": "q4plus",
-                    "probability": 0.6
-                },
-                {
-                    "id": "q3-q2",
-                    "from": "q3",
-                    "to": "q2",
-                    "probability": 0.3
-                },
-                {
-                    "id": "q3-q3",
-                    "from": "q3",
-                    "to": "q3",
-                    "probability": 0.1
-                },
-                {
-                    "id": "q4plus-q4plus",
-                    "from": "q4plus",
-                    "to": "q4plus",
-                    "probability": 0.7
-                },
-                {
-                    "id": "q4plus-q3",
-                    "from": "q4plus",
-                    "to": "q3",
-                    "probability": 0.3
-                }
-            ]
-        },
-        "explanation": "This birth–death-style chain approximates arrivals and services in a discrete-time setting. From states 0–3 an arrival (probability 0.6) increases queue length, a service (0.3) decreases it, and otherwise the state remains the same (0.1). The '4+' state aggregates all larger queues: arrivals keep the system in 4+ (0.7 aggregated self-loop), services reduce it to 3 (0.3). The next-state distribution depends only on the current queue length (Markov property).",
-        "lessonConnections": [
-            {
-                "lessonId": "ctmc-2",
-                "lessonTitle": "Queueing Systems: When Waiting Becomes Mathematics",
-                "connection": "This discrete-time queue is a simplified version of the M/M/1 queue studied in continuous-time. The same principles apply: arrivals increase queue length, services decrease it. The stationary distribution tells you the long-run probability of different queue lengths."
-            },
-            {
-                "lessonId": "chains-3",
-                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
-                "connection": "The stationary distribution of this queue reveals the long-run probability of having 0, 1, 2, 3, or 4+ customers. This is crucial for capacity planning—if π(4+) is high, you need more servers!"
-            }
-        ],
-        "mathematicalDetails": {
-            "transitionMatrix": "P is a birth-death process: transitions only occur to neighboring states (n→n+1 for arrivals, n→n-1 for services)",
-            "stationaryDistribution": "For stable queues (arrival rate < service rate), π exists and can be computed recursively",
-            "keyInsights": [
-                "This is a discrete-time approximation of continuous-time queueing systems",
-                "The '4+' state aggregates all larger queues—a common modeling technique",
-                "Stability requires that the arrival rate is less than the service rate on average"
-            ]
-        },
-        "realWorldContext": "Queueing models are everywhere: call centers (customers = callers, servers = operators), restaurants (customers = diners, servers = tables), internet routers (customers = packets, servers = transmission capacity). Understanding queue behavior helps design efficient systems and predict wait times.",
-        "practiceQuestions": [
-            "What's the probability the queue is empty in steady state?",
-            "If arrivals increase to 0.7, what happens to the stationary distribution?",
-            "How would adding a second server change the transition probabilities?"
+            "If we start with a vowel, what's the probability the next two letters are 'VC'?",
+            "What's the stationary distribution? What does it tell us about Pushkin's poetry?",
+            "How would you modify this to analyze English poetry instead?"
         ]
     },
     {
         "id": "pagerank",
-        "title": "PageRank (4-Page Web)",
-        "description": "A four-page link graph with damping (0.85) and teleportation to model PageRank behavior.",
+        "title": "Google PageRank: Ranking the Web",
+        "description": "Discover how Google uses Markov chains to rank billions of web pages. The stationary distribution becomes the PageRank score!",
         "category": "modern",
-        "difficulty": "advanced",
+        "difficulty": "intermediate",
         "applications": [
             "Search Engines",
             "Social Network Analysis",
-            "Citation Analysis"
+            "Influence Modeling"
         ],
-        "interactiveDemo": false,
+        "interactiveDemo": true,
         "design": {
             "states": [
                 {
@@ -718,34 +226,29 @@
                 }
             ]
         },
-        "explanation": "Pages A, B, C link to other pages (A→{B,C}, B→{C}, C→{A,D}). Page D is a dangling page (no outgoing links), modeled here as teleporting uniformly to all pages. Using damping factor 0.85, each outgoing link receives 0.85*(1/outdegree) plus 0.15*(1/4) teleport probability; non-linked pages receive only the teleport component (0.0375). Dangling nodes distribute probability uniformly (0.25 each). The stationary distribution (PageRank) is the long-run visit frequency over pages.",
+        "explanation": "PageRank treats the web as a giant Markov chain. A 'random surfer' clicks links (with probability 0.85) or jumps to a random page (with probability 0.15). The stationary distribution—the long-run probability of being on each page—becomes the PageRank score. Pages with high PageRank are ranked higher in search results. This simple idea powers Google's search algorithm!",
         "lessonConnections": [
             {
-                "lessonId": "markov-simulations-2",
-                "lessonTitle": "PageRank: How Google Ranks the Web",
-                "connection": "This is a miniature version of Google's PageRank algorithm! The stationary distribution gives the importance (PageRank) of each page. Pages with high PageRank are ranked higher in search results. This example demonstrates the random surfer model with damping."
+                "lessonId": "history-3",
+                "lessonTitle": "From PageRank to GPT: Markov Chains in the Digital Age",
+                "connection": "This is the exact algorithm Larry Page and Sergey Brin described in 1998. The stationary distribution ranks the web!"
             },
             {
                 "lessonId": "chains-3",
                 "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
-                "connection": "PageRank is literally the stationary distribution of the web's Markov chain. Pages that many important pages link to have high stationary probability. The damping factor (0.85) ensures the chain is irreducible and converges."
-            },
-            {
-                "lessonId": "chains-2",
-                "lessonTitle": "The Chapman-Kolmogorov Equations: Predicting the Future",
-                "connection": "Google computes PageRank using power iteration: π^(n+1) = π^(n) · P. This is exactly computing P^n and letting n→∞ to find the stationary distribution!"
+                "connection": "PageRank is literally the stationary distribution of the web's Markov chain. Understanding stationary distributions is key to understanding search rankings."
             }
         ],
         "mathematicalDetails": {
-            "transitionMatrix": "P = α·P_links + (1-α)·(1/N)·1·1^T where α=0.85 (damping), P_links encodes actual links, and the second term is uniform teleportation",
+            "transitionMatrix": "P = α·P_links + (1-α)·(1/N)·1·1^T where α=0.85 (damping factor)",
             "stationaryDistribution": "The PageRank vector π satisfies π = π·P. Pages with high π_i are more important",
             "keyInsights": [
-                "Damping factor (0.85) prevents the surfer from getting stuck in isolated parts of the web",
+                "Damping factor (0.85) prevents getting stuck in isolated parts of the web",
                 "Dangling pages (no outgoing links) are handled by uniform teleportation",
-                "The algorithm scales to billions of pages using sparse matrix techniques and distributed computation"
+                "The algorithm scales to billions of pages using sparse matrix techniques"
             ]
         },
-        "realWorldContext": "PageRank revolutionized web search in 1998. Before PageRank, search engines relied on keyword matching. PageRank introduced the idea that links are 'votes'—a page linked by many important pages must be important itself. This self-reinforcing definition created a powerful ranking system that Google still uses (along with hundreds of other signals) today.",
+        "realWorldContext": "PageRank revolutionized web search in 1998. Before PageRank, search engines relied on keyword matching. PageRank introduced the idea that links are 'votes'—a page linked by many important pages must be important itself. Google still uses PageRank (along with hundreds of other signals) today, processing 8.5 billion searches per day.",
         "practiceQuestions": [
             "Which page has the highest PageRank? Why?",
             "What happens to PageRank if we remove the link from C to A?",
@@ -753,348 +256,50 @@
         ]
     },
     {
-        "id": "stock-model",
-        "title": "Stock Market Regime Model",
-        "description": "A three-regime market model (Bull, Bear, Stable) with regime-switching probabilities.",
+        "id": "text-generation",
+        "title": "Text Generation: N-gram Language Model",
+        "description": "Generate text using a simple Markov chain that learns word patterns from training data. This is how early chatbots and text generators worked!",
         "category": "modern",
         "difficulty": "intermediate",
         "applications": [
-            "Financial Analysis",
-            "Risk Assessment",
-            "Portfolio Management"
+            "Chatbots",
+            "Text Generation",
+            "Language Modeling"
         ],
         "interactiveDemo": true,
         "design": {
             "states": [
                 {
-                    "id": "bull",
-                    "name": "Bull Market",
-                    "x": 1000,
-                    "y": 450,
-                    "color": "#34d399"
-                },
-                {
-                    "id": "stable",
-                    "name": "Stable Market",
-                    "x": 700,
-                    "y": 950,
-                    "color": "#60a5fa"
-                },
-                {
-                    "id": "bear",
-                    "name": "Bear Market",
-                    "x": 1300,
-                    "y": 950,
-                    "color": "#f87171"
-                }
-            ],
-            "transitions": [
-                {
-                    "id": "bull-bull",
-                    "from": "bull",
-                    "to": "bull",
-                    "probability": 0.75
-                },
-                {
-                    "id": "bull-stable",
-                    "from": "bull",
-                    "to": "stable",
-                    "probability": 0.15
-                },
-                {
-                    "id": "bull-bear",
-                    "from": "bull",
-                    "to": "bear",
-                    "probability": 0.1
-                },
-                {
-                    "id": "stable-stable",
-                    "from": "stable",
-                    "to": "stable",
-                    "probability": 0.6
-                },
-                {
-                    "id": "stable-bull",
-                    "from": "stable",
-                    "to": "bull",
-                    "probability": 0.2
-                },
-                {
-                    "id": "stable-bear",
-                    "from": "stable",
-                    "to": "bear",
-                    "probability": 0.2
-                },
-                {
-                    "id": "bear-bear",
-                    "from": "bear",
-                    "to": "bear",
-                    "probability": 0.7
-                },
-                {
-                    "id": "bear-stable",
-                    "from": "bear",
-                    "to": "stable",
-                    "probability": 0.2
-                },
-                {
-                    "id": "bear-bull",
-                    "from": "bear",
-                    "to": "bull",
-                    "probability": 0.1
-                }
-            ]
-        },
-        "explanation": "This three-state regime-switching model captures market behavior: Bull markets are persistent (75% stay), Bears are persistent (70% stay), and Stable periods have moderate persistence (60%). Transitions reflect realistic regime shifts: Bull→Stable (15%), Stable→Bull/Bear (20% each), Bear→Stable (20%). The Markov property means the next market regime depends only on the current regime, supporting risk models and regime-aware strategies.",
-        "lessonConnections": [
-            {
-                "lessonId": "chains-1",
-                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
-                "connection": "Regime-switching models assume that market states (Bull/Bear/Stable) follow a Markov chain. While controversial (do markets really have no memory?), these models are widely used in finance for risk management and portfolio optimization."
-            },
-            {
-                "lessonId": "chains-3",
-                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
-                "connection": "The stationary distribution tells you the long-run probability of each market regime. This is crucial for portfolio allocation—if Bear markets occur 30% of the time in steady state, you should hedge accordingly."
-            },
-            {
-                "lessonId": "stochastic-advanced-1",
-                "lessonTitle": "Martingales: Fair Games and Stopping Times",
-                "connection": "Stock prices themselves are often modeled as martingales (in efficient markets), but the underlying market regime follows a Markov chain. This creates regime-dependent return distributions."
-            }
-        ],
-        "mathematicalDetails": {
-            "transitionMatrix": "P encodes regime persistence and transitions. High diagonal entries (0.75, 0.70, 0.60) show regimes are sticky",
-            "stationaryDistribution": "π gives long-run regime frequencies. Can be computed by solving π = πP",
-            "keyInsights": [
-                "Regime-switching models combine Markov chains (for regimes) with return distributions (conditional on regime)",
-                "The persistence of regimes (high diagonal probabilities) reflects market psychology and economic cycles",
-                "These models are used in options pricing, risk management, and algorithmic trading"
-            ]
-        },
-        "realWorldContext": "Financial markets exhibit regime behavior: bull markets (rising prices, optimism), bear markets (falling prices, pessimism), and stable periods. Regime-switching models help investors adapt strategies to market conditions. However, the Markov assumption is debated—do markets really have no memory, or do past regimes influence future ones?",
-        "practiceQuestions": [
-            "What's the stationary distribution? Which regime dominates in the long run?",
-            "If you're in a Bull market, what's the probability of a Bear market in 2 periods?",
-            "How would you modify this model to include a 'Crash' regime with different transition probabilities?"
-        ]
-    },
-    {
-        "id": "dna-sequence",
-        "title": "DNA Sequence (4-State Nucleotide Chain)",
-        "description": "A nucleotide-level Markov chain incorporating CG island bias and AT-rich tendencies.",
-        "category": "modern",
-        "difficulty": "advanced",
-        "applications": [
-            "Bioinformatics",
-            "Gene Prediction",
-            "Evolutionary Biology"
-        ],
-        "interactiveDemo": false,
-        "design": {
-            "states": [
-                {
-                    "id": "A",
-                    "name": "Adenine (A)",
-                    "x": 650,
-                    "y": 600,
-                    "color": "#fbbf24"
-                },
-                {
-                    "id": "T",
-                    "name": "Thymine (T)",
-                    "x": 1350,
-                    "y": 600,
-                    "color": "#f87171"
-                },
-                {
-                    "id": "G",
-                    "name": "Guanine (G)",
-                    "x": 650,
-                    "y": 950,
-                    "color": "#60a5fa"
-                },
-                {
-                    "id": "C",
-                    "name": "Cytosine (C)",
-                    "x": 1350,
-                    "y": 950,
-                    "color": "#34d399"
-                }
-            ],
-            "transitions": [
-                {
-                    "id": "A-A",
-                    "from": "A",
-                    "to": "A",
-                    "probability": 0.4
-                },
-                {
-                    "id": "A-T",
-                    "from": "A",
-                    "to": "T",
-                    "probability": 0.25
-                },
-                {
-                    "id": "A-G",
-                    "from": "A",
-                    "to": "G",
-                    "probability": 0.2
-                },
-                {
-                    "id": "A-C",
-                    "from": "A",
-                    "to": "C",
-                    "probability": 0.15
-                },
-                {
-                    "id": "T-T",
-                    "from": "T",
-                    "to": "T",
-                    "probability": 0.4
-                },
-                {
-                    "id": "T-A",
-                    "from": "T",
-                    "to": "A",
-                    "probability": 0.25
-                },
-                {
-                    "id": "T-C",
-                    "from": "T",
-                    "to": "C",
-                    "probability": 0.2
-                },
-                {
-                    "id": "T-G",
-                    "from": "T",
-                    "to": "G",
-                    "probability": 0.15
-                },
-                {
-                    "id": "G-G",
-                    "from": "G",
-                    "to": "G",
-                    "probability": 0.35
-                },
-                {
-                    "id": "G-C",
-                    "from": "G",
-                    "to": "C",
-                    "probability": 0.35
-                },
-                {
-                    "id": "G-A",
-                    "from": "G",
-                    "to": "A",
-                    "probability": 0.15
-                },
-                {
-                    "id": "G-T",
-                    "from": "G",
-                    "to": "T",
-                    "probability": 0.15
-                },
-                {
-                    "id": "C-C",
-                    "from": "C",
-                    "to": "C",
-                    "probability": 0.35
-                },
-                {
-                    "id": "C-G",
-                    "from": "C",
-                    "to": "G",
-                    "probability": 0.35
-                },
-                {
-                    "id": "C-A",
-                    "from": "C",
-                    "to": "A",
-                    "probability": 0.15
-                },
-                {
-                    "id": "C-T",
-                    "from": "C",
-                    "to": "T",
-                    "probability": 0.15
-                }
-            ]
-        },
-        "explanation": "This nucleotide Markov chain models base-to-base transitions with a bias for CG pairs: G↔C transitions are elevated (35% each) to capture CG island behavior. A and T have larger self-loop probabilities reflecting AT-rich stretches. The chain satisfies the Markov property: the next nucleotide depends only on the current one. Such models are used in gene prediction and motif detection.",
-        "lessonConnections": [
-            {
-                "lessonId": "chains-1",
-                "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
-                "connection": "DNA sequences can be modeled as Markov chains where each nucleotide depends only on the previous one. While real DNA has longer-range dependencies, first-order Markov models are surprisingly effective for many applications."
-            },
-            {
-                "lessonId": "chains-3",
-                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
-                "connection": "The stationary distribution gives the long-run nucleotide frequencies. In this model, CG islands (regions with many C-G pairs) have different stationary distributions than AT-rich regions, which is biologically meaningful."
-            }
-        ],
-        "mathematicalDetails": {
-            "transitionMatrix": "P encodes nucleotide transition probabilities. CG bias: P(G→C) = P(C→G) = 0.35 (elevated). AT persistence: P(A→A) = P(T→T) = 0.4",
-            "stationaryDistribution": "π reflects long-run nucleotide frequencies, which vary by genomic region (CG islands vs AT-rich regions)",
-            "keyInsights": [
-                "First-order Markov models capture local sequence structure but miss longer-range dependencies",
-                "CG islands are regions with elevated CG content, important for gene regulation",
-                "Hidden Markov Models (HMMs) extend this to model sequences with hidden states (e.g., coding vs non-coding regions)"
-            ]
-        },
-        "realWorldContext": "Bioinformaticians use Markov models to analyze DNA sequences, predict genes, identify regulatory regions, and study evolution. The CG bias reflects biological reality: CG dinucleotides are often methylated (chemically modified), affecting gene expression. More sophisticated models (HMMs) combine Markov chains with observed sequences to find hidden patterns.",
-        "practiceQuestions": [
-            "What's the stationary distribution? Does it reflect the CG bias?",
-            "If you observe the sequence 'ATGC', what's its probability under this model?",
-            "How would you modify this model to distinguish between coding and non-coding DNA regions?"
-        ]
-    },
-    {
-        "id": "nlp-model",
-        "title": "Part-of-Speech (POS) Markov Model",
-        "description": "A small POS-tag Markov chain (Article, Adjective, Noun, Verb, Adverb) approximating English sequence tendencies.",
-        "category": "modern",
-        "difficulty": "advanced",
-        "applications": [
-            "Chatbots",
-            "Text Generation",
-            "Language Translation"
-        ],
-        "interactiveDemo": false,
-        "design": {
-            "states": [
-                {
-                    "id": "article",
-                    "name": "Article",
+                    "id": "the",
+                    "name": "\"the\"",
                     "x": 1000,
                     "y": 350,
                     "color": "#94a3b8"
                 },
                 {
-                    "id": "adjective",
-                    "name": "Adjective",
+                    "id": "cat",
+                    "name": "\"cat\"",
                     "x": 700,
                     "y": 750,
                     "color": "#fb923c"
                 },
                 {
-                    "id": "noun",
-                    "name": "Noun",
+                    "id": "sat",
+                    "name": "\"sat\"",
                     "x": 1300,
                     "y": 750,
                     "color": "#fbbf24"
                 },
                 {
-                    "id": "verb",
-                    "name": "Verb",
+                    "id": "on",
+                    "name": "\"on\"",
                     "x": 800,
                     "y": 1150,
                     "color": "#60a5fa"
                 },
                 {
-                    "id": "adverb",
-                    "name": "Adverb",
+                    "id": "mat",
+                    "name": "\"mat\"",
                     "x": 1200,
                     "y": 1150,
                     "color": "#a78bfa"
@@ -1102,172 +307,388 @@
             ],
             "transitions": [
                 {
-                    "id": "article-adjective",
-                    "from": "article",
-                    "to": "adjective",
+                    "id": "the-cat",
+                    "from": "the",
+                    "to": "cat",
                     "probability": 0.4
                 },
                 {
-                    "id": "article-noun",
-                    "from": "article",
-                    "to": "noun",
-                    "probability": 0.55
+                    "id": "the-sat",
+                    "from": "the",
+                    "to": "sat",
+                    "probability": 0.1
                 },
                 {
-                    "id": "article-article",
-                    "from": "article",
-                    "to": "article",
-                    "probability": 0.05
+                    "id": "the-on",
+                    "from": "the",
+                    "to": "on",
+                    "probability": 0.3
                 },
                 {
-                    "id": "adjective-noun",
-                    "from": "adjective",
-                    "to": "noun",
+                    "id": "the-mat",
+                    "from": "the",
+                    "to": "mat",
+                    "probability": 0.2
+                },
+                {
+                    "id": "cat-sat",
+                    "from": "cat",
+                    "to": "sat",
                     "probability": 0.6
                 },
                 {
-                    "id": "adjective-adjective",
-                    "from": "adjective",
-                    "to": "adjective",
-                    "probability": 0.1
-                },
-                {
-                    "id": "adjective-verb",
-                    "from": "adjective",
-                    "to": "verb",
+                    "id": "cat-on",
+                    "from": "cat",
+                    "to": "on",
                     "probability": 0.2
                 },
                 {
-                    "id": "adjective-adverb",
-                    "from": "adjective",
-                    "to": "adverb",
-                    "probability": 0.05
-                },
-                {
-                    "id": "adjective-article",
-                    "from": "adjective",
-                    "to": "article",
-                    "probability": 0.05
-                },
-                {
-                    "id": "noun-verb",
-                    "from": "noun",
-                    "to": "verb",
-                    "probability": 0.6
-                },
-                {
-                    "id": "noun-noun",
-                    "from": "noun",
-                    "to": "noun",
-                    "probability": 0.1
-                },
-                {
-                    "id": "noun-adverb",
-                    "from": "noun",
-                    "to": "adverb",
-                    "probability": 0.15
-                },
-                {
-                    "id": "noun-article",
-                    "from": "noun",
-                    "to": "article",
-                    "probability": 0.1
-                },
-                {
-                    "id": "noun-adjective",
-                    "from": "noun",
-                    "to": "adjective",
-                    "probability": 0.05
-                },
-                {
-                    "id": "verb-noun",
-                    "from": "verb",
-                    "to": "noun",
-                    "probability": 0.5
-                },
-                {
-                    "id": "verb-adverb",
-                    "from": "verb",
-                    "to": "adverb",
+                    "id": "cat-the",
+                    "from": "cat",
+                    "to": "the",
                     "probability": 0.2
                 },
                 {
-                    "id": "verb-article",
-                    "from": "verb",
-                    "to": "article",
-                    "probability": 0.15
+                    "id": "sat-on",
+                    "from": "sat",
+                    "to": "on",
+                    "probability": 0.7
                 },
                 {
-                    "id": "verb-adjective",
-                    "from": "verb",
-                    "to": "adjective",
-                    "probability": 0.1
+                    "id": "sat-the",
+                    "from": "sat",
+                    "to": "the",
+                    "probability": 0.3
                 },
                 {
-                    "id": "verb-verb",
-                    "from": "verb",
-                    "to": "verb",
-                    "probability": 0.05
+                    "id": "on-the",
+                    "from": "on",
+                    "to": "the",
+                    "probability": 0.8
                 },
                 {
-                    "id": "adverb-verb",
-                    "from": "adverb",
-                    "to": "verb",
-                    "probability": 0.5
-                },
-                {
-                    "id": "adverb-adverb",
-                    "from": "adverb",
-                    "to": "adverb",
-                    "probability": 0.1
-                },
-                {
-                    "id": "adverb-noun",
-                    "from": "adverb",
-                    "to": "noun",
+                    "id": "on-mat",
+                    "from": "on",
+                    "to": "mat",
                     "probability": 0.2
                 },
                 {
-                    "id": "adverb-article",
-                    "from": "adverb",
-                    "to": "article",
-                    "probability": 0.1
-                },
-                {
-                    "id": "adverb-adjective",
-                    "from": "adverb",
-                    "to": "adjective",
-                    "probability": 0.1
+                    "id": "mat-the",
+                    "from": "mat",
+                    "to": "the",
+                    "probability": 1.0
                 }
             ]
         },
-        "explanation": "This POS-tag Markov model encodes typical English local structure: Articles usually lead to adjectives or nouns (Article→Adjective 0.4, →Noun 0.55). Adjectives often lead to nouns (0.6). Nouns commonly lead to verbs (0.6). Verbs tend to lead to nouns (objects) or adverbs. Adverbs often return to verbs. The next POS depends only on the current POS (Markov property), which makes this model useful for simple language generation and part-of-speech prediction.",
+        "explanation": "An n-gram language model is a Markov chain where states are sequences of words. This bigram model (n=2) learns which words follow which words from training text. To generate text, start with initial words and sample the next word from transition probabilities. While simple, this was the foundation of early chatbots and text generators before modern AI!",
         "lessonConnections": [
+            {
+                "lessonId": "history-3",
+                "lessonTitle": "From PageRank to GPT: Markov Chains in the Digital Age",
+                "connection": "Early language models were pure n-gram Markov chains. Modern GPT models are sophisticated descendants, but they still capture Markov-like dependencies."
+            },
             {
                 "lessonId": "chains-1",
                 "lessonTitle": "Enter the Markov Chain: Memory-Free Transitions",
-                "connection": "Natural language can be modeled as a Markov chain where each word's part-of-speech depends only on the previous word's part-of-speech. This is a fundamental assumption in many NLP models, though real language has longer-range dependencies."
-            },
-            {
-                "lessonId": "stochastic-advanced-2",
-                "lessonTitle": "Markov Decision Processes: When Control Meets Probability",
-                "connection": "Hidden Markov Models (HMMs) extend POS-tagging by treating the POS sequence as hidden states and words as observations. The Viterbi algorithm (an MDP-like dynamic programming method) finds the most likely POS sequence."
+                "connection": "This model assumes the next word depends only on the current word—the Markov property. Real language has longer-range dependencies, but this simple model is surprisingly effective."
             }
         ],
         "mathematicalDetails": {
-            "transitionMatrix": "P encodes POS transition probabilities. Reflects English grammar: Article→Noun (0.55), Noun→Verb (0.6), Verb→Noun (0.5)",
-            "stationaryDistribution": "π gives long-run POS frequencies, reflecting the distribution of parts of speech in English text",
+            "transitionMatrix": "P encodes word transition probabilities learned from training text",
+            "stationaryDistribution": "π gives long-run word frequencies, reflecting the distribution of words in the training corpus",
             "keyInsights": [
-                "First-order Markov models capture local grammatical structure but miss long-range dependencies",
-                "Hidden Markov Models (HMMs) combine POS Markov chains with word emission probabilities",
-                "Modern NLP uses more sophisticated models (transformers, neural networks) but Markov models remain foundational"
+                "First-order Markov models capture local grammatical structure",
+                "Training involves counting word pairs in a text corpus",
+                "Modern language models use transformers, but n-grams remain foundational"
             ]
         },
-        "realWorldContext": "POS-tagging is used in chatbots, machine translation, text-to-speech systems, and grammar checkers. While modern NLP uses deep learning, Markov models and their extensions (HMMs) were foundational. They're still used in resource-constrained applications and as components of larger systems.",
+        "realWorldContext": "N-gram models were used in early chatbots (2000s), text-to-speech systems, and machine translation. While modern language models (GPT, BERT) use transformers, they still incorporate Markov-like dependencies through attention mechanisms. This simple model demonstrates how probability can generate coherent text!",
         "practiceQuestions": [
-            "What's the most likely POS sequence for 'The quick brown fox'?",
-            "How would you extend this model to predict actual words, not just POS tags?",
+            "Starting from 'the', what's the most likely sentence this model would generate?",
+            "How would you extend this to a trigram model (n=3)?",
             "What are the limitations of assuming only first-order dependencies in language?"
+        ]
+    },
+    {
+        "id": "neutron-chain",
+        "title": "Neutron Chain Reaction: Critical Mass",
+        "description": "A simplified model of nuclear fission—how neutrons create a chain reaction. This is what von Neumann calculated for the Manhattan Project!",
+        "category": "modern",
+        "difficulty": "advanced",
+        "applications": [
+            "Nuclear Physics",
+            "Monte Carlo Simulation",
+            "Branching Processes"
+        ],
+        "interactiveDemo": true,
+        "design": {
+            "states": [
+                {
+                    "id": "subcritical",
+                    "name": "Subcritical",
+                    "x": 700,
+                    "y": 650,
+                    "color": "#34d399"
+                },
+                {
+                    "id": "critical",
+                    "name": "Critical",
+                    "x": 1000,
+                    "y": 650,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "supercritical",
+                    "name": "Supercritical",
+                    "x": 1300,
+                    "y": 650,
+                    "color": "#f87171"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "subcritical-subcritical",
+                    "from": "subcritical",
+                    "to": "subcritical",
+                    "probability": 0.7
+                },
+                {
+                    "id": "subcritical-critical",
+                    "from": "subcritical",
+                    "to": "critical",
+                    "probability": 0.25
+                },
+                {
+                    "id": "subcritical-supercritical",
+                    "from": "subcritical",
+                    "to": "supercritical",
+                    "probability": 0.05
+                },
+                {
+                    "id": "critical-critical",
+                    "from": "critical",
+                    "to": "critical",
+                    "probability": 0.5
+                },
+                {
+                    "id": "critical-supercritical",
+                    "from": "critical",
+                    "to": "supercritical",
+                    "probability": 0.3
+                },
+                {
+                    "id": "critical-subcritical",
+                    "from": "critical",
+                    "to": "subcritical",
+                    "probability": 0.2
+                },
+                {
+                    "id": "supercritical-supercritical",
+                    "from": "supercritical",
+                    "to": "supercritical",
+                    "probability": 0.8
+                },
+                {
+                    "id": "supercritical-critical",
+                    "from": "supercritical",
+                    "to": "critical",
+                    "probability": 0.15
+                },
+                {
+                    "id": "supercritical-subcritical",
+                    "from": "supercritical",
+                    "to": "subcritical",
+                    "probability": 0.05
+                }
+            ]
+        },
+        "explanation": "In a nuclear reactor, neutrons collide with uranium atoms, causing fission and releasing more neutrons. This creates a branching process—a type of Markov chain. If the average number of neutrons per fission is less than 1, the reaction dies out (subcritical). If it equals 1, the reaction is sustained (critical). If greater than 1, it explodes (supercritical). Von Neumann used Monte Carlo simulation to calculate safe critical masses for the Manhattan Project.",
+        "lessonConnections": [
+            {
+                "lessonId": "history-2",
+                "lessonTitle": "Von Neumann, the Manhattan Project, and Critical Mass Calculations",
+                "connection": "This is a simplified version of what von Neumann calculated using Monte Carlo methods. The branching process determines whether a nuclear reaction is safe or explosive."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "For a critical reaction, the stationary distribution tells us the long-run probability of each state—crucial for reactor safety."
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P encodes regime-switching probabilities based on neutron multiplication factor",
+            "stationaryDistribution": "For critical reactions, π reflects the balance between neutron production and loss",
+            "keyInsights": [
+                "This is a branching process—each neutron can produce multiple 'offspring'",
+                "Criticality depends on the mean number of neutrons per fission",
+                "Monte Carlo simulation was essential because analytical solutions were impossible"
+            ]
+        },
+        "realWorldContext": "Von Neumann's calculations were crucial for safety—preventing accidental explosions during experiments and enabling safe nuclear power development. Today, similar Monte Carlo methods simulate particle physics at CERN, model climate change, and price financial derivatives. The Manhattan Project gave birth to Monte Carlo simulation, now one of the most powerful tools in science and engineering.",
+        "practiceQuestions": [
+            "What's the stationary distribution? Which state dominates in the long run?",
+            "If you're in a critical state, what's the probability of reaching supercritical in 2 steps?",
+            "How would you modify this model to include control rods that absorb neutrons?"
+        ]
+    },
+    {
+        "id": "queue-system",
+        "title": "Queueing System: Waiting in Line",
+        "description": "Model a simple queue where customers arrive and get served. Understand waiting times, server utilization, and system stability—essential for call centers, restaurants, and traffic!",
+        "category": "classic",
+        "difficulty": "intermediate",
+        "applications": [
+            "Call Centers",
+            "Restaurant Management",
+            "Traffic Flow"
+        ],
+        "interactiveDemo": true,
+        "design": {
+            "states": [
+                {
+                    "id": "q0",
+                    "name": "0 customers",
+                    "x": 1000,
+                    "y": 300,
+                    "color": "#34d399"
+                },
+                {
+                    "id": "q1",
+                    "name": "1 customer",
+                    "x": 1000,
+                    "y": 540,
+                    "color": "#60a5fa"
+                },
+                {
+                    "id": "q2",
+                    "name": "2 customers",
+                    "x": 1000,
+                    "y": 780,
+                    "color": "#fbbf24"
+                },
+                {
+                    "id": "q3",
+                    "name": "3 customers",
+                    "x": 1000,
+                    "y": 1020,
+                    "color": "#fb923c"
+                },
+                {
+                    "id": "q4plus",
+                    "name": "4+ customers",
+                    "x": 1000,
+                    "y": 1260,
+                    "color": "#f87171"
+                }
+            ],
+            "transitions": [
+                {
+                    "id": "q0-q1",
+                    "from": "q0",
+                    "to": "q1",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q0-q0",
+                    "from": "q0",
+                    "to": "q0",
+                    "probability": 0.4
+                },
+                {
+                    "id": "q1-q2",
+                    "from": "q1",
+                    "to": "q2",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q1-q0",
+                    "from": "q1",
+                    "to": "q0",
+                    "probability": 0.3
+                },
+                {
+                    "id": "q1-q1",
+                    "from": "q1",
+                    "to": "q1",
+                    "probability": 0.1
+                },
+                {
+                    "id": "q2-q3",
+                    "from": "q2",
+                    "to": "q3",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q2-q1",
+                    "from": "q2",
+                    "to": "q1",
+                    "probability": 0.3
+                },
+                {
+                    "id": "q2-q2",
+                    "from": "q2",
+                    "to": "q2",
+                    "probability": 0.1
+                },
+                {
+                    "id": "q3-q4plus",
+                    "from": "q3",
+                    "to": "q4plus",
+                    "probability": 0.6
+                },
+                {
+                    "id": "q3-q2",
+                    "from": "q3",
+                    "to": "q2",
+                    "probability": 0.3
+                },
+                {
+                    "id": "q3-q3",
+                    "from": "q3",
+                    "to": "q3",
+                    "probability": 0.1
+                },
+                {
+                    "id": "q4plus-q4plus",
+                    "from": "q4plus",
+                    "to": "q4plus",
+                    "probability": 0.7
+                },
+                {
+                    "id": "q4plus-q3",
+                    "from": "q4plus",
+                    "to": "q3",
+                    "probability": 0.3
+                }
+            ]
+        },
+        "explanation": "This birth-death queue models a system where customers arrive (increasing queue length) and get served (decreasing queue length). From states 0-3, arrivals occur with probability 0.6, services with 0.3, and otherwise the state stays the same (0.1). The '4+' state aggregates all larger queues. The stationary distribution tells you the long-run probability of different queue lengths—essential for capacity planning!",
+        "lessonConnections": [
+            {
+                "lessonId": "ctmc-2",
+                "lessonTitle": "Queueing Systems: When Waiting Becomes Mathematics",
+                "connection": "This discrete-time queue is a simplified version of continuous-time queueing systems. The same principles apply: arrivals increase queue length, services decrease it."
+            },
+            {
+                "lessonId": "chains-3",
+                "lessonTitle": "Stationary Distributions: The Long-Run Equilibrium",
+                "connection": "The stationary distribution reveals the long-run probability of having 0, 1, 2, 3, or 4+ customers. This is crucial for capacity planning—if π(4+) is high, you need more servers!"
+            }
+        ],
+        "mathematicalDetails": {
+            "transitionMatrix": "P is a birth-death process: transitions only occur to neighboring states",
+            "stationaryDistribution": "For stable queues (arrival rate < service rate), π exists and can be computed recursively",
+            "keyInsights": [
+                "This is a discrete-time approximation of continuous-time queueing systems",
+                "The '4+' state aggregates all larger queues—a common modeling technique",
+                "Stability requires that the arrival rate is less than the service rate on average"
+            ]
+        },
+        "realWorldContext": "Queueing models are everywhere: call centers (customers = callers, servers = operators), restaurants (customers = diners, servers = tables), internet routers (customers = packets, servers = transmission capacity). Understanding queue behavior helps design efficient systems and predict wait times. Next time you're waiting in line, you're experiencing a Markov chain in action!",
+        "practiceQuestions": [
+            "What's the probability the queue is empty in steady state?",
+            "If arrivals increase to 0.7, what happens to the stationary distribution?",
+            "How would adding a second server change the transition probabilities?"
         ]
     }
 ]

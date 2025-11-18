@@ -32,6 +32,7 @@ export function MainNav({ currentPath = "/", showOverallProgress = false, overal
   const isOnAdminPage = currentPath.startsWith("/admin")
 
   // Check if current user is admin (for public pages)
+  // Use shared cache from admin-layout to avoid duplicate API calls
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user || isOnAdminPage) {
@@ -40,13 +41,39 @@ export function MainNav({ currentPath = "/", showOverallProgress = false, overal
         return
       }
 
+      // Check cache first (shared with admin-layout)
+      // Access the cache from admin-layout module scope
+      const cacheKey = `adminStatusCache_${user.id}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        try {
+          const cacheData = JSON.parse(cached)
+          const now = Date.now()
+          // Use cache if less than 5 minutes old
+          if (now - cacheData.timestamp < 300000) {
+            setUserIsAdmin(cacheData.isAdmin || false)
+            setCheckingAdmin(false)
+            return
+          }
+        } catch (e) {
+          // Invalid cache, continue to fetch
+        }
+      }
+
       try {
         const response = await fetch('/api/admin/auth', {
           method: 'GET',
           credentials: 'include',
         })
         const data = await response.json()
-        setUserIsAdmin(data.isAdmin || false)
+        const adminStatus = data.isAdmin || false
+        setUserIsAdmin(adminStatus)
+        
+        // Update cache
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          isAdmin: adminStatus,
+          timestamp: Date.now(),
+        }))
       } catch (error) {
         console.error('Failed to check admin status:', error)
         setUserIsAdmin(false)

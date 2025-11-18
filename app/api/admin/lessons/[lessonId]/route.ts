@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getStore, updateCourseLessonCounts, saveStore } from "@/lib/server/lms-store"
 import { createClient } from "@/lib/supabase/server"
 import { isAdmin } from "@/lib/admin-auth"
+import { createServiceClient } from "@/lib/supabase/service"
 
 // Helper function to check admin privileges
 async function checkAdminAccess() {
@@ -20,23 +20,45 @@ async function checkAdminAccess() {
   return { authorized: true, user }
 }
 
-// GET single lesson
+// GET single lesson from database
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
   try {
     const { lessonId } = await params
-    const { lessons } = getStore()
-    const lesson = lessons.find(l => l.id === lessonId)
+    const supabase = createServiceClient()
 
-    if (!lesson) {
+    const { data: lesson, error } = await supabase
+      .from("lessons")
+      .select("*")
+      .eq("id", lessonId)
+      .single()
+
+    if (error || !lesson) {
       return NextResponse.json({ success: false, error: "Lesson not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, data: lesson })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch lesson" }, { status: 500 })
+    // Transform to expected format
+    const transformedLesson = {
+      id: lesson.id,
+      courseId: lesson.course_id,
+      title: lesson.title,
+      description: lesson.description,
+      content: lesson.content,
+      status: lesson.status,
+      order: lesson.order || 0,
+      createdAt: new Date(lesson.created_at),
+      updatedAt: new Date(lesson.updated_at),
+    }
+
+    return NextResponse.json({ success: true, data: transformedLesson })
+  } catch (error: any) {
+    console.error("Error fetching lesson:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to fetch lesson" },
+      { status: 500 }
+    )
   }
 }
 
@@ -57,23 +79,63 @@ export async function PUT(
 
     const { lessonId } = await params
     const body = await request.json()
-    const { lessons } = getStore()
-    const lessonIndex = lessons.findIndex(l => l.id === lessonId)
-    if (lessonIndex === -1) {
+    const supabase = createServiceClient()
+
+    // Check if lesson exists
+    const { data: existing } = await supabase
+      .from("lessons")
+      .select("id")
+      .eq("id", lessonId)
+      .maybeSingle()
+
+    if (!existing) {
       return NextResponse.json({ success: false, error: "Lesson not found" }, { status: 404 })
     }
 
-    const updatedLesson = {
-      ...lessons[lessonIndex],
-      ...body,
-      updatedAt: new Date(),
+    // Update lesson
+    const updateData: any = {}
+    if (body.title !== undefined) updateData.title = body.title
+    if (body.description !== undefined) updateData.description = body.description
+    if (body.content !== undefined) updateData.content = body.content
+    if (body.status !== undefined) updateData.status = body.status
+    if (body.order !== undefined) updateData.order = body.order
+    if (body.courseId !== undefined) updateData.course_id = body.courseId
+
+    const { data: updatedLesson, error } = await supabase
+      .from("lessons")
+      .update(updateData)
+      .eq("id", lessonId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Failed to update lesson:", error)
+      return NextResponse.json(
+        { success: false, error: `Failed to update lesson: ${error.message}` },
+        { status: 500 }
+      )
     }
 
-    lessons[lessonIndex] = updatedLesson
-    await saveStore()
-    return NextResponse.json({ success: true, data: updatedLesson })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to update lesson" }, { status: 500 })
+    // Transform to expected format
+    const transformedLesson = {
+      id: updatedLesson.id,
+      courseId: updatedLesson.course_id,
+      title: updatedLesson.title,
+      description: updatedLesson.description,
+      content: updatedLesson.content,
+      status: updatedLesson.status,
+      order: updatedLesson.order || 0,
+      createdAt: new Date(updatedLesson.created_at),
+      updatedAt: new Date(updatedLesson.updated_at),
+    }
+
+    return NextResponse.json({ success: true, data: transformedLesson })
+  } catch (error: any) {
+    console.error("Error updating lesson:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to update lesson" },
+      { status: 500 }
+    )
   }
 }
 
@@ -93,17 +155,39 @@ export async function DELETE(
     }
 
     const { lessonId } = await params
-    const { lessons } = getStore()
-    const lessonIndex = lessons.findIndex(l => l.id === lessonId)
-    if (lessonIndex === -1) {
+    const supabase = createServiceClient()
+
+    // Check if lesson exists
+    const { data: existing } = await supabase
+      .from("lessons")
+      .select("id")
+      .eq("id", lessonId)
+      .maybeSingle()
+
+    if (!existing) {
       return NextResponse.json({ success: false, error: "Lesson not found" }, { status: 404 })
     }
 
-    lessons.splice(lessonIndex, 1)
-    updateCourseLessonCounts()
-    await saveStore()
+    // Delete lesson (course lesson count will be updated by trigger)
+    const { error } = await supabase
+      .from("lessons")
+      .delete()
+      .eq("id", lessonId)
+
+    if (error) {
+      console.error("Failed to delete lesson:", error)
+      return NextResponse.json(
+        { success: false, error: `Failed to delete lesson: ${error.message}` },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ success: true, message: "Lesson deleted successfully" })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to delete lesson" }, { status: 500 })
+  } catch (error: any) {
+    console.error("Error deleting lesson:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete lesson" },
+      { status: 500 }
+    )
   }
 }

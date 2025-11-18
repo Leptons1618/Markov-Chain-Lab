@@ -89,7 +89,7 @@ function CopyButton({
    Top-level component
    --------------------- */
 
-export default function MarkdownRenderer({ content }: { content: string }) {
+export default function MarkdownRenderer({ content, hideToolbar = false }: { content: string; hideToolbar?: boolean }) {
   const [libs, setLibs] = useState<any | null>(null)
   const [loadError, setLoadError] = useState(false)
   // removed study/reading modes per UX update
@@ -490,6 +490,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
 
   return (
     <div className="space-y-4">
+      {!hideToolbar && (
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {/* study/reading mode removed */}
@@ -547,6 +548,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
 
         <div className="text-sm text-muted-foreground">{wordCount} words • ~{readingTimeMinutes} min</div>
       </div>
+      )}
       <div>
         <div ref={containerRef} className="prose prose-lg md:prose-xl max-w-none lg:max-w-5xl xl:max-w-6xl mx-auto dark:prose-invert">
           {/* TOC at start of content (collapsed by default) */}

@@ -1,0 +1,298 @@
+{
+  "questions": [
+    {
+      "id": "history-1-q1",
+      "title": "Understanding the Markov Property",
+      "question": "What does the Markov property state about the relationship between future states and past states?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "The future depends on all past states",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "The future depends only on the current state, not the entire history",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "The future is completely independent of all past and present states",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "The future depends on the first state only",
+          "correct": false
+        }
+      ],
+      "hint": "Think about what 'memoryless' means. The Markov property is also called the memoryless property.",
+      "solution": "The Markov property states that the probability of the next state depends **only** on the current state, not on the entire history of previous states. This is why it's called 'memoryless' - the system has no memory of how it got to the current state.",
+      "math_explanation": "Mathematically, the Markov property is expressed as:\n\n$$P(X_{n+1} = j \\mid X_n = i, X_{n-1}, \\ldots, X_0) = P(X_{n+1} = j \\mid X_n = i)$$\n\nThis means that given the current state $X_n = i$, the probability of transitioning to state $j$ is independent of all previous states $X_{n-1}, X_{n-2}, \\ldots, X_0$.",
+      "difficulty": "easy",
+      "tags": ["markov-property", "basics"],
+      "status": "published",
+      "lesson_id": "history-1"
+    },
+    {
+      "id": "history-1-q2",
+      "title": "Markov's Pushkin Analysis",
+      "question": "In Markov's analysis of Pushkin's 'Eugene Onegin', what was the probability of a consonant following a vowel?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "66.7%",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "87.5%",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "50%",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "33.3%",
+          "correct": false
+        }
+      ],
+      "hint": "Remember that Markov found different probabilities for vowel-to-consonant transitions versus consonant-to-vowel transitions.",
+      "solution": "Markov found that after a vowel, there was an **87.5%** chance of a consonant following. This was different from the consonant-to-vowel transition probability of 66.7%.",
+      "math_explanation": "Markov's transition matrix for vowel-consonant patterns was:\n\n$$P = \\begin{pmatrix}\nP(V \\to V) & P(V \\to C) \\\\\nP(C \\to V) & P(C \\to C)\n\\end{pmatrix} = \\begin{pmatrix}\n0.125 & 0.875 \\\\\n0.667 & 0.333\n\\end{pmatrix}$$\n\nWhere $P(V \\to C) = 0.875 = 87.5\\%$.",
+      "difficulty": "medium",
+      "tags": ["history", "applications"],
+      "status": "published",
+      "lesson_id": "history-1"
+    },
+    {
+      "id": "history-1-q3",
+      "title": "Calculating Transition Probabilities",
+      "question": "If we start with a vowel in Markov's Pushkin chain, what is the probability that the next two letters form the pattern 'VC' (vowel followed by consonant)?",
+      "type": "numeric_input",
+      "correct_answer": "0.584",
+      "hint": "You need to multiply the transition probabilities: P(V→C) × P(C→V).",
+      "solution": "To find the probability of the pattern 'VC' starting from a vowel:\n\n1. First transition: V → C with probability $P(V \\to C) = 0.875$\n2. Second transition: C → V with probability $P(C \\to V) = 0.667$\n\nSince these are sequential transitions, we multiply:\n\n$$P(V \\to C \\to V) = P(V \\to C) \\times P(C \\to V) = 0.875 \\times 0.667 = 0.584$$",
+      "math_explanation": "For sequential transitions in a Markov chain, we multiply the probabilities:\n\n$$P(X_1 = C, X_2 = V \\mid X_0 = V) = P(X_1 = C \\mid X_0 = V) \\times P(X_2 = V \\mid X_1 = C)$$\n\n$$= P(V \\to C) \\times P(C \\to V) = 0.875 \\times 0.667 = 0.584$$\n\nThis gives us approximately **0.584** or **58.4%**.",
+      "difficulty": "medium",
+      "tags": ["calculations", "transitions"],
+      "status": "published",
+      "lesson_id": "history-1"
+    },
+    {
+      "id": "history-2-q1",
+      "title": "Monte Carlo Method",
+      "question": "What is the fundamental idea behind the Monte Carlo method?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "Solve equations analytically using calculus",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "Simulate random processes many times and observe the results to infer system properties",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "Use deterministic algorithms to find exact solutions",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "Calculate probabilities using only theoretical formulas",
+          "correct": false
+        }
+      ],
+      "hint": "Think about what 'Monte Carlo' suggests - it's named after a casino where randomness is key.",
+      "solution": "The Monte Carlo method involves **simulating a random process many times** and observing the results to infer properties of the system. Instead of solving equations analytically, we use random sampling to approximate solutions.",
+      "math_explanation": "The Monte Carlo method works by:\n\n1. **Modeling** the system as a probabilistic process (often a Markov chain)\n2. **Simulating** the process $N$ times using random numbers\n3. **Observing** outcomes: $\\{x_1, x_2, \\ldots, x_N\\}$\n4. **Estimating** properties: $E[X] \\approx \\frac{1}{N}\\sum_{i=1}^N x_i$\n\nAs $N \\to \\infty$, the estimate converges to the true value (by the Law of Large Numbers).",
+      "difficulty": "easy",
+      "tags": ["monte-carlo", "simulation"],
+      "status": "published",
+      "lesson_id": "history-2"
+    },
+    {
+      "id": "history-2-q2",
+      "title": "Critical Mass and Branching Processes",
+      "question": "In a branching process modeling neutron chain reactions, what happens if the mean number of offspring μ is greater than 1?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "The process dies out with probability 1",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "The process survives with positive probability (supercritical)",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "The process is balanced and neither grows nor shrinks",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "The process always explodes immediately",
+          "correct": false
+        }
+      ],
+      "hint": "Think about what 'supercritical' means in the context of nuclear reactions.",
+      "solution": "If $\\mu > 1$, the branching process is **supercritical** and survives with positive probability. In nuclear terms, this means the chain reaction can sustain itself and potentially grow.",
+      "math_explanation": "For a branching process with mean offspring $\\mu$:\n\n- **Subcritical** ($\\mu < 1$): Process dies out with probability 1\n- **Critical** ($\\mu = 1$): Process can survive or die\n- **Supercritical** ($\\mu > 1$): Process survives with positive probability\n\nThe survival probability $q$ satisfies:\n\n$$q = 1 - \\sum_{k=0}^{\\infty} p_k q^k$$\n\nwhere $p_k$ is the probability of $k$ offspring. For $\\mu > 1$, $q > 0$.",
+      "difficulty": "hard",
+      "tags": ["branching-processes", "nuclear-physics"],
+      "status": "published",
+      "lesson_id": "history-2"
+    },
+    {
+      "id": "history-3-q1",
+      "title": "PageRank Algorithm",
+      "question": "What does PageRank compute to rank web pages?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "The number of keywords on each page",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "The stationary distribution of a Markov chain representing web surfing",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "The total number of links pointing to each page",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "The content quality score of each page",
+          "correct": false
+        }
+      ],
+      "hint": "PageRank models web surfing as a random process. What property of that process determines page importance?",
+      "solution": "PageRank computes the **stationary distribution** of a Markov chain that models a random web surfer. Pages with higher stationary probabilities are ranked higher.",
+      "math_explanation": "PageRank solves:\n\n$$\\pi = \\pi P$$\n\nwhere:\n- $P$ is the transition matrix (probabilities of following links)\n- $\\pi$ is the stationary distribution (long-run visit probabilities)\n- $\\pi_i$ is the PageRank of page $i$\n\nThe stationary distribution $\\pi$ represents the long-run probability that a random surfer visits each page, which measures its importance.",
+      "difficulty": "medium",
+      "tags": ["pagerank", "web-search"],
+      "status": "published",
+      "lesson_id": "history-3"
+    },
+    {
+      "id": "history-3-q2",
+      "title": "Hidden Markov Models",
+      "question": "In a Hidden Markov Model (HMM) for speech recognition, what are the 'hidden states'?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "The acoustic signals (sound waves)",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "The phonemes, words, or linguistic units that we want to recognize",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "The background noise",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "The speaker's identity",
+          "correct": false
+        }
+      ],
+      "hint": "Think about what we're trying to 'discover' or 'infer' from the observations.",
+      "solution": "In an HMM for speech recognition, the **hidden states** are the phonemes, words, or linguistic units that we want to recognize. These are 'hidden' because we can't directly observe them—we only observe the acoustic signals they produce.",
+      "math_explanation": "An HMM consists of:\n\n- **Hidden states** $S = \\{s_1, s_2, \\ldots, s_N\\}$: The linguistic units (phonemes/words) we want to recognize\n- **Observations** $O = \\{o_1, o_2, \\ldots, o_T\\}$: The acoustic features extracted from speech\n- **Transition probabilities** $P(s_{t+1} \\mid s_t)$: Probability of moving between hidden states\n- **Emission probabilities** $P(o_t \\mid s_t)$: Probability of observing $o_t$ given hidden state $s_t$\n\nThe Viterbi algorithm finds the most likely sequence of hidden states given the observations.",
+      "difficulty": "medium",
+      "tags": ["hmm", "speech-recognition"],
+      "status": "published",
+      "lesson_id": "history-3"
+    },
+    {
+      "id": "foundations-1-q1",
+      "title": "Sample Space Definition",
+      "question": "What is a sample space in probability theory?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "The set of all possible outcomes of a random experiment",
+          "correct": true
+        },
+        {
+          "id": "b",
+          "text": "The probability of a single event",
+          "correct": false
+        },
+        {
+          "id": "c",
+          "text": "The set of all events that can occur",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "The complement of an event",
+          "correct": false
+        }
+      ],
+      "hint": "Think about what 'space' means - it's the entire universe of possibilities.",
+      "solution": "A **sample space** is the set of all possible outcomes of a random experiment. It's denoted by $\\Omega$ or $S$.",
+      "math_explanation": "For example:\n\n- **Coin flip**: $\\Omega = \\{H, T\\}$\n- **Die roll**: $\\Omega = \\{1, 2, 3, 4, 5, 6\\}$\n- **Two coin flips**: $\\Omega = \\{HH, HT, TH, TT\\}$\n\nEvery event is a subset of the sample space: $E \\subseteq \\Omega$.",
+      "difficulty": "easy",
+      "tags": ["probability-basics", "sample-space"],
+      "status": "published",
+      "lesson_id": "foundations-1"
+    },
+    {
+      "id": "foundations-1-q2",
+      "title": "Kolmogorov's Axioms",
+      "question": "According to Kolmogorov's axioms, what must be true about the probability of the entire sample space?",
+      "type": "multiple_choice",
+      "options": [
+        {
+          "id": "a",
+          "text": "P(Ω) = 0",
+          "correct": false
+        },
+        {
+          "id": "b",
+          "text": "P(Ω) = 1",
+          "correct": true
+        },
+        {
+          "id": "c",
+          "text": "P(Ω) can be any value between 0 and 1",
+          "correct": false
+        },
+        {
+          "id": "d",
+          "text": "P(Ω) is undefined",
+          "correct": false
+        }
+      ],
+      "hint": "The sample space represents 'something must happen' - what probability does that correspond to?",
+      "solution": "According to Kolmogorov's second axiom, **P(Ω) = 1**. This means that the probability that 'something happens' (i.e., some outcome in the sample space occurs) is 1, or 100%.",
+      "math_explanation": "Kolmogorov's three axioms are:\n\n1. **Non-negativity**: $P(A) \\geq 0$ for all events $A$\n2. **Normalization**: $P(\\Omega) = 1$\n3. **Additivity**: For disjoint events $A_1, A_2, \\ldots$:\n   $$P\\left(\\bigcup_{i=1}^{\\infty} A_i\\right) = \\sum_{i=1}^{\\infty} P(A_i)$$\n\nThe normalization axiom ensures probabilities are scaled correctly.",
+      "difficulty": "easy",
+      "tags": ["kolmogorov", "axioms"],
+      "status": "published",
+      "lesson_id": "foundations-1"
+    }
+  ]
+}

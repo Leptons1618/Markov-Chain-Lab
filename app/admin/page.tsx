@@ -5,13 +5,15 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Plus, Users, Loader2 } from "lucide-react"
+import { BookOpen, Plus, Users, Loader2, HelpCircle, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
 
 export default function AdminPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [allLessons, setAllLessons] = useState<Lesson[]>([])
+  const [practiceQuestionsCount, setPracticeQuestionsCount] = useState<number | null>(null)
+  const [examplesCount, setExamplesCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 
   // Load data on mount
@@ -30,6 +32,30 @@ export default function AdminPage() {
       const lessonsArrays = await Promise.all(lessonsPromises)
       const flatLessons = lessonsArrays.flat()
       setAllLessons(flatLessons)
+
+      // Load practice questions count
+      try {
+        const questionsResponse = await fetch("/api/admin/practice-questions")
+        const questionsData = await questionsResponse.json()
+        if (questionsData.success) {
+          setPracticeQuestionsCount(questionsData.data?.length || 0)
+        }
+      } catch (error) {
+        console.error("Failed to load practice questions count:", error)
+        setPracticeQuestionsCount(0)
+      }
+
+      // Load examples count
+      try {
+        const examplesResponse = await fetch("/api/admin/examples")
+        const examplesData = await examplesResponse.json()
+        if (examplesData.success) {
+          setExamplesCount(examplesData.data?.length || 0)
+        }
+      } catch (error) {
+        console.error("Failed to load examples count:", error)
+        setExamplesCount(0)
+      }
     } catch (error) {
       console.error("Failed to load dashboard data:", error)
     } finally {
@@ -47,7 +73,7 @@ export default function AdminPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Link href="/admin/courses">
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <div className="flex items-start justify-between">
@@ -73,6 +99,38 @@ export default function AdminPage() {
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                     <Plus className="h-5 w-5 text-accent" />
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            <Link href="/admin/practice-questions">
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Practice Questions</p>
+                    <p className="text-2xl font-bold">
+                      {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : practiceQuestionsCount ?? 0}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-chart-4/10 flex items-center justify-center">
+                    <HelpCircle className="h-5 w-5 text-chart-4" />
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            <Link href="/admin/examples">
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Examples</p>
+                    <p className="text-2xl font-bold">
+                      {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : examplesCount ?? 0}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-chart-2/10 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-chart-2" />
                   </div>
                 </div>
               </Card>

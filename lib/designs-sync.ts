@@ -79,23 +79,42 @@ export async function syncDesignsToSupabase(designs: SavedDesign[]): Promise<{ e
  * Load designs from Supabase
  */
 export async function loadDesignsFromSupabase(): Promise<{ designs: SavedDesign[] | null; error: Error | null }> {
-  const supabase = createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { designs: null, error: new Error("User not authenticated") }
-  }
-
   try {
+    const supabase = createClient()
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      // Auth error - user not authenticated or session expired
+      return { designs: null, error: new Error("User not authenticated") }
+    }
+    
+    if (!user) {
+      return { designs: null, error: new Error("User not authenticated") }
+    }
+
     const { data, error } = await supabase
       .from('user_designs')
       .select('design_id, name, saved_at, chain_data')
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false })
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Failed to load designs:', error)
-      return { designs: null, error }
+    if (error) {
+      // PGRST116 = no rows returned (not an error, just empty result)
+      // 42P01 = relation does not exist (table doesn't exist yet)
+      // Check for empty error objects or specific codes that indicate "no data" not "error"
+      if (error.code === 'PGRST116' || error.code === '42P01' || (error.code && !error.message)) {
+        // Table doesn't exist or no rows - return empty array (not an error)
+        return { designs: [], error: null }
+      }
+      
+      // Only log actual errors
+      if (error.message) {
+        console.warn('Failed to load designs from database:', error.message)
+      }
+      
+      // Return empty array instead of error for graceful degradation
+      return { designs: [], error: null }
     }
 
     const designs: SavedDesign[] = (data || []).map(row => ({
@@ -107,7 +126,9 @@ export async function loadDesignsFromSupabase(): Promise<{ designs: SavedDesign[
 
     return { designs, error: null }
   } catch (err) {
-    return { designs: null, error: err as Error }
+    // Catch any unexpected errors and return empty array (graceful degradation)
+    console.warn('Exception loading designs, using fallback:', err)
+    return { designs: [], error: null }
   }
 }
 

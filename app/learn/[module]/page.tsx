@@ -13,6 +13,7 @@ import MarkdownRenderer from "@/components/markdown-renderer"
 import { estimateLessonTime, formatEstimatedTime } from "@/lib/utils"
 import { useAuth } from "@/components/auth/auth-provider"
 import { syncProgressToSupabase } from "@/lib/progress-sync"
+import { MainNav } from "@/components/main-nav"
 
 export default function LessonPage({ params }: { params: any }) {
   const [lesson, setLesson] = useState<Lesson | null>(null)
@@ -201,25 +202,7 @@ export default function LessonPage({ params }: { params: any }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/learn" className="flex items-center gap-2 cursor-pointer">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="text-sm">Back to Learn</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground hidden sm:inline">Module:</span>
-              <Progress value={progressPercentage} className="w-32 transition-all duration-500" />
-              <span className="text-sm font-medium">
-                {currentLessonIndex + 1}/{totalLessons}
-              </span>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNav currentPath="/learn" showOverallProgress={true} overallProgress={progressPercentage} />
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-8 space-y-8">
         <div className="space-y-4">

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getStore, saveStore, type Course } from "@/lib/server/lms-store"
 import { createClient } from "@/lib/supabase/server"
 import { isAdmin } from "@/lib/admin-auth"
+import { createServiceClient } from "@/lib/supabase/service"
 
 // Helper function to check admin privileges
 async function checkAdminAccess() {
@@ -20,13 +20,43 @@ async function checkAdminAccess() {
   return { authorized: true, user }
 }
 
-// GET all courses
+// GET all courses from database
 export async function GET() {
   try {
-    const { courses } = getStore()
-    return NextResponse.json({ success: true, data: courses })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch courses" }, { status: 500 })
+    const supabase = createServiceClient()
+    
+    const { data: courses, error } = await supabase
+      .from("courses")
+      .select("*")
+      .order("created_at", { ascending: true })
+
+    if (error) {
+      console.error("Failed to fetch courses from database:", error)
+      return NextResponse.json(
+        { success: false, error: `Failed to fetch courses: ${error.message}` },
+        { status: 500 }
+      )
+    }
+
+    // Transform database format to expected format
+    const transformedCourses = (courses || []).map((course) => ({
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      slug: course.slug,
+      lessons: course.lessons || 0,
+      status: course.status,
+      createdAt: new Date(course.created_at),
+      updatedAt: new Date(course.updated_at),
+    }))
+
+    return NextResponse.json({ success: true, data: transformedCourses })
+  } catch (error: any) {
+    console.error("Error fetching courses:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to fetch courses" },
+      { status: 500 }
+    )
   }
 }
 
@@ -49,22 +79,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    const newCourse: Course = {
-      id: slug || title.toLowerCase().replace(/\s+/g, "-"),
-      title,
-      description,
-      slug: slug || title.toLowerCase().replace(/\s+/g, "-"),
-      lessons: 0,
-      status: "draft" as "draft",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const courseId = slug || title.toLowerCase().replace(/\s+/g, "-")
+    const supabase = createServiceClient()
+
+    const { data: newCourse, error } = await supabase
+      .from("courses")
+      .insert({
+        id: courseId,
+        title,
+        description,
+        slug: slug || courseId,
+        lessons: 0,
+        status: "draft",
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Failed to create course:", error)
+      return NextResponse.json(
+        { success: false, error: `Failed to create course: ${error.message}` },
+        { status: 500 }
+      )
     }
 
-    const { courses } = getStore()
-    courses.push(newCourse)
-    await saveStore()
-    return NextResponse.json({ success: true, data: newCourse }, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to create course" }, { status: 500 })
+    // Transform to expected format
+    const transformedCourse = {
+      id: newCourse.id,
+      title: newCourse.title,
+      description: newCourse.description,
+      slug: newCourse.slug,
+      lessons: newCourse.lessons || 0,
+      status: newCourse.status,
+      createdAt: new Date(newCourse.created_at),
+      updatedAt: new Date(newCourse.updated_at),
+    }
+
+    return NextResponse.json({ success: true, data: transformedCourse }, { status: 201 })
+  } catch (error: any) {
+    console.error("Error creating course:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to create course" },
+      { status: 500 }
+    )
   }
 }

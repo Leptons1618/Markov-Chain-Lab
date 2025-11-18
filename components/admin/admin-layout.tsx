@@ -2,7 +2,7 @@
 
 import { ReactNode, useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { LogOut, LayoutDashboard, Users } from "lucide-react"
+import { LogOut, LayoutDashboard, Users, HelpCircle, Sparkles } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { usePathname, useRouter } from "next/navigation"
 import { DeleteAccountDialog } from "@/components/auth/delete-account-dialog"
@@ -97,11 +97,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       setIsAdmin(adminStatus)
       previousAdminStatusRef.current = adminStatus
       
-      // Update cache
+      // Update cache (both module cache and sessionStorage for main-nav)
       adminStatusCache = {
         userId: user.id,
         isAdmin: adminStatus,
         timestamp: now,
+      }
+      // Also update sessionStorage for main-nav component
+      try {
+        sessionStorage.setItem(`adminStatusCache_${user.id}`, JSON.stringify({
+          isAdmin: adminStatus,
+          timestamp: now,
+        }))
+      } catch (e) {
+        // Ignore sessionStorage errors (e.g., in SSR)
       }
     } catch (error) {
       console.error('Failed to check admin status:', error)
@@ -111,7 +120,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     }
   }, [user])
 
-  // Initial check
+  // Initial check - use ref to avoid dependency on checkAdminStatus
+  const checkAdminStatusRef = useRef(checkAdminStatus)
+  useEffect(() => {
+    checkAdminStatusRef.current = checkAdminStatus
+  }, [checkAdminStatus])
+
   useEffect(() => {
     if (user) {
       // Set initial previous admin status based on cache
@@ -120,8 +134,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     } else {
       previousAdminStatusRef.current = null
     }
-    checkAdminStatus()
-  }, [user, checkAdminStatus])
+    checkAdminStatusRef.current()
+  }, [user]) // Only depend on user, not checkAdminStatus
 
   // Set up Realtime subscription for admin status changes
   useEffect(() => {
@@ -169,11 +183,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               setIsAdmin(true)
               previousAdminStatusRef.current = true
               setPrivilegesRevoked(false)
-              // Update cache
+              // Update cache (both module cache and sessionStorage for main-nav)
               adminStatusCache = {
                 userId: user.id,
                 isAdmin: true,
                 timestamp: Date.now(),
+              }
+              // Also update sessionStorage for main-nav component
+              try {
+                sessionStorage.setItem(`adminStatusCache_${user.id}`, JSON.stringify({
+                  isAdmin: true,
+                  timestamp: Date.now(),
+                }))
+              } catch (e) {
+                // Ignore sessionStorage errors (e.g., in SSR)
               }
             }
           }
@@ -187,7 +210,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             // Fallback: if Realtime fails, do periodic checks
             if (!fallbackInterval) {
               fallbackInterval = setInterval(() => {
-                checkAdminStatus(true)
+                checkAdminStatusRef.current(true)
               }, 30000) // Check every 30 seconds as fallback
             }
           }
@@ -197,7 +220,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       // Fallback: if Realtime fails, do periodic checks
       if (!fallbackInterval) {
         fallbackInterval = setInterval(() => {
-          checkAdminStatus(true)
+          checkAdminStatusRef.current(true)
         }, 30000) // Check every 30 seconds as fallback
       }
     })
@@ -215,7 +238,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         clearInterval(fallbackInterval)
       }
     }
-  }, [user, checkingAuth, checkAdminStatus])
+  }, [user, checkingAuth]) // Remove checkAdminStatus from dependencies
 
   // Also listen for auth state changes (user deletion)
   useEffect(() => {
@@ -274,6 +297,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/courses", label: "Courses" },
+    { href: "/admin/practice-questions", label: "Practice Questions", icon: HelpCircle },
+    { href: "/admin/examples", label: "Examples", icon: Sparkles },
     { href: "/admin/identity", label: "Identity", icon: Users },
   ]
 
