@@ -49,6 +49,10 @@ import {
 import { MainNav } from "@/components/main-nav"
 import { useAuth } from "@/components/auth/auth-provider"
 import { loadDesignsFromSupabase, saveDesignToSupabase, deleteDesignFromSupabase, mergeDesigns, type SavedDesign as SavedDesignType } from "@/lib/designs-sync"
+import { computeStationaryDistribution, computeConvergenceRate, buildTransitionMatrix, type ChainProperties } from "@/lib/markov-analysis"
+import { generateTextString } from "@/lib/text-generation"
+import { analyzeLanguage } from "@/lib/language-analysis"
+import { useToast } from "@/lib/hooks/use-toast"
 
 interface State {
   id: string
@@ -65,6 +69,7 @@ interface Transition {
   from: string
   to: string
   probability: number
+  label?: string // Character/symbol label for DFA/NFA (e.g., "a", "b", "0", "1")
 }
 
 interface SimulationMetrics {
@@ -91,7 +96,30 @@ const defaultColors = [
   "#d97706", // chart-3
   "#be123c", // chart-4
   "#ec4899", // chart-5
+  "#3b82f6", // blue
+  "#8b5cf6", // purple
+  "#f59e0b", // amber
+  "#06b6d4", // cyan
+  "#84cc16", // lime
+  "#f97316", // orange
+  "#ef4444", // red
+  "#14b8a6", // teal
+  "#a855f7", // violet
 ]
+
+// Fixed colors for special states
+const INITIAL_STATE_COLOR = "#10b981" // green
+const FINAL_STATE_COLOR = "#ef4444" // red
+
+// Generate a unique color for a regular state based on index
+const generateStateColor = (index: number, isInitial: boolean, isFinal: boolean): string => {
+  if (isInitial) return INITIAL_STATE_COLOR
+  if (isFinal) return FINAL_STATE_COLOR
+  
+  // Generate a color from the palette, skipping initial and final colors
+  const regularColors = defaultColors.filter(c => c !== INITIAL_STATE_COLOR && c !== FINAL_STATE_COLOR)
+  return regularColors[index % regularColors.length]
+}
 
 const PROBABILITY_SCALE = 1_000_000
 
@@ -189,9 +217,125 @@ function scaleDesignToCanvas(design: MarkovChain, targetWidth: number, targetHei
   }
 }
 
+// Speed Dial Component
+function SpeedDial({ value, onChange, min = 50, max = 1000, step = 50 }: { value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number }) {
+  const [isDragging, setIsDragging] = useState(false)
+  const dialRef = useRef<HTMLDivElement>(null)
+  const angleRef = useRef(0)
+
+  const percentage = ((value - min) / (max - min)) * 100
+  const angle = (percentage / 100) * 270 - 135 // -135 to 135 degrees (270 degree arc)
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dialRef.current) return
+      const rect = dialRef.current.getBoundingClientRect()
+      const centerX = rect.left + rect.width / 2
+      const centerY = rect.top + rect.height / 2
+      const dx = e.clientX - centerX
+      const dy = e.clientY - centerY
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI)
+      angle += 90 // Adjust for 0 at top
+      if (angle < 0) angle += 360
+      
+      // Map to -135 to 135 range
+      let normalizedAngle = angle
+      if (normalizedAngle > 180) normalizedAngle -= 360
+      normalizedAngle = Math.max(-135, Math.min(135, normalizedAngle))
+      
+      const percentage = ((normalizedAngle + 135) / 270) * 100
+      const newValue = Math.round((min + (percentage / 100) * (max - min)) / step) * step
+      const clampedValue = Math.max(min, Math.min(max, newValue))
+      if (clampedValue !== value) {
+        onChange(clampedValue)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, min, max, step, onChange])
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative">
+        <div
+          ref={dialRef}
+          className="relative w-20 h-20 rounded-full border-2 border-border bg-muted/30 flex items-center justify-center cursor-pointer select-none touch-none"
+          onMouseDown={handleMouseDown}
+        >
+          {/* Dial background circle */}
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              fill="none"
+              stroke="hsl(var(--muted-foreground) / 0.2)"
+              strokeWidth="2"
+              strokeDasharray={`${270 * Math.PI * 40 / 180} ${360 * Math.PI * 40 / 180}`}
+              transform="rotate(-135 50 50)"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              fill="none"
+              stroke="hsl(var(--primary))"
+              strokeWidth="2.5"
+              strokeDasharray={`${(percentage / 100) * 270 * Math.PI * 40 / 180} ${360 * Math.PI * 40 / 180}`}
+              transform="rotate(-135 50 50)"
+              style={{ transition: 'stroke-dasharray 0.1s ease-out' }}
+            />
+          </svg>
+          
+          {/* Dial indicator */}
+          <div
+            className="absolute w-1 h-6 bg-primary rounded-full origin-bottom"
+            style={{
+              transform: `rotate(${angle}deg)`,
+              transformOrigin: '50% 100%',
+              top: '50%',
+              left: '50%',
+              marginLeft: '-2px',
+              marginTop: '-24px',
+              transition: 'transform 0.05s linear',
+            }}
+          />
+          
+          {/* Center value display */}
+          <div className="relative z-10 text-center">
+            <div className="text-sm font-bold text-foreground">{value}</div>
+          </div>
+        </div>
+        {/* Speed labels */}
+        <div className="absolute -bottom-5 left-0 right-0 flex justify-between text-[9px] text-muted-foreground">
+          <span>Fast</span>
+          <span>Slow</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ToolsContent() {
   const searchParams = useSearchParams()
   const { user, isGuest } = useAuth()
+  const { toast } = useToast()
   const [chain, setChain] = useState<MarkovChain>({ states: [], transitions: [] })
   const [originalExampleDesign, setOriginalExampleDesign] = useState<MarkovChain | null>(null)
   const [selectedState, setSelectedState] = useState<string | null>(null)
@@ -201,11 +345,16 @@ function ToolsContent() {
   const [simulationStep, setSimulationStep] = useState(0)
   const [currentState, setCurrentState] = useState<string | null>(null)
   const [simulationSpeed, setSimulationSpeed] = useState(500)
+  const [simulationTransitionId, setSimulationTransitionId] = useState<string | null>(null)
+  const [isGeneratingText, setIsGeneratingText] = useState(false)
+  const [textGenerationPath, setTextGenerationPath] = useState<Array<{ stateId: string; char: string | null }>>([])
   const [simulationMetrics, setSimulationMetrics] = useState<SimulationMetrics>({
     stateVisits: {},
     transitionUsage: {},
     pathHistory: [],
   })
+  const labelInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const labelInputRefCallbacks = useRef<Map<string, (el: HTMLInputElement | null) => void>>(new Map())
   const [isPanning, setIsPanning] = useState(false)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
@@ -241,6 +390,27 @@ function ToolsContent() {
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({})
   // Controlled tabs to prevent resets on re-render
   const [activeTab, setActiveTab] = useState<"build" | "simulate" | "analyze">("build")
+  // Automaton type selector - Auto-detect based on labels
+  const [automatonType, setAutomatonType] = useState<"markov" | "dfa" | "nfa">("markov")
+  const automatonTypeManuallySet = useRef(false)
+  
+  // Auto-detect automaton type when labels are added/removed (only if not manually set)
+  useEffect(() => {
+    if (automatonTypeManuallySet.current) return // Don't auto-detect if user manually selected
+    
+    const hasLabels = chain.transitions.some((t) => t.label && t.label.length === 1)
+    if (!hasLabels) {
+      setAutomatonType("markov")
+    } else {
+      // Auto-detect DFA vs NFA when labels are added
+      const isDFA = chain.states.every((state) => {
+        const outgoing = chain.transitions.filter((t) => t.from === state.id && t.label)
+        const labels = outgoing.map((t) => t.label).filter(Boolean)
+        return new Set(labels).size === labels.length // No duplicate labels
+      })
+      setAutomatonType(isDFA ? "dfa" : "nfa")
+    }
+  }, [chain.transitions.length, chain.states.length])
   // Track pinch gesture data
   const pinchRef = useRef<{ mid: { x: number; y: number }; dist: number } | null>(null)
   const [toolboxOpen, setToolboxOpen] = useState(false)
@@ -251,6 +421,301 @@ function ToolsContent() {
   const toolboxRef = useRef<HTMLDivElement | null>(null)
   const [isToolboxLocked, setIsToolboxLocked] = useState(false)
   const lastActiveTimeRef = useRef<number>(Date.now())
+
+  // Phase 1: String Acceptance Testing state
+  const [testString, setTestString] = useState("")
+  const [stringTestResult, setStringTestResult] = useState<{
+    accepted: boolean | null
+    path: Array<{ stateId: string; char: string | null; step: number }>
+    error: string | null
+  } | null>(null)
+  const [isTestingString, setIsTestingString] = useState(false)
+  const [highlightedStateId, setHighlightedStateId] = useState<string | null>(null)
+  const [highlightedTransitionId, setHighlightedTransitionId] = useState<string | null>(null)
+  const [currentPath, setCurrentPath] = useState<Array<{ stateId: string; char: string | null; step: number }>>([])
+  const [currentChar, setCurrentChar] = useState<string | null>(null)
+  const [stringTestSpeed, setStringTestSpeed] = useState(500) // Speed for string acceptance testing (ms)
+  const testStringInputRef = useRef<HTMLInputElement>(null)
+  const shouldMaintainFocusRef = useRef(false)
+  const isTypingRef = useRef(false)
+  
+  // Ref to store current chain for stable callback - update whenever chain changes
+  const chainRef = useRef(chain)
+  useEffect(() => {
+    chainRef.current = chain
+  }, [chain])
+
+  // Phase 1: String Acceptance Testing function - stable callback (defined early for use in handlers)
+  const testStringAcceptance = useCallback(async (inputString: string) => {
+    const currentChain = chainRef.current
+    if (currentChain.states.length === 0) {
+      setStringTestResult({
+        accepted: false,
+        path: [],
+        error: "No states in chain",
+      })
+      return
+    }
+
+    // Check if this is a DFA/NFA (has labeled transitions) or Markov chain
+    const hasLabels = currentChain.transitions.some((t) => t.label && t.label.length === 1)
+    const initialStates = currentChain.states.filter((s) => s.isInitial === true)
+    
+    if (initialStates.length === 0) {
+      setStringTestResult({
+        accepted: false,
+        path: [],
+        error: "No initial state found",
+      })
+      return
+    }
+
+    setIsTestingString(true)
+    setHighlightedStateId(null)
+    setHighlightedTransitionId(null)
+    setStringTestResult(null)
+    setCurrentPath([])
+    setCurrentChar(null)
+
+    const path: Array<{ stateId: string; char: string | null; step: number }> = []
+    let currentStateId = initialStates[0].id
+
+    // Add initial state
+    path.push({ stateId: currentStateId, char: null, step: 0 })
+    setCurrentPath([...path])
+    setHighlightedStateId(currentStateId)
+    await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+
+    if (hasLabels) {
+      // DFA/NFA mode: use labels
+      for (let i = 0; i < inputString.length; i++) {
+        const char = inputString[i]
+        setCurrentChar(char)
+        const outgoingTransitions = currentChain.transitions.filter(
+          (t) => t.from === currentStateId && t.label === char
+        )
+
+        if (outgoingTransitions.length === 0) {
+          setStringTestResult({
+            accepted: false,
+            path,
+            error: `No transition from ${currentChain.states.find((s) => s.id === currentStateId)?.name} on '${char}'`,
+          })
+          setIsTestingString(false)
+          // Clear highlights after a delay
+          setTimeout(() => {
+            setHighlightedStateId(null)
+            setHighlightedTransitionId(null)
+            setCurrentChar(null)
+            setCurrentPath([])
+          }, 2000)
+          return
+        }
+
+        // Take first matching transition (DFA should have only one)
+        const transition = outgoingTransitions[0]
+        setHighlightedTransitionId(transition.id)
+        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed / 2))
+
+        currentStateId = transition.to
+        path.push({ stateId: currentStateId, char, step: i + 1 })
+        setCurrentPath([...path])
+        setHighlightedStateId(currentStateId)
+        setHighlightedTransitionId(null)
+        setCurrentChar(null)
+        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+      }
+    } else {
+      // Markov mode: use probabilities (sample deterministically for testing)
+      // For testing purposes, we'll use the transition with highest probability
+      for (let i = 0; i < inputString.length; i++) {
+        const char = inputString[i]
+        const outgoingTransitions = currentChain.transitions.filter((t) => t.from === currentStateId)
+
+        if (outgoingTransitions.length === 0) {
+          setStringTestResult({
+            accepted: false,
+            path,
+            error: `No outgoing transitions from ${currentChain.states.find((s) => s.id === currentStateId)?.name}`,
+          })
+          setIsTestingString(false)
+          return
+        }
+
+        // Use highest probability transition
+        const transition = outgoingTransitions.reduce((max, t) => (t.probability > max.probability ? t : max))
+        setHighlightedTransitionId(transition.id)
+        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed / 2))
+
+        currentStateId = transition.to
+        path.push({ stateId: currentStateId, char, step: i + 1 })
+        setHighlightedStateId(currentStateId)
+        setHighlightedTransitionId(null)
+        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+      }
+    }
+
+    // Check if final state is accepting
+    const currentState = currentChain.states.find((s) => s.id === currentStateId)
+    const isAccepted = currentState?.isFinal === true
+
+    setStringTestResult({
+      accepted: isAccepted,
+      path,
+      error: null,
+    })
+    setIsTestingString(false)
+    
+    // Clear highlights after a delay to show completion
+    setTimeout(() => {
+      setHighlightedStateId(null)
+      setHighlightedTransitionId(null)
+      setCurrentChar(null)
+    }, 1500)
+  }, [stringTestSpeed])
+  
+  // Track focus state
+  const handleTestStringFocus = useCallback(() => {
+    shouldMaintainFocusRef.current = true
+    isTypingRef.current = true
+  }, [])
+  
+  // Stable callback to maintain focus - prevent blur during typing
+  const handleTestStringChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputEl = e.target
+    const value = inputEl.value
+    const cursorPos = inputEl.selectionStart ?? value.length
+    
+    // Mark that we're typing
+    isTypingRef.current = true
+    shouldMaintainFocusRef.current = true
+    
+    // Store cursor position before state update
+    const savedCursorPos = cursorPos
+    
+    setTestString(value)
+    
+    // Use useLayoutEffect-like synchronous restoration
+    // Restore focus synchronously before browser paints
+    if (inputEl && document.contains(inputEl) && shouldMaintainFocusRef.current) {
+      // Force focus immediately
+      inputEl.focus()
+      const newCursorPos = Math.min(savedCursorPos, inputEl.value.length)
+      inputEl.setSelectionRange(newCursorPos, newCursorPos)
+    }
+    
+    // Also restore after render cycle completes
+    setTimeout(() => {
+      if (inputEl && document.contains(inputEl) && shouldMaintainFocusRef.current) {
+        if (document.activeElement !== inputEl) {
+          inputEl.focus()
+          const newCursorPos = Math.min(savedCursorPos, inputEl.value.length)
+          inputEl.setSelectionRange(newCursorPos, newCursorPos)
+        }
+      }
+    }, 0)
+  }, [])
+  
+  // Use layout effect to maintain focus after renders - only when testString changes
+  useEffect(() => {
+    if (shouldMaintainFocusRef.current && testStringInputRef.current && isTypingRef.current) {
+      const inputEl = testStringInputRef.current
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        if (inputEl && document.contains(inputEl) && shouldMaintainFocusRef.current) {
+          if (document.activeElement !== inputEl) {
+            inputEl.focus()
+            // Restore cursor position to end
+            const cursorPos = inputEl.value.length
+            inputEl.setSelectionRange(cursorPos, cursorPos)
+          }
+        }
+      })
+    }
+  }, [testString])
+  
+  // Prevent blur to maintain focus - only prevent if focus is moving to non-interactive elements
+  const handleTestStringBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    const relatedTarget = e.relatedTarget as HTMLElement | null
+    
+    // If we're actively typing, prevent blur
+    if (isTypingRef.current && shouldMaintainFocusRef.current) {
+      // Allow blur only for interactive elements
+      if (relatedTarget) {
+        const isInteractive = relatedTarget.closest('button') || 
+                             relatedTarget.closest('[role="button"]') ||
+                             relatedTarget.closest('a') ||
+                             (relatedTarget.tagName === 'INPUT' && relatedTarget !== e.target) ||
+                             relatedTarget.closest('select') ||
+                             relatedTarget.closest('textarea')
+        if (!isInteractive) {
+          // Prevent blur - restore focus immediately
+          e.preventDefault()
+          setTimeout(() => {
+            if (testStringInputRef.current && shouldMaintainFocusRef.current) {
+              testStringInputRef.current.focus()
+            }
+          }, 0)
+          return
+        }
+      } else {
+        // No related target - likely clicking on canvas, prevent blur
+        e.preventDefault()
+        setTimeout(() => {
+          if (testStringInputRef.current && shouldMaintainFocusRef.current) {
+            testStringInputRef.current.focus()
+          }
+        }, 0)
+        return
+      }
+    }
+    
+    // If not typing, allow normal blur behavior
+    shouldMaintainFocusRef.current = false
+    isTypingRef.current = false
+  }, [])
+  
+  // Stable callback for key down - read from event target to avoid stale closure
+  const handleTestStringKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !isTestingString) {
+      const value = (e.target as HTMLInputElement).value.trim()
+      if (value) {
+        testStringAcceptance(value)
+      }
+    }
+  }, [isTestingString, testStringAcceptance])
+  
+  // Stable ref callback - never changes
+  const testStringInputRefCallback = useCallback((el: HTMLInputElement | null) => {
+    testStringInputRef.current = el
+  }, [])
+
+  // Phase 2: Analysis state
+  const [convergenceAnalysis, setConvergenceAnalysis] = useState<{
+    stationaryDistribution: number[]
+    converged: boolean
+    iterations: number
+    chainProperties: ChainProperties
+    convergenceRate?: number
+  } | null>(null)
+  const [languageAnalysis, setLanguageAnalysis] = useState<{
+    languageType: "regular" | "context-free" | "unknown"
+    regularExpression?: string
+    acceptedExamples: string[]
+    rejectedExamples: string[]
+    properties: {
+      isFinite: boolean
+      isEmpty: boolean
+      isUniversal: boolean
+      alphabet: string[]
+    }
+    description?: string
+  } | null>(null)
+
+  // Phase 2: Text Generation state
+  const [generatedText, setGeneratedText] = useState("")
+  const [textGenerationLength, setTextGenerationLength] = useState(10)
+  const [textGenerationMode, setTextGenerationMode] = useState<"probabilistic" | "deterministic">("probabilistic")
 
   // Constants for radial menu
   const RADIAL_TOOL_COUNT = 8
@@ -381,12 +846,12 @@ function ToolsContent() {
   const [editingStateId, setEditingStateId] = useState<string | null>(null)
   const [editingStateName, setEditingStateName] = useState("")
 
-  // Track changes to mark unsaved changes
+  // Track changes to mark unsaved changes - use primitive values to prevent infinite loops
   useEffect(() => {
-    if (chain.states.length > 0 || chain.transitions.length > 0) {
+    if ((chain.states.length > 0 || chain.transitions.length > 0) && !hasUnsavedChanges) {
       setHasUnsavedChanges(true)
     }
-  }, [chain])
+  }, [chain.states.length, chain.transitions.length, hasUnsavedChanges])
 
   // Warn before leaving page with unsaved changes
   useEffect(() => {
@@ -403,10 +868,12 @@ function ToolsContent() {
   // Ref for zoomToFit function to avoid dependency issues
   const zoomToFitRef = useRef<(() => void) | null>(null)
   
+  // Extract stable primitive value from searchParams to avoid infinite loop
+  const exampleId = searchParams.get("example")
+  
   // Load from example URL parameter on mount and fetch saved designs from API
   useEffect(() => {
     // Check if loading from example
-    const exampleId = searchParams.get("example")
     if (exampleId) {
       // Load example from API
       fetch(`/api/examples`)
@@ -465,7 +932,7 @@ function ToolsContent() {
     }
 
     loadDesigns()
-  }, [searchParams, user, isGuest])
+  }, [exampleId, user, isGuest])
 
   // Handle window resize to rescale loaded examples responsively
   useEffect(() => {
@@ -652,16 +1119,20 @@ function ToolsContent() {
       // Clamp new state position to canvas bounds
       const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, x))
       const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, y))
+      
+      // Count regular states (non-initial, non-final) for color assignment
+      const regularStateCount = chain.states.filter(s => !s.isInitial && !s.isFinal).length
+      
       const newState: State = {
         id: `state-${Date.now()}`,
         name: `S${chain.states.length + 1}`,
         x: clampedX,
         y: clampedY,
-        color: defaultColors[chain.states.length % defaultColors.length],
+        color: generateStateColor(regularStateCount, false, false),
       }
       setChain((prev) => ({ ...prev, states: [...prev.states, newState] }))
     },
-    [chain.states.length],
+    [chain.states],
   )
 
   const addTransition = useCallback(
@@ -697,6 +1168,35 @@ function ToolsContent() {
     [normalizeWithAnchor],
   )
 
+  // Phase 1: Update transition label for DFA/NFA mode
+  const updateTransitionLabel = useCallback((transitionId: string, label: string | undefined, inputElement?: HTMLInputElement) => {
+    // Validate: only single character labels allowed
+    if (label !== undefined && label !== "" && label.length > 1) {
+      // Show toast error but don't lose focus
+      toast.error("Label must be a single character (a-z, 0-9)", {
+        title: "Invalid Label",
+        duration: 3000,
+      })
+      // Restore focus to the input if provided
+      if (inputElement) {
+        setTimeout(() => {
+          inputElement.focus()
+          // Set cursor to end of first character
+          inputElement.setSelectionRange(1, 1)
+        }, 0)
+      }
+      return false
+    }
+    
+    setChain((prev) => ({
+      ...prev,
+      transitions: prev.transitions.map((t) =>
+        t.id === transitionId ? { ...t, label: label || undefined } : t
+      ),
+    }))
+    return true
+  }, [toast])
+
   const deleteState = useCallback((stateId: string) => {
     setChain((prev) => ({
       states: prev.states.filter((s) => s.id !== stateId),
@@ -728,13 +1228,18 @@ function ToolsContent() {
       // Ignore clicks from any interactive UI elements
       if (target.closest('button') || target.closest('[role="dialog"]') || 
           target.closest('[data-radix-popper-content-wrapper]') ||
-          target.closest('[data-radix-portal]')) return
+          target.closest('[data-radix-portal]') ||
+          target.closest('[data-radix-popover-content]') ||
+          target.closest('[data-radix-popover-trigger]')) return
       
       // Ignore clicks that originate outside the canvas (e.g., floating buttons)
       if (canvasRef.current && !canvasRef.current.contains(target)) return
 
       // Don't add nodes if clicking on a state node (they have their own click handlers)
       if (target.closest("[data-node-id]")) return
+      
+      // Don't add nodes if clicking on popover content
+      if (target.closest('[data-radix-popover-content]')) return
 
       const { x, y } = clientToWorld(e.clientX, e.clientY)
       addState(x, y)
@@ -757,7 +1262,7 @@ function ToolsContent() {
     })
   }, [chain.states])
 
-  const stepSimulation = useCallback(() => {
+  const stepSimulation = useCallback(async () => {
     if (!currentState) return
 
     const outgoingTransitions = chain.transitions.filter((t) => t.from === currentState)
@@ -765,36 +1270,50 @@ function ToolsContent() {
 
     const random = Math.random()
     let cumulative = 0
+    let selectedTransition: Transition | null = null
 
     for (const transition of outgoingTransitions) {
       cumulative += transition.probability
       if (random <= cumulative) {
-        const nextState = transition.to
-        setCurrentState(nextState)
-        setSimulationStep((prev) => prev + 1)
-
-        // Update metrics
-        setSimulationMetrics((prev) => ({
-          stateVisits: {
-            ...prev.stateVisits,
-            [nextState]: (prev.stateVisits[nextState] || 0) + 1,
-          },
-          transitionUsage: {
-            ...prev.transitionUsage,
-            [transition.id]: (prev.transitionUsage[transition.id] || 0) + 1,
-          },
-          pathHistory: [...prev.pathHistory, nextState],
-        }))
+        selectedTransition = transition
         break
       }
     }
-  }, [currentState, chain.transitions])
+
+    if (!selectedTransition) return
+
+    // Animate transition
+    setSimulationTransitionId(selectedTransition.id)
+    await new Promise((resolve) => setTimeout(resolve, simulationSpeed / 2))
+
+    const nextState = selectedTransition.to
+    setCurrentState(nextState)
+    setSimulationTransitionId(null)
+    setSimulationStep((prev) => prev + 1)
+
+    // Update metrics
+    setSimulationMetrics((prev) => ({
+      stateVisits: {
+        ...prev.stateVisits,
+        [nextState]: (prev.stateVisits[nextState] || 0) + 1,
+      },
+      transitionUsage: {
+        ...prev.transitionUsage,
+        [selectedTransition!.id]: (prev.transitionUsage[selectedTransition!.id] || 0) + 1,
+      },
+      pathHistory: [...prev.pathHistory, nextState],
+    }))
+    
+    // Brief pause before next step
+    await new Promise((resolve) => setTimeout(resolve, simulationSpeed / 2))
+  }, [currentState, chain.transitions, simulationSpeed])
 
   const resetSimulation = useCallback(() => {
     setIsSimulating(false)
     setIsAutoRunning(false)
     setSimulationStep(0)
     setCurrentState(null)
+    setSimulationTransitionId(null)
     setSimulationMetrics({
       stateVisits: {},
       transitionUsage: {},
@@ -806,18 +1325,65 @@ function ToolsContent() {
     }
   }, [])
 
+  // Phase 2: Compute convergence analysis when chain changes
+  useEffect(() => {
+    if (chain.states.length === 0 || chain.transitions.length === 0) {
+      setConvergenceAnalysis(null)
+      return
+    }
+
+    try {
+      const matrix = buildTransitionMatrix(chain.states, chain.transitions)
+      const analysis = computeStationaryDistribution(chain.states, chain.transitions)
+      const convergenceRate = computeConvergenceRate(matrix)
+      setConvergenceAnalysis({
+        ...analysis,
+        convergenceRate,
+      })
+    } catch (error) {
+      console.error("Error computing convergence analysis:", error)
+      setConvergenceAnalysis(null)
+    }
+  }, [chain.states.length, chain.transitions.length])
+
+  // Phase 2: Compute language analysis when chain changes (for DFA/NFA)
+  useEffect(() => {
+    if (automatonType !== "dfa" && automatonType !== "nfa" || chain.states.length === 0) {
+      setLanguageAnalysis(null)
+      return
+    }
+
+    try {
+      const analysis = analyzeLanguage(chain)
+      setLanguageAnalysis(analysis)
+    } catch (error) {
+      console.error("Error computing language analysis:", error)
+      setLanguageAnalysis(null)
+    }
+  }, [chain.states.length, chain.transitions.length, automatonType])
+
   // Save/Export functionality (must come after resetSimulation)
   const saveDesign = useCallback(() => {
     if (chain.states.length === 0) {
-      alert("Cannot save an empty design")
+      toast({
+        title: "Cannot Save",
+        description: "Cannot save an empty design. Please add at least one state.",
+        variant: "destructive",
+        duration: 3000,
+      })
       return
     }
     setSaveDialogOpen(true)
-  }, [chain.states.length])
+  }, [chain.states.length, toast])
 
   const handleSaveConfirm = useCallback(async () => {
     if (!saveName.trim()) {
-      alert("Please enter a name for your design")
+      toast({
+        title: "Name Required",
+        description: "Please enter a name for your design.",
+        variant: "destructive",
+        duration: 3000,
+      })
       return
     }
 
@@ -855,9 +1421,14 @@ function ToolsContent() {
       setSaveName("")
     } catch (error) {
       console.error("Failed to save design:", error)
-      alert("Failed to save design. Please try again.")
+      toast({
+        title: "Save Failed",
+        description: "Failed to save design. Please try again.",
+        variant: "destructive",
+        duration: 4000,
+      })
     }
-  }, [saveName, chain, user, isGuest])
+  }, [saveName, chain, user, isGuest, toast])
 
   const loadDesign = useCallback(
     (design: SavedDesign) => {
@@ -897,9 +1468,14 @@ function ToolsContent() {
       }
     } catch (error) {
       console.error("Failed to delete design:", error)
-      alert("Failed to delete design. Please try again.")
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete design. Please try again.",
+        variant: "destructive",
+        duration: 4000,
+      })
     }
-  }, [user, isGuest])
+  }, [user, isGuest, toast])
 
   const newDesign = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -1043,17 +1619,32 @@ function ToolsContent() {
             setSelectedState(null)
             setSelectedTransition(null)
             resetSimulation()
+            toast({
+              title: "Import Successful",
+              description: "Design imported successfully.",
+              duration: 3000,
+            })
           } else {
-            alert("Invalid file format. Please select a valid Markov chain JSON file.")
+            toast({
+              title: "Invalid File",
+              description: "Invalid file format. Please select a valid Markov chain JSON file.",
+              variant: "destructive",
+              duration: 4000,
+            })
           }
         } catch (error) {
-          alert("Error reading file. Please select a valid JSON file.")
+          toast({
+            title: "Import Error",
+            description: "Error reading file. Please select a valid JSON file.",
+            variant: "destructive",
+            duration: 4000,
+          })
           console.error(error)
         }
       }
       reader.readAsText(file)
     },
-    [resetSimulation],
+    [resetSimulation, toast],
   )
 
   const handleImportClick = useCallback(() => {
@@ -1145,29 +1736,46 @@ function ToolsContent() {
       </TabsList>
 
       <TabsContent value="build" className="space-y-4">
+        {/* Automaton Type Selector */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Automaton Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select 
+              value={automatonType} 
+              onValueChange={(value: "markov" | "dfa" | "nfa") => {
+                automatonTypeManuallySet.current = true
+                setAutomatonType(value)
+                // Auto-update transitions based on mode
+                if (value === "markov") {
+                  // Clear all labels when switching to Markov
+                  setChain((prev) => ({
+                    ...prev,
+                    transitions: prev.transitions.map((t) => ({ ...t, label: undefined }))
+                  }))
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="markov">Markov Chain (Probabilistic)</SelectItem>
+                <SelectItem value="dfa">DFA (Deterministic Finite Automaton)</SelectItem>
+                <SelectItem value="nfa">NFA (Nondeterministic Finite Automaton)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">
+              {automatonType === "markov" && "Transitions use probabilities. Labels are hidden."}
+              {automatonType === "dfa" && "Transitions use character labels (a-z, 0-9). Each state has exactly one transition per character."}
+              {automatonType === "nfa" && "Transitions use character labels (a-z, 0-9). States can have multiple transitions with the same label."}
+            </p>
+          </CardContent>
+        </Card>
+
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium">Chain Builder</h3>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer shrink-0">
-                  <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-[min(300px,90vw)] z-50">
-                <div className="space-y-2">
-                  <p className="font-medium text-sm">Instructions:</p>
-                  <ul className="text-xs space-y-1">
-                    <li>• Click on canvas to add states</li>
-                    <li>• Click a state, then another to create transitions</li>
-                    <li>• Use the properties panel to edit values</li>
-                    <li>• Drag on empty canvas to pan</li>
-                    <li>• Pinch/scroll to zoom</li>
-                  </ul>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
 
         {chain.states.length === 0 ? (
@@ -1209,9 +1817,9 @@ function ToolsContent() {
                 return (
                   <div
                     key={transition.id}
-                    className="flex flex-col gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150 sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] sm:items-center sm:gap-4"
+                    className="flex flex-col gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150 sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(0,70px)_minmax(0,2fr)_minmax(0,80px)_auto] sm:items-center sm:gap-3"
                   >
-                    {/* State labels - Flexible width with truncation */}
+                    {/* State labels - Column 1 */}
                     <div className="flex items-center gap-2 min-w-0 w-full">
                       <TooltipProvider>
                         <Tooltip delayDuration={500}>
@@ -1242,70 +1850,129 @@ function ToolsContent() {
                       </TooltipProvider>
                     </div>
 
-                    {/* Controls - Flexible layout */}
-                    <div className="flex items-center gap-2 min-w-0 w-full">
-                      {/* Slider - Responsive width */}
-                      <Slider
-                        value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
-                        onValueChange={(values) => updateTransitionProbability(transition.id, roundProbability(values[0] ?? 0))}
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        className="flex-1 min-w-[80px] [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5 [&_.bg-primary]:h-0.5"
-                      />
-
-                      {/* Number input with custom controls */}
-                      <div className="relative shrink-0">
+                    {/* Column 2: Label input (DFA/NFA) or empty space (Markov) */}
+                    <div className="flex items-center justify-start">
+                      {(automatonType === "dfa" || automatonType === "nfa") ? (
                         <Input
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={Number.isFinite(transition.probability) ? transition.probability.toFixed(2) : "0.00"}
-                          onChange={(e) => {
-                            const parsed = Number.parseFloat(e.target.value)
-                            updateTransitionProbability(
-                              transition.id,
-                              roundProbability(Number.isFinite(parsed) ? parsed : 0),
-                            )
+                          ref={(el) => {
+                            labelInputRefs.current[transition.id] = el
                           }}
-                          className="w-[4.5rem] h-8 text-xs font-mono text-left pl-2 pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          type="text"
+                          maxLength={1}
+                          value={transition.label || ""}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            const inputEl = e.target
+                            // Allow empty or single valid character
+                            if (value === "" || /^[a-z0-9]$/i.test(value)) {
+                              updateTransitionLabel(transition.id, value || undefined, inputEl)
+                            } else if (value.length > 1) {
+                              // Invalid input - show error and keep focus, but don't update state
+                              // This will keep the current valid value displayed (controlled component)
+                              updateTransitionLabel(transition.id, value, inputEl)
+                              // Ensure focus is maintained
+                              setTimeout(() => {
+                                inputEl.focus()
+                                // Set cursor to end
+                                const currentValue = transition.label || ""
+                                inputEl.setSelectionRange(currentValue.length, currentValue.length)
+                              }, 0)
+                            }
+                          }}
+                          onPaste={(e) => {
+                            e.preventDefault()
+                            const pastedText = e.clipboardData.getData('text')
+                            const firstChar = pastedText.charAt(0)
+                            const inputEl = e.currentTarget
+                            if (/^[a-z0-9]$/i.test(firstChar)) {
+                              updateTransitionLabel(transition.id, firstChar, inputEl)
+                              inputEl.value = firstChar
+                            } else {
+                              updateTransitionLabel(transition.id, pastedText, inputEl)
+                            }
+                          }}
+                          placeholder="a-z, 0-9"
+                          className="w-16 h-8 text-xs font-mono text-center font-semibold"
+                          title="Single character label (a-z, 0-9)"
                         />
-                        <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l border-border/60">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const newVal = Math.min(1, (transition.probability || 0) + 0.01)
-                              updateTransitionProbability(transition.id, roundProbability(newVal))
-                            }}
-                            className="flex-1 px-1 hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
-                            aria-label="Increase probability"
-                          >
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const newVal = Math.max(0, (transition.probability || 0) - 0.01)
-                              updateTransitionProbability(transition.id, roundProbability(newVal))
-                            }}
-                            className="flex-1 px-1 hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground border-t border-border/60 cursor-pointer"
-                            aria-label="Decrease probability"
-                          >
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
+                      ) : (
+                        <div className="w-16" /> // Spacer for alignment
+                      )}
                     </div>
 
-                    {/* Delete button */}
-                    <div className="flex items-center justify-end">
+                    {/* Column 3: Probability slider (Markov) or empty space (DFA/NFA with label) */}
+                    <div className="flex items-center gap-2 min-w-0 w-full">
+                      {(automatonType === "markov" || !transition.label) ? (
+                        <Slider
+                          value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
+                          onValueChange={(values) => updateTransitionProbability(transition.id, roundProbability(values[0] ?? 0))}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          className="flex-1 min-w-[80px] [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5 [&_.bg-primary]:h-0.5"
+                        />
+                      ) : (
+                        <div className="flex-1" /> // Spacer
+                      )}
+                    </div>
+
+                    {/* Column 4: Probability number input (Markov) or empty space (DFA/NFA with label) */}
+                    <div className="relative shrink-0">
+                      {(automatonType === "markov" || !transition.label) ? (
+                        <>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={Number.isFinite(transition.probability) ? transition.probability.toFixed(2) : "0.00"}
+                            onChange={(e) => {
+                              const parsed = Number.parseFloat(e.target.value)
+                              updateTransitionProbability(
+                                transition.id,
+                                roundProbability(Number.isFinite(parsed) ? parsed : 0),
+                              )
+                            }}
+                            className="w-[4.5rem] h-8 text-xs font-mono text-left pl-2 pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l border-border/60">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const newVal = Math.min(1, (transition.probability || 0) + 0.01)
+                                updateTransitionProbability(transition.id, roundProbability(newVal))
+                              }}
+                              className="flex-1 px-1 hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+                              aria-label="Increase probability"
+                            >
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const newVal = Math.max(0, (transition.probability || 0) - 0.01)
+                                updateTransitionProbability(transition.id, roundProbability(newVal))
+                              }}
+                              className="flex-1 px-1 hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground border-t border-border/60 cursor-pointer"
+                              aria-label="Decrease probability"
+                            >
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-[4.5rem]" /> // Spacer for alignment
+                      )}
+                    </div>
+
+                    {/* Column 5: Delete button - Always visible */}
+                    <div className="flex items-center justify-end sm:justify-end">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1325,10 +1992,12 @@ function ToolsContent() {
       </TabsContent>
 
       <TabsContent value="simulate" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Simulation Controls</CardTitle>
-          </CardHeader>
+        {/* Simulation Controls - Only show for Markov chains */}
+        {automatonType === "markov" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Simulation Controls</CardTitle>
+            </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => { setActiveTab("simulate"); startSimulation() }} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150 flex-1 sm:flex-initial">
@@ -1379,9 +2048,10 @@ function ToolsContent() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        )}
 
-        {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && (
+        {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && automatonType === "markov" && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Metrics</CardTitle>
@@ -1440,6 +2110,306 @@ function ToolsContent() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Phase 1: String Acceptance Testing - Only show for DFA/NFA */}
+        {(automatonType === "dfa" || automatonType === "nfa") && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">String Acceptance Testing</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="test-string" className="text-sm">Test String</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="test-string"
+                    ref={(el) => {
+                      testStringInputRef.current = el
+                      // Also call the callback if it exists
+                      if (testStringInputRefCallback) {
+                        testStringInputRefCallback(el)
+                      }
+                    }}
+                    value={testString}
+                    onChange={handleTestStringChange}
+                    onFocus={handleTestStringFocus}
+                    onBlur={handleTestStringBlur}
+                    placeholder="Enter string to test (e.g., 'abab')"
+                    disabled={isTestingString}
+                    onKeyDown={handleTestStringKeyDown}
+                    className="flex-1"
+                    autoFocus={false}
+                    onMouseDown={(e) => {
+                      // Ensure focus when clicking on input
+                      e.stopPropagation()
+                      shouldMaintainFocusRef.current = true
+                      isTypingRef.current = false
+                      // Immediately focus
+                      if (testStringInputRef.current) {
+                        testStringInputRef.current.focus()
+                      }
+                    }}
+                    onPointerDown={(e) => {
+                      // Prevent canvas from stealing focus
+                      e.stopPropagation()
+                    }}
+                  />
+                  <Button
+                    onClick={() => {
+                      if (testString.trim()) {
+                        testStringAcceptance(testString.trim())
+                      }
+                    }}
+                    disabled={isTestingString || !testString.trim() || chain.states.length === 0}
+                    size="sm"
+                  >
+                    {isTestingString ? "Testing..." : "Test"}
+                  </Button>
+                </div>
+              </div>
+
+            {stringTestResult && (
+              <div className="space-y-3 border-t pt-3">
+                <div className="flex items-center gap-2">
+                  {stringTestResult.accepted === true && (
+                    <>
+                      <Check className="h-5 w-5 text-green-500" />
+                      <Badge variant="default" className="bg-green-500">ACCEPTED</Badge>
+                    </>
+                  )}
+                  {stringTestResult.accepted === false && (
+                    <>
+                      <X className="h-5 w-5 text-red-500" />
+                      <Badge variant="destructive">REJECTED</Badge>
+                    </>
+                  )}
+                  {stringTestResult.error && (
+                    <span className="text-sm text-destructive">{stringTestResult.error}</span>
+                  )}
+                </div>
+
+                {(currentPath.length > 0 || (stringTestResult && stringTestResult.path.length > 0)) && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Path Trace</Label>
+                    <div className="flex items-center gap-1 flex-wrap text-xs">
+                      {(currentPath.length > 0 ? currentPath : stringTestResult?.path || []).map((step, idx) => {
+                        const state = chain.states.find((s) => s.id === step.stateId)
+                        const isCurrentStep = step.stateId === highlightedStateId
+                        return (
+                          <span key={idx} className="flex items-center gap-1">
+                            <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
+                              {state?.name}
+                            </Badge>
+                            {idx < (currentPath.length > 0 ? currentPath : stringTestResult?.path || []).length - 1 && step.char && (
+                              <>
+                                <span className={`font-medium ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`}>
+                                  '{step.char}'
+                                </span>
+                                <ArrowRight className={`h-3 w-3 shrink-0 ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                              </>
+                            )}
+                          </span>
+                        )
+                      })}
+                      {currentChar && (
+                        <span className="flex items-center gap-1 ml-1">
+                          <span className="text-primary font-bold animate-pulse">'{currentChar}'</span>
+                          <ArrowRight className="h-3 w-3 text-primary animate-pulse shrink-0" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Animation Speed</Label>
+                <span className="text-xs text-muted-foreground">{stringTestSpeed}ms</span>
+              </div>
+              <SpeedDial
+                value={stringTestSpeed}
+                onChange={setStringTestSpeed}
+                min={50}
+                max={1000}
+                step={50}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        )}
+
+        {/* Phase 2: Text Generation - Only show for Markov chains */}
+        {automatonType === "markov" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Text Generation</CardTitle>
+            </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="text-length" className="text-sm">Length</Label>
+              <Input
+                id="text-length"
+                type="number"
+                min="1"
+                max="100"
+                value={textGenerationLength}
+                onChange={(e) => setTextGenerationLength(Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)))}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Mode</Label>
+              <Select 
+                value={textGenerationMode} 
+                onValueChange={(value: "probabilistic" | "deterministic") => setTextGenerationMode(value)}
+                disabled={automatonType === "markov" ? textGenerationMode === "deterministic" : false}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="probabilistic">Probabilistic (Markov)</SelectItem>
+                  <SelectItem 
+                    value="deterministic"
+                    disabled={automatonType === "markov"}
+                  >
+                    Deterministic (DFA) {automatonType === "markov" && "(Requires DFA/NFA mode)"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {(automatonType === "dfa" || automatonType === "nfa") && (
+                <p className="text-xs text-muted-foreground">{automatonType.toUpperCase()} mode: Using transition labels</p>
+              )}
+            </div>
+
+            <Button
+              onClick={async () => {
+                if (chain.states.length === 0) return
+                setIsGeneratingText(true)
+                setTextGenerationPath([])
+                setHighlightedStateId(null)
+                setHighlightedTransitionId(null)
+                setGeneratedText("")
+                
+                try {
+                  // Find initial state
+                  const initialStates = chain.states.filter((s) => s.isInitial === true)
+                  let currentStateId = initialStates.length > 0 ? initialStates[0].id : chain.states[0].id
+                  
+                  const path: Array<{ stateId: string; char: string | null }> = []
+                  const generatedSequence: string[] = []
+                  
+                  // Highlight initial state
+                  setHighlightedStateId(currentStateId)
+                  path.push({ stateId: currentStateId, char: null })
+                  setTextGenerationPath([...path])
+                  const initialState = chain.states.find((s) => s.id === currentStateId)
+                  if (initialState) generatedSequence.push(initialState.name)
+                  await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+                  
+                  // Generate text with animations
+                  for (let i = 1; i < textGenerationLength; i++) {
+                    const outgoingTransitions = chain.transitions.filter((t) => t.from === currentStateId)
+                    if (outgoingTransitions.length === 0) break
+                    
+                    // Sample transition probabilistically
+                    const random = Math.random()
+                    let cumulative = 0
+                    let selectedTransition: Transition | null = null
+                    
+                    for (const transition of outgoingTransitions) {
+                      cumulative += transition.probability
+                      if (random <= cumulative) {
+                        selectedTransition = transition
+                        break
+                      }
+                    }
+                    
+                    if (!selectedTransition) break
+                    
+                    // Animate transition
+                    setHighlightedTransitionId(selectedTransition.id)
+                    await new Promise((resolve) => setTimeout(resolve, stringTestSpeed / 2))
+                    
+                    currentStateId = selectedTransition.to
+                    setHighlightedStateId(currentStateId)
+                    setHighlightedTransitionId(null)
+                    
+                    path.push({ stateId: currentStateId, char: null })
+                    setTextGenerationPath([...path])
+                    const nextState = chain.states.find((s) => s.id === currentStateId)
+                    if (nextState) generatedSequence.push(nextState.name)
+                    await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+                  }
+                  
+                  setGeneratedText(generatedSequence.join(" "))
+                  
+                  // Clear highlights after a delay
+                  setTimeout(() => {
+                    setHighlightedStateId(null)
+                    setHighlightedTransitionId(null)
+                    setTextGenerationPath([])
+                  }, 1500)
+                } catch (error) {
+                  console.error("Error generating text:", error)
+                  setGeneratedText("Error: " + (error instanceof Error ? error.message : "Unknown error"))
+                } finally {
+                  setIsGeneratingText(false)
+                }
+              }}
+              disabled={chain.states.length === 0 || isGeneratingText}
+              className="w-full"
+            >
+              {isGeneratingText ? "Generating..." : "Generate Text"}
+            </Button>
+
+            {(textGenerationPath.length > 0 || generatedText) && (
+              <div className="space-y-2 border-t pt-3">
+                <Label className="text-xs text-muted-foreground">Generation Path</Label>
+                {textGenerationPath.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap text-xs">
+                    {textGenerationPath.map((step, idx) => {
+                      const state = chain.states.find((s) => s.id === step.stateId)
+                      const isCurrentStep = step.stateId === highlightedStateId
+                      return (
+                        <span key={idx} className="flex items-center gap-1">
+                          <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
+                            {state?.name}
+                          </Badge>
+                          {idx < textGenerationPath.length - 1 && (
+                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                          )}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+                {generatedText && (
+                  <>
+                    <Label className="text-xs text-muted-foreground">Generated Output</Label>
+                    <div className="p-3 bg-muted rounded-md text-sm font-mono break-words">
+                      {generatedText}
+                    </div>
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedText)
+                  }}
+                  className="w-full"
+                >
+                  Copy to Clipboard
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         )}
       </TabsContent>
 
@@ -1562,6 +2532,165 @@ function ToolsContent() {
             </CardContent>
           </Card>
         )}
+
+        {/* Phase 2: Convergence Analysis - Only show for Markov chains */}
+        {convergenceAnalysis && chain.states.length > 0 && automatonType === "markov" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Convergence Analysis</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Stationary Distribution</span>
+                  <Badge variant={convergenceAnalysis.converged ? "default" : "secondary"}>
+                    {convergenceAnalysis.converged ? "Converged" : "Not Converged"}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  {chain.states.map((state, idx) => {
+                    const prob = convergenceAnalysis.stationaryDistribution[idx] || 0
+                    return (
+                      <div key={state.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium">{state.name}</span>
+                          <span className="text-muted-foreground">{(prob * 100).toFixed(2)}%</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{ width: `${prob * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t space-y-2">
+                <Label className="text-xs text-muted-foreground">Chain Properties</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={convergenceAnalysis.chainProperties.isErgodic ? "default" : "secondary"}>
+                    {convergenceAnalysis.chainProperties.isErgodic ? "Ergodic" : "Not Ergodic"}
+                  </Badge>
+                  <Badge variant={convergenceAnalysis.chainProperties.isIrreducible ? "default" : "secondary"}>
+                    {convergenceAnalysis.chainProperties.isIrreducible ? "Irreducible" : "Reducible"}
+                  </Badge>
+                  <Badge variant={convergenceAnalysis.chainProperties.isAperiodic ? "default" : "secondary"}>
+                    {convergenceAnalysis.chainProperties.isAperiodic ? "Aperiodic" : "Periodic"}
+                  </Badge>
+                  {convergenceAnalysis.chainProperties.hasAbsorbingStates && (
+                    <Badge variant="destructive">
+                      Has Absorbing States
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {convergenceAnalysis.convergenceRate !== undefined && (
+                <div className="pt-3 border-t">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Convergence Rate:</span>
+                    <span className="font-medium">{convergenceAnalysis.convergenceRate.toFixed(4)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t text-xs text-muted-foreground">
+                Iterations: {convergenceAnalysis.iterations}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Phase 2: Language Recognition - Only show for DFA/NFA */}
+        {languageAnalysis && (automatonType === "dfa" || automatonType === "nfa") && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Language Recognition</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium">Language Type:</Label>
+                  <Badge variant="default">{languageAnalysis.languageType.toUpperCase()}</Badge>
+                </div>
+                {languageAnalysis.regularExpression && (
+                  <div className="p-2 bg-muted rounded-md text-sm font-mono">
+                    {languageAnalysis.regularExpression}
+                  </div>
+                )}
+                {languageAnalysis.description && (
+                  <p className="text-xs text-muted-foreground">{languageAnalysis.description}</p>
+                )}
+              </div>
+
+              <div className="pt-3 border-t space-y-2">
+                <Label className="text-xs text-muted-foreground">Language Properties</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span>Finite:</span>
+                    <Badge variant={languageAnalysis.properties.isFinite ? "default" : "secondary"}>
+                      {languageAnalysis.properties.isFinite ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span>Empty:</span>
+                    <Badge variant={languageAnalysis.properties.isEmpty ? "destructive" : "secondary"}>
+                      {languageAnalysis.properties.isEmpty ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span>Universal:</span>
+                    <Badge variant={languageAnalysis.properties.isUniversal ? "default" : "secondary"}>
+                      {languageAnalysis.properties.isUniversal ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {languageAnalysis.properties.alphabet.length > 0 && (
+                <div className="pt-3 border-t">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Alphabet</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {languageAnalysis.properties.alphabet.map((char) => (
+                      <Badge key={char} variant="outline" className="text-xs">
+                        {char}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {languageAnalysis.acceptedExamples.length > 0 && (
+                <div className="pt-3 border-t">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Accepted Examples</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {languageAnalysis.acceptedExamples.slice(0, 10).map((example, idx) => (
+                      <Badge key={idx} variant="default" className="text-xs bg-green-500">
+                        {example}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {languageAnalysis.rejectedExamples.length > 0 && (
+                <div className="pt-3 border-t">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Rejected Examples</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {languageAnalysis.rejectedExamples.slice(0, 10).map((example, idx) => (
+                      <Badge key={idx} variant="destructive" className="text-xs">
+                        {example}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
     </Tabs>
   ))
@@ -1634,29 +2763,28 @@ function ToolsContent() {
             
             const { x, y } = clientToWorld(e.clientX, e.clientY)
             
-            // Always update pending position immediately
+            // Update refs immediately
             pendingDragPosRef.current = { id: draggingStateId, x, y }
             currentDragPosRef.current = { id: draggingStateId, x, y }
             
-            // Throttle re-renders with RAF for smooth dragging
+            // Use RAF for smooth real-time updates - schedule immediately
             if (!dragRafRef.current) {
               dragRafRef.current = requestAnimationFrame(() => {
-                // Trigger minimal re-render only for the dragged node
                 setDragRenderTick(t => t + 1)
                 dragRafRef.current = null
               })
             }
           }
         } else if (didDragRef.current) {
-          // Already dragging, continue
+          // Already dragging, continue with real-time updates
           e.preventDefault()
           const { x, y } = clientToWorld(e.clientX, e.clientY)
           pendingDragPosRef.current = { id: draggingStateId, x, y }
           currentDragPosRef.current = { id: draggingStateId, x, y }
           
+          // Use RAF for smooth real-time updates - schedule immediately
           if (!dragRafRef.current) {
             dragRafRef.current = requestAnimationFrame(() => {
-              // Trigger minimal re-render only for the dragged node
               setDragRenderTick(t => t + 1)
               dragRafRef.current = null
             })
@@ -1687,12 +2815,6 @@ function ToolsContent() {
         setIsPanning(false)
       }
       if (draggingStateId && e.button === 0) {
-        // Cancel any pending RAF updates
-        if (dragRafRef.current) {
-          cancelAnimationFrame(dragRafRef.current)
-          dragRafRef.current = null
-        }
-        
         // Use current drag position from ref
         const finalPos = currentDragPosRef.current || pendingDragPosRef.current
         if (finalPos) {
@@ -1802,6 +2924,7 @@ function ToolsContent() {
   )
 
   // Helper to get state position (use refs only for currently dragging node)
+  // Memoized with useCallback but dependencies minimized for performance
   const getStatePosition = useCallback(
     (state: State) => {
       // ONLY use refs if this is the CURRENTLY dragging node
@@ -1822,14 +2945,27 @@ function ToolsContent() {
 
   // Visible world bounds (for simple virtualization)
   const visiblePad = 200
-  const { x0: _vx0, y0: _vy0, x1: _vx1, y1: _vy1 } = getVisibleWorldRect()
-  const vx0 = _vx0 - visiblePad
-  const vy0 = _vy0 - visiblePad
-  const vx1 = _vx1 + visiblePad
-  const vy1 = _vy1 + visiblePad
-  const visibleIds = new Set(
-    chain.states.filter((s) => s.x >= vx0 && s.x <= vx1 && s.y >= vy0 && s.y <= vy1).map((s) => s.id),
-  )
+  // Memoize visible rect calculation for performance
+  const visibleRect = useMemo(() => {
+    const { x0: _vx0, y0: _vy0, x1: _vx1, y1: _vy1 } = getVisibleWorldRect()
+    return {
+      vx0: _vx0 - visiblePad,
+      vy0: _vy0 - visiblePad,
+      vx1: _vx1 + visiblePad,
+      vy1: _vy1 + visiblePad,
+    }
+  }, [panOffset.x, panOffset.y, scale, getVisibleWorldRect, visiblePad])
+
+  // Memoize visible state IDs for performance
+  const visibleIds = useMemo(() => {
+    return new Set(
+      chain.states
+        .filter((s) => s.x >= visibleRect.vx0 && s.x <= visibleRect.vx1 && s.y >= visibleRect.vy0 && s.y <= visibleRect.vy1)
+        .map((s) => s.id)
+    )
+  }, [chain.states, visibleRect])
+
+  const { vx0, vy0, vx1, vy1 } = visibleRect
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
@@ -1857,26 +2993,48 @@ function ToolsContent() {
                 <h2 className="text-lg font-semibold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                   Chain Builder
                 </h2>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer">
-                        <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-xs">
-                      <div className="space-y-2">
-                        <p className="font-medium">Instructions:</p>
-                        <ul className="text-xs space-y-1">
+                <Popover.Root>
+                  <Popover.Trigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer">
+                      <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
+                    </Button>
+                  </Popover.Trigger>
+                  <Popover.Content 
+                    side="left" 
+                    className="max-w-sm z-50"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="space-y-3">
+                      <div>
+                        <p className="font-semibold text-sm mb-2">Instructions</p>
+                        <ul className="text-xs space-y-1 text-muted-foreground">
                           <li>• Click on canvas to add states</li>
                           <li>• Click a state, then another to create transitions</li>
                           <li>• Use the properties panel to edit values</li>
                           <li>• Drag on empty canvas to pan • Pinch/scroll to zoom</li>
                         </ul>
                       </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                      <div className="border-t pt-2">
+                        <p className="font-semibold text-sm mb-2">Color Coding</p>
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border-2" style={{ backgroundColor: '#10b98120', borderColor: '#10b981' }} />
+                            <span className="text-muted-foreground">Initial states (green)</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border-4" style={{ backgroundColor: '#ef444420', borderColor: '#ef4444' }} />
+                            <span className="text-muted-foreground">Final states (red)</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border-2" style={{ backgroundColor: '#3b82f620', borderColor: '#3b82f6' }} />
+                            <span className="text-muted-foreground">Regular states (unique colors)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Popover.Content>
+                </Popover.Root>
               </div>
               <p className="text-sm text-muted-foreground">
                 Create your own Markov chain by adding states and transitions
@@ -2212,8 +3370,8 @@ function ToolsContent() {
               {/* Transitions (filtered to visible endpoints) */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" className="fill-primary" />
+                  <marker id="arrowhead" markerWidth="6" markerHeight="5" refX="5.5" refY="2.5" orient="auto" markerUnits="strokeWidth">
+                    <path d="M 0 0 L 6 2.5 L 0 5 Z" className="fill-primary" stroke="none" />
                   </marker>
                   {/* Add filter for label background shadow */}
                   <filter id="label-shadow" x="-50%" y="-50%" width="200%" height="200%">
@@ -2228,121 +3386,94 @@ function ToolsContent() {
                     </feMerge>
                   </filter>
                 </defs>
-                {chain.transitions
-                  .filter((t) => visibleIds.has(t.from) || visibleIds.has(t.to))
-                  .map((transition) => {
-                  const fromState = chain.states.find((s) => s.id === transition.from)
-                  const toState = chain.states.find((s) => s.id === transition.to)
-                  if (!fromState || !toState) return null
+                {/* Render non-self-loop transitions first (so self-loops appear on top) - Memoized for performance */}
+                {useMemo(() => 
+                  chain.transitions
+                    .filter((t) => {
+                      const fromState = chain.states.find((s) => s.id === t.from)
+                      const toState = chain.states.find((s) => s.id === t.to)
+                      return (visibleIds.has(t.from) || visibleIds.has(t.to)) && fromState?.id !== toState?.id
+                    })
+                    .map((transition) => {
+                      const fromState = chain.states.find((s) => s.id === transition.from)
+                      const toState = chain.states.find((s) => s.id === transition.to)
+                      if (!fromState || !toState) return null
 
-                  const fromPos = getStatePosition(fromState)
-                  const toPos = getStatePosition(toState)
+                      const fromPos = getStatePosition(fromState)
+                      const toPos = getStatePosition(toState)
 
-                  const isSelfLoop = fromState.id === toState.id
+                      const reverseTransition = chain.transitions.find(
+                        (t) => t.from === transition.to && t.to === transition.from,
+                      )
+                      const isBidirectional = !!reverseTransition
 
-                  if (isSelfLoop) {
-                    const radius = 32
-                    const loopRadius = 28
-                    const s = fromState
-                    const sPos = fromPos
-                    const margin = 80
+                      const radius = 32
+                      const dx = toPos.x - fromPos.x
+                      const dy = toPos.y - fromPos.y
+                      const distance = Math.sqrt(dx * dx + dy * dy)
 
-                    const counts = { top: 0, right: 0, bottom: 0, left: 0 }
-                    for (const t of chain.transitions) {
-                      if (t.id === transition.id) continue
-                      if (t.from !== s.id && t.to !== s.id) continue
-                      const otherId = t.from === s.id ? t.to : t.from
-                      const other = chain.states.find((st) => st.id === otherId)
-                      if (!other) continue
-                      const dx = other.x - sPos.x
-                      const dy = other.y - sPos.y
-                      if (Math.abs(dy) > Math.abs(dx)) {
-                        if (dy < 0) counts.top++
-                        else counts.bottom++
-                      } else {
-                        if (dx > 0o0)
-                          counts.right++ // Fixed: Changed 00 to 0o0
-                        else counts.left++
-                      }
-                    }
+                      const fromX = fromPos.x + (dx / distance) * radius
+                      const fromY = fromPos.y + (dy / distance) * radius
+                      const toX = toPos.x - (dx / distance) * radius
+                      const toY = toPos.y - (dy / distance) * radius
 
-                    let preferred: "top" | "right" | "bottom" | "left" = "top"
-                    const centerX = CANVAS_WIDTH / 2
-                    const centerY = CANVAS_HEIGHT / 2
-                    const dxC = sPos.x - centerX
-                    const dyC = sPos.y - centerY
-                    if (Math.abs(dyC) > Math.abs(dxC)) preferred = dyC > 0 ? "bottom" : "top"
-                    else preferred = dxC > 0 ? "right" : "left"
+                      if (isBidirectional) {
+                        const canonicalFrom = fromState.id < toState.id ? fromState : toState
+                        const canonicalTo = canonicalFrom.id === fromState.id ? toState : fromState
+                        const baseDx = canonicalTo.x - canonicalFrom.x
+                        const baseDy = canonicalTo.y - canonicalFrom.y
+                        const baseDist = Math.sqrt(baseDx * baseDx + baseDy * baseDy) || 1
+                        const perpXUnit = -baseDy / baseDist
+                        const perpYUnit = baseDx / baseDist
 
-                    const avoid = new Set<string>()
-                    if (sPos.y < margin) avoid.add("top")
-                    if (sPos.y > CANVAS_HEIGHT - margin) avoid.add("bottom")
-                    if (sPos.x < margin) avoid.add("left")
-                    if (sPos.x > CANVAS_WIDTH - margin) avoid.add("right")
+                        const sign = transition.from === canonicalFrom.id ? 1 : -1
 
-                    const orientations: Array<"top" | "right" | "bottom" | "left"> = ["top", "right", "bottom", "left"]
-                    const ordered = [preferred, ...orientations.filter((o) => o !== preferred)]
-                    let orientation = ordered.filter((o) => !avoid.has(o)).sort((a, b) => counts[a] - counts[b])[0]
-                    if (!orientation) orientation = preferred
+                        const midX = (fromX + toX) / 2
+                        const midY = (fromY + toY) / 2
 
-                    let pathData = ""
-                    let labelX = sPos.x
-                    let labelY = sPos.y
-                    if (orientation === "top") {
-                      const cx = sPos.x
-                      const cy = sPos.y - radius - loopRadius
-                      const startX = sPos.x - radius * 0.7
-                      const startY = sPos.y - radius * 0.7
-                      const endX = sPos.x + radius * 0.7
-                      const endY = sPos.y - radius * 0.7
-                      pathData = `M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`
-                      labelX = cx
-                      labelY = cy - 8
-                    } else if (orientation === "bottom") {
-                      const cx = sPos.x
-                      const cy = sPos.y + radius + loopRadius
-                      const startX = sPos.x + radius * 0.7
-                      const startY = sPos.y + radius * 0.7
-                      const endX = sPos.x - radius * 0.7
-                      const endY = sPos.y + radius * 0.7
-                      pathData = `M ${startX} ${startY} Q ${cx + loopRadius} ${cy} ${cx} ${cy} Q ${cx - loopRadius} ${cy} ${endX} ${endY}`
-                      labelX = cx
-                      labelY = cy + 16
-                    } else if (orientation === "right") {
-                      const cx = sPos.x + radius + loopRadius
-                      const cy = sPos.y
-                      const startX = sPos.x + radius * 0.7
-                      const startY = sPos.y - radius * 0.7
-                      const endX = sPos.x + radius * 0.7
-                      const endY = sPos.y + radius * 0.7
-                      pathData = `M ${startX} ${startY} Q ${cx} ${cy - loopRadius} ${cx} ${cy} Q ${cx} ${cy + loopRadius} ${endX} ${endY}`
-                      labelX = cx + 14
-                      labelY = cy + 4
-                    } else if (orientation === "left") {
-                      const cx = sPos.x - radius - loopRadius
-                      const cy = sPos.y
-                      const startX = sPos.x - radius * 0.7
-                      const startY = sPos.y + radius * 0.7
-                      const endX = sPos.x - radius * 0.7
-                      const endY = sPos.y - radius * 0.7
-                      pathData = `M ${startX} ${startY} Q ${cx} ${cy + loopRadius} ${cx} ${cy} Q ${cx} ${cy - loopRadius} ${endX} ${endY}`
-                      labelX = cx - 14
-                      labelY = cy + 4
-                    }
+                        const CURVE_OFFSET = 60
+                        const ENDPOINT_OFFSET = 12
 
-                    const labelText = transition.probability.toFixed(2)
-                    const labelWidth = labelText.length * 7 + 8
-                    const labelHeight = 18
+                        const adjFromX = fromX + perpXUnit * ENDPOINT_OFFSET * sign
+                        const adjFromY = fromY + perpYUnit * ENDPOINT_OFFSET * sign
+                        const adjToX = toX + perpXUnit * ENDPOINT_OFFSET * sign
+                        const adjToY = toY + perpYUnit * ENDPOINT_OFFSET * sign
 
-                    return (
-                      <g key={transition.id}>
-                        <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="5" fill="none" opacity="0.92" />
-                        <path
-                          d={pathData}
-                          className="stroke-primary"
-                          strokeWidth="2.25"
-                          fill="none"
-                          markerEnd="url(#arrowhead)"
+                        const controlX = midX + perpXUnit * CURVE_OFFSET * sign
+                        const controlY = midY + perpYUnit * CURVE_OFFSET * sign
+
+                        const pathData = `M ${adjFromX} ${adjFromY} Q ${controlX} ${controlY} ${adjToX} ${adjToY}`
+
+                        const labelX = controlX
+                        const labelY = controlY
+
+                        // Show label if it exists, otherwise show probability
+                        const labelText = transition.label || transition.probability.toFixed(2)
+                        const labelWidth = labelText.length * 7 + 8
+                        const labelHeight = 18
+                        const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
+                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || '#3b82f6'
+                        // Color code transition based on current character being processed or simulation
+                        const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
+                        const isSimulationTransition = simulationTransitionId === transition.id
+                        // Use explicit color values for SVG - CSS variables don't work well in SVG
+                        const transitionColor = isCurrentCharTransition ? '#3b82f6' : (isHighlighted || isSimulationTransition ? fromStateColor : '#3b82f6')
+
+                        return (
+                          <g key={transition.id}>
+                            <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="8" fill="none" opacity="0.95" />
+                            <path
+                              d={pathData}
+                              className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
+                              stroke={transitionColor}
+                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
+                              fill="none"
+                              markerEnd="url(#arrowhead)"
+                              opacity="1"
+                              style={{
+                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
+                                transition: draggingStateId ? 'none' : 'all 0.3s ease-in-out',
+                              }}
                         />
                         <rect
                           x={labelX - labelWidth / 2}
@@ -2350,90 +3481,12 @@ function ToolsContent() {
                           width={labelWidth}
                           height={labelHeight}
                           rx="4"
-                          className="fill-background stroke-border"
-                          strokeWidth="1"
+                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-2 ring-primary' : ''}`}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "2" : "1"}
                           filter="url(#label-shadow)"
-                        />
-                        <text
-                          x={labelX}
-                          y={labelY + 4}
-                          textAnchor="middle"
-                          className="text-xs fill-foreground font-semibold select-none"
-                        >
-                          {labelText}
-                        </text>
-                      </g>
-                    )
-                  }
-
-                  const reverseTransition = chain.transitions.find(
-                    (t) => t.from === transition.to && t.to === transition.from,
-                  )
-                  const isBidirectional = !!reverseTransition
-
-                  const radius = 32
-                  const dx = toPos.x - fromPos.x
-                  const dy = toPos.y - fromPos.y
-                  const distance = Math.sqrt(dx * dx + dy * dy)
-
-                  const fromX = fromPos.x + (dx / distance) * radius
-                  const fromY = fromPos.y + (dy / distance) * radius
-                  const toX = toPos.x - (dx / distance) * radius
-                  const toY = toPos.y - (dy / distance) * radius
-
-                  if (isBidirectional) {
-                    const canonicalFrom = fromState.id < toState.id ? fromState : toState
-                    const canonicalTo = canonicalFrom.id === fromState.id ? toState : fromState
-                    const baseDx = canonicalTo.x - canonicalFrom.x
-                    const baseDy = canonicalTo.y - canonicalFrom.y
-                    const baseDist = Math.sqrt(baseDx * baseDx + baseDy * baseDy) || 1
-                    const perpXUnit = -baseDy / baseDist
-                    const perpYUnit = baseDx / baseDist
-
-                    const sign = transition.from === canonicalFrom.id ? 1 : -1
-
-                    const midX = (fromX + toX) / 2
-                    const midY = (fromY + toY) / 2
-
-                    const CURVE_OFFSET = 60
-                    const ENDPOINT_OFFSET = 12
-
-                    const adjFromX = fromX + perpXUnit * ENDPOINT_OFFSET * sign
-                    const adjFromY = fromY + perpYUnit * ENDPOINT_OFFSET * sign
-                    const adjToX = toX + perpXUnit * ENDPOINT_OFFSET * sign
-                    const adjToY = toY + perpYUnit * ENDPOINT_OFFSET * sign
-
-                    const controlX = midX + perpXUnit * CURVE_OFFSET * sign
-                    const controlY = midY + perpYUnit * CURVE_OFFSET * sign
-
-                    const pathData = `M ${adjFromX} ${adjFromY} Q ${controlX} ${controlY} ${adjToX} ${adjToY}`
-
-                    const labelX = controlX
-                    const labelY = controlY
-
-                    const labelText = transition.probability.toFixed(2)
-                    const labelWidth = labelText.length * 7 + 8
-                    const labelHeight = 18
-
-                    return (
-                      <g key={transition.id}>
-                        <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="5" fill="none" opacity="0.92" />
-                        <path
-                          d={pathData}
-                          className="stroke-primary"
-                          strokeWidth="2.25"
-                          fill="none"
-                          markerEnd="url(#arrowhead)"
-                        />
-                        <rect
-                          x={labelX - labelWidth / 2}
-                          y={labelY - labelHeight / 2}
-                          width={labelWidth}
-                          height={labelHeight}
-                          rx="4"
-                          className="fill-background stroke-border"
-                          strokeWidth="1"
-                          filter="url(#label-shadow)"
+                          style={{
+                            transition: draggingStateId ? 'none' : 'all 0.1s linear',
+                          }}
                         />
                         <text
                           x={labelX}
@@ -2446,25 +3499,38 @@ function ToolsContent() {
                       </g>
                     )
                   } else {
-                    const labelX = (fromX + toX) / 2
-                    const labelY = (fromY + toY) / 2 - 12
+                        const labelX = (fromX + toX) / 2
+                        const labelY = (fromY + toY) / 2 - 12
 
-                    const labelText = transition.probability.toFixed(2)
-                    const labelWidth = labelText.length * 7 + 8
-                    const labelHeight = 18
+                        // Show label if it exists, otherwise show probability
+                        const labelText = transition.label || transition.probability.toFixed(2)
+                        const labelWidth = labelText.length * 7 + 8
+                        const labelHeight = 18
+                        const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
+                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || '#3b82f6'
+                        // Color code transition based on current character being processed or simulation
+                        const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
+                        const isSimulationTransition = simulationTransitionId === transition.id
+                        // Use explicit color values for SVG - CSS variables don't work well in SVG
+                        const transitionColor = isCurrentCharTransition ? '#3b82f6' : (isHighlighted || isSimulationTransition ? fromStateColor : '#3b82f6')
 
-                    return (
-                      <g key={transition.id}>
-                        <line x1={fromX} y1={fromY} x2={toX} y2={toY} className="stroke-background dark:stroke-foreground/10" strokeWidth="4" opacity="0.8" />
-                        <line
-                          x1={fromX}
-                          y1={fromY}
-                          x2={toX}
-                          y2={toY}
-                          className="stroke-primary"
-                          strokeWidth="2"
-                          markerEnd="url(#arrowhead)"
-                          opacity="1"
+                        return (
+                          <g key={transition.id}>
+                            <line x1={fromX} y1={fromY} x2={toX} y2={toY} className="stroke-background dark:stroke-foreground/10" strokeWidth="7" opacity="0.95" />
+                            <line
+                              x1={fromX}
+                              y1={fromY}
+                              x2={toX}
+                              y2={toY}
+                              className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
+                              stroke={transitionColor}
+                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
+                              markerEnd="url(#arrowhead)"
+                              opacity="1"
+                              style={{
+                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
+                                transition: draggingStateId ? 'none' : 'all 0.3s ease-in-out',
+                              }}
                         />
                         <rect
                           x={labelX - labelWidth / 2}
@@ -2472,9 +3538,12 @@ function ToolsContent() {
                           width={labelWidth}
                           height={labelHeight}
                           rx="4"
-                          className="fill-background stroke-border"
-                          strokeWidth="1"
+                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-2 ring-primary' : ''}`}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "2" : "1"}
                           filter="url(#label-shadow)"
+                          style={{
+                            transition: draggingStateId ? 'none' : 'all 0.1s linear',
+                          }}
                         />
                         <text
                           x={labelX}
@@ -2487,42 +3556,209 @@ function ToolsContent() {
                       </g>
                     )
                   }
-                })}
+                    }),
+                  [chain.transitions, chain.states, visibleIds, highlightedTransitionId, currentChar, highlightedStateId, simulationTransitionId, draggingStateId, getStatePosition, dragRenderTick]
+                )}
+                
+                {/* Render self-loops separately after regular transitions (so they appear on top of states) - Memoized */}
+                {useMemo(() =>
+                  chain.transitions
+                    .filter((t) => {
+                      const fromState = chain.states.find((s) => s.id === t.from)
+                      const toState = chain.states.find((s) => s.id === t.to)
+                      return (visibleIds.has(t.from) || visibleIds.has(t.to)) && fromState?.id === toState?.id
+                    })
+                    .map((transition) => {
+                      const fromState = chain.states.find((s) => s.id === transition.from)
+                      const toState = chain.states.find((s) => s.id === transition.to)
+                      if (!fromState || !toState || fromState.id !== toState.id) return null
+
+                      const fromPos = getStatePosition(fromState)
+                      const radius = 32
+                      const loopRadius = 28
+                      const s = fromState
+                      const sPos = fromPos
+                      const margin = 80
+
+                      const counts = { top: 0, right: 0, bottom: 0, left: 0 }
+                      for (const t of chain.transitions) {
+                        if (t.id === transition.id) continue
+                        if (t.from !== s.id && t.to !== s.id) continue
+                        const otherId = t.from === s.id ? t.to : t.from
+                        const other = chain.states.find((st) => st.id === otherId)
+                        if (!other) continue
+                        const dx = other.x - sPos.x
+                        const dy = other.y - sPos.y
+                        if (Math.abs(dy) > Math.abs(dx)) {
+                          if (dy < 0) counts.top++
+                          else counts.bottom++
+                        } else {
+                          if (dx > 0) counts.right++
+                          else counts.left++
+                        }
+                      }
+
+                      let preferred: "top" | "right" | "bottom" | "left" = "top"
+                      const centerX = CANVAS_WIDTH / 2
+                      const centerY = CANVAS_HEIGHT / 2
+                      const dxC = sPos.x - centerX
+                      const dyC = sPos.y - centerY
+                      if (Math.abs(dyC) > Math.abs(dxC)) preferred = dyC > 0 ? "bottom" : "top"
+                      else preferred = dxC > 0 ? "right" : "left"
+
+                      const avoid = new Set<string>()
+                      if (sPos.y < margin) avoid.add("top")
+                      if (sPos.y > CANVAS_HEIGHT - margin) avoid.add("bottom")
+                      if (sPos.x < margin) avoid.add("left")
+                      if (sPos.x > CANVAS_WIDTH - margin) avoid.add("right")
+
+                      const orientations: Array<"top" | "right" | "bottom" | "left"> = ["top", "right", "bottom", "left"]
+                      const ordered = [preferred, ...orientations.filter((o) => o !== preferred)]
+                      let orientation = ordered.filter((o) => !avoid.has(o)).sort((a, b) => counts[a] - counts[b])[0]
+                      if (!orientation) orientation = preferred
+
+                      let pathData = ""
+                      let labelX = sPos.x
+                      let labelY = sPos.y
+                      if (orientation === "top") {
+                        const cx = sPos.x
+                        const cy = sPos.y - radius - loopRadius
+                        const startX = sPos.x - radius * 0.7
+                        const startY = sPos.y - radius * 0.7
+                        const endX = sPos.x + radius * 0.7
+                        const endY = sPos.y - radius * 0.7
+                        pathData = `M ${startX} ${startY} Q ${cx - loopRadius} ${cy} ${cx} ${cy} Q ${cx + loopRadius} ${cy} ${endX} ${endY}`
+                        labelX = cx
+                        labelY = cy - 8
+                      } else if (orientation === "bottom") {
+                        const cx = sPos.x
+                        const cy = sPos.y + radius + loopRadius
+                        const startX = sPos.x + radius * 0.7
+                        const startY = sPos.y + radius * 0.7
+                        const endX = sPos.x - radius * 0.7
+                        const endY = sPos.y + radius * 0.7
+                        pathData = `M ${startX} ${startY} Q ${cx + loopRadius} ${cy} ${cx} ${cy} Q ${cx - loopRadius} ${cy} ${endX} ${endY}`
+                        labelX = cx
+                        labelY = cy + 16
+                      } else if (orientation === "right") {
+                        const cx = sPos.x + radius + loopRadius
+                        const cy = sPos.y
+                        const startX = sPos.x + radius * 0.7
+                        const startY = sPos.y - radius * 0.7
+                        const endX = sPos.x + radius * 0.7
+                        const endY = sPos.y + radius * 0.7
+                        pathData = `M ${startX} ${startY} Q ${cx} ${cy - loopRadius} ${cx} ${cy} Q ${cx} ${cy + loopRadius} ${endX} ${endY}`
+                        labelX = cx + 14
+                        labelY = cy + 4
+                      } else if (orientation === "left") {
+                        const cx = sPos.x - radius - loopRadius
+                        const cy = sPos.y
+                        const startX = sPos.x - radius * 0.7
+                        const startY = sPos.y + radius * 0.7
+                        const endX = sPos.x - radius * 0.7
+                        const endY = sPos.y - radius * 0.7
+                        pathData = `M ${startX} ${startY} Q ${cx} ${cy + loopRadius} ${cx} ${cy} Q ${cx} ${cy - loopRadius} ${endX} ${endY}`
+                        labelX = cx - 14
+                        labelY = cy + 4
+                      }
+
+                      const labelText = transition.label || transition.probability.toFixed(2)
+                      const labelWidth = labelText.length * 7 + 8
+                      const labelHeight = 18
+                      const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
+                      const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || '#3b82f6'
+                      // Color code transition based on current character being processed or simulation
+                      const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
+                      const isSimulationTransition = simulationTransitionId === transition.id
+                      // Use explicit color values for SVG - CSS variables don't work well in SVG
+                      const transitionColor = isCurrentCharTransition ? '#3b82f6' : (isHighlighted || isSimulationTransition ? fromStateColor : '#3b82f6')
+
+                    return (
+                      <g key={`self-loop-${transition.id}`} style={{ zIndex: 10 }}>
+                        <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="8" fill="none" opacity="0.95" />
+                        <path
+                          d={pathData}
+                          className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
+                          stroke={transitionColor}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
+                          fill="none"
+                          markerEnd="url(#arrowhead)"
+                          opacity="1"
+                          style={{
+                            filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
+                            transition: draggingStateId ? 'none' : 'all 0.3s ease-in-out',
+                          }}
+                        />
+                        <rect
+                          x={labelX - labelWidth / 2}
+                          y={labelY - labelHeight / 2}
+                          width={labelWidth}
+                          height={labelHeight}
+                          rx="4"
+                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-2 ring-primary' : ''}`}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "2" : "1"}
+                          filter="url(#label-shadow)"
+                          style={{
+                            transition: draggingStateId ? 'none' : 'all 0.1s linear',
+                          }}
+                        />
+                        <text
+                          x={labelX}
+                          y={labelY + 4}
+                          textAnchor="middle"
+                          className="text-xs fill-foreground font-semibold select-none"
+                        >
+                          {labelText}
+                        </text>
+                      </g>
+                    )
+                  }),
+                  [chain.transitions, chain.states, visibleIds, highlightedTransitionId, currentChar, highlightedStateId, simulationTransitionId, draggingStateId, getStatePosition, dragRenderTick]
+                )}
               </svg>
 
-              {chain.states
-                .filter((s) => s.x >= vx0 && s.x <= vx1 && s.y >= vy0 && s.y <= vy1)
-                .map((state) => {
-                  const pos = getStatePosition(state)
-                  return (
+              {/* Memoized states rendering - only render visible states */}
+              {useMemo(() => 
+                chain.states
+                  .filter((s) => visibleIds.has(s.id))
+                  .map((state) => {
+                    // Skip expensive calculations if not dragging this state
+                    const isDragging = draggingStateId === state.id
+                    const pos = getStatePosition(state)
+                    return (
                 <Popover.Root key={state.id} open={openPopovers[state.id]} onOpenChange={(open) => setOpenPopovers(prev => ({ ...prev, [state.id]: open }))}>
                   <Popover.Trigger asChild>
                     <div
                       data-node-id={state.id}
                       className={`
                         absolute w-16 h-16 rounded-full border-2 flex items-center justify-center
-                        text-sm font-medium cursor-pointer transition-all transform -translate-x-8 -translate-y-8 select-none
+                        text-sm font-medium cursor-pointer transition-all duration-300 transform -translate-x-8 -translate-y-8 select-none
                         ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2" : ""}
                         ${currentState === state.id ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
+                        ${highlightedStateId === state.id || currentState === state.id ? "ring-4 ring-primary ring-offset-2 scale-125 animate-pulse" : ""}
+                        ${currentState === state.id && !highlightedStateId ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
                         ${draggingStateId === state.id ? "transition-none" : ""}
                         ${state.isFinal ? "border-4" : ""}
                       `}
                       style={{
                         left: pos.x,
                         top: pos.y,
-                        backgroundColor: state.color + "20",
-                        borderColor: state.color,
+                        backgroundColor: (highlightedStateId === state.id || currentState === state.id) ? state.color + "60" : state.color + "20",
+                        borderColor: (highlightedStateId === state.id || currentState === state.id) ? state.color : state.color,
                         color: state.color,
                         willChange: draggingStateId === state.id ? 'transform' : 'auto',
-                        boxShadow: state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
+                        boxShadow: (highlightedStateId === state.id || currentState === state.id)
+                          ? `0 0 20px ${state.color}CC, 0 0 0 3px ${state.color}60` 
+                          : state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
+                        transition: draggingStateId === state.id ? 'none' : undefined,
                       }}
                       onPointerDown={(e) => {
                         if (e.button !== 0) return
                         e.stopPropagation()
                         didDragRef.current = false
-                        setIsPanning(false) // Ensure panning is stopped when dragging node
+                        setIsPanning(false)
                         setDraggingStateId(state.id)
-                        dragStartPosRef.current = { x: e.clientX, y: e.clientY } // Track start position for threshold
+                        dragStartPosRef.current = { x: e.clientX, y: e.clientY }
                         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
                       }}
                       onPointerUp={(e) => {
@@ -2531,22 +3767,12 @@ function ToolsContent() {
                           ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
                         } catch {}
                         
-                        // Save the position BEFORE clearing draggingStateId
                         if (draggingStateId && didDragRef.current) {
-                          // Cancel any pending RAF updates
-                          if (dragRafRef.current) {
-                            cancelAnimationFrame(dragRafRef.current)
-                            dragRafRef.current = null
-                          }
-                          
-                          // Use current drag position from ref
                           const finalPos = currentDragPosRef.current || pendingDragPosRef.current
                           if (finalPos) {
                             setChain((prev) => {
-                              // Clamp node position to canvas bounds
                               const clampedX = Math.max(50, Math.min(CANVAS_WIDTH - 50, finalPos.x))
                               const clampedY = Math.max(50, Math.min(CANVAS_HEIGHT - 50, finalPos.y))
-                              // Only update the dragged node
                               const newStates = prev.states.map((s) =>
                                 s.id === finalPos.id ? { ...s, x: clampedX, y: clampedY } : s
                               )
@@ -2555,9 +3781,7 @@ function ToolsContent() {
                           }
                         }
                         
-                        // Now clear the drag state
                         if (draggingStateId) {
-                          // Clear refs after state update
                           currentDragPosRef.current = null
                           pendingDragPosRef.current = null
                           setDraggingStateId(null)
@@ -2587,7 +3811,6 @@ function ToolsContent() {
                       <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
                           <div className="relative w-full h-full flex items-center justify-center">
-                            {/* Initial state indicator - arrow pointing in */}
                             {state.isInitial && (
                               <div 
                                 className="absolute -left-8 top-1/2 -translate-y-1/2"
@@ -2598,80 +3821,80 @@ function ToolsContent() {
                                 </svg>
                               </div>
                             )}
-                            
-                            {/* State name */}
                             <span className="z-10 font-semibold max-w-[75%] truncate px-1">
                               {state.name}
                             </span>
-                            
-                            {/* Final state indicator - double circle border is handled by CSS */}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent 
                           side="top" 
                           className="bg-card/95 backdrop-blur-sm border-border/60 shadow-xl max-w-[280px] z-[9999] pointer-events-auto"
                           sideOffset={16}
-                          collisionPadding={16}
-                          avoidCollisions={true}
                         >
-                            <div className="space-y-2 text-xs">
-                              <div className="font-semibold text-sm border-b border-border/40 pb-1.5 mb-2">
-                                {state.name}
-                              </div>
-                              
-                              {/* Incoming transitions */}
-                              {(() => {
-                                const incoming = chain.transitions.filter(t => t.to === state.id)
-                                return incoming.length > 0 ? (
-                                  <div>
-                                    <div className="font-medium text-muted-foreground mb-1">
-                                      Incoming ({incoming.length}):
-                                    </div>
-                                    <div className="pl-2 space-y-0.5">
-                                      {incoming.map(t => {
-                                        const fromState = chain.states.find(s => s.id === t.from)
-                                        return (
-                                          <div key={t.id} className="text-xs">
-                                            {fromState?.name || 'Unknown'} → {(t.probability * 100).toFixed(1)}%
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-muted-foreground/60 italic">No incoming transitions</div>
-                                )
-                              })()}
-                              
-                              {/* Outgoing transitions */}
-                              {(() => {
-                                const outgoing = chain.transitions.filter(t => t.from === state.id)
-                                return outgoing.length > 0 ? (
-                                  <div>
-                                    <div className="font-medium text-muted-foreground mb-1">
-                                      Outgoing ({outgoing.length}):
-                                    </div>
-                                    <div className="pl-2 space-y-0.5">
-                                      {outgoing.map(t => {
-                                        const toState = chain.states.find(s => s.id === t.to)
-                                        return (
-                                          <div key={t.id} className="text-xs">
-                                            → {toState?.name || 'Unknown'} {(t.probability * 100).toFixed(1)}%
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-muted-foreground/60 italic">No outgoing transitions</div>
-                                )
-                              })()}
+                          <div className="space-y-2 text-xs">
+                            <div className="font-semibold text-sm border-b border-border/40 pb-1.5 mb-2">
+                              {state.name}
                             </div>
-                          </TooltipContent>
-                        </Tooltip>
+                            {(() => {
+                              const incoming = chain.transitions.filter(t => t.to === state.id)
+                              return incoming.length > 0 ? (
+                                <div className="space-y-1">
+                                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                    Incoming ({incoming.length})
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {incoming.map(t => {
+                                      const fromState = chain.states.find(s => s.id === t.from)
+                                      return (
+                                        <div key={t.id} className="text-[11px] flex items-center gap-1.5 text-foreground/80">
+                                          <span className="font-medium">{fromState?.name || 'Unknown'}</span>
+                                          <span className="text-muted-foreground">→</span>
+                                          <span className="text-muted-foreground">{(t.probability * 100).toFixed(1)}%</span>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-muted-foreground/50 italic">No incoming</div>
+                              )
+                            })()}
+                            {(() => {
+                              const outgoing = chain.transitions.filter(t => t.from === state.id)
+                              return outgoing.length > 0 ? (
+                                <div className="space-y-1">
+                                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                    Outgoing ({outgoing.length})
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {outgoing.map(t => {
+                                      const toState = chain.states.find(s => s.id === t.to)
+                                      return (
+                                        <div key={t.id} className="text-[11px] flex items-center gap-1.5 text-foreground/80">
+                                          <span className="text-muted-foreground">→</span>
+                                          <span className="font-medium">{toState?.name || 'Unknown'}</span>
+                                          <span className="text-muted-foreground">{(t.probability * 100).toFixed(1)}%</span>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-muted-foreground/50 italic">No outgoing</div>
+                              )
+                            })()}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </Popover.Trigger>
-                  <Popover.Content side="top" sideOffset={10} className="z-50 rounded-lg border bg-card p-3 shadow-md w-auto min-w-[280px] max-w-[90vw]">
+                  <Popover.Content 
+                    side="top" 
+                    sideOffset={10} 
+                    className="z-50 rounded-lg border bg-card p-3 shadow-md w-auto min-w-[280px] max-w-[90vw]"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 flex items-center gap-2">
@@ -2684,10 +3907,14 @@ function ToolsContent() {
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
-                                    setChain((prev) => ({
-                                      ...prev,
-                                      states: prev.states.map((s) => (s.id === state.id ? { ...s, name: editingStateName } : s)),
-                                    }))
+                                    if (editingStateName.trim()) {
+                                      setChain((prev) => ({
+                                        ...prev,
+                                        states: prev.states.map((s) =>
+                                          s.id === state.id ? { ...s, name: editingStateName.trim() } : s
+                                        ),
+                                      }))
+                                    }
                                     setEditingStateId(null)
                                     setEditingStateName("")
                                   } else if (e.key === 'Escape') {
@@ -2695,82 +3922,82 @@ function ToolsContent() {
                                     setEditingStateName("")
                                   }
                                 }}
-                                className="h-8 text-sm font-medium transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
-                                autoFocus
-                                placeholder="State name"
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 hover:bg-green-500/10 cursor-pointer"
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setChain((prev) => ({
-                                    ...prev,
-                                    states: prev.states.map((s) => (s.id === state.id ? { ...s, name: editingStateName } : s)),
-                                  }))
+                                onBlur={() => {
+                                  if (editingStateName.trim()) {
+                                    setChain((prev) => ({
+                                      ...prev,
+                                      states: prev.states.map((s) =>
+                                        s.id === state.id ? { ...s, name: editingStateName.trim() } : s
+                                      ),
+                                    }))
+                                  }
                                   setEditingStateId(null)
                                   setEditingStateName("")
                                 }}
-                                title="Save"
-                              >
-                                <Check className="h-4 w-4 text-green-600" />
-                              </Button>
+                                autoFocus
+                                className="h-8"
+                              />
                             </>
                           ) : (
                             <>
-                              <span className="font-semibold text-sm truncate">{state.name}</span>
+                              <span className="font-medium">{state.name}</span>
                               <Button
-                                size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0 hover:bg-primary/10 cursor-pointer"
-                                onPointerDown={(e) => e.stopPropagation()}
+                                size="icon"
+                                className="h-6 w-6"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setEditingStateId(state.id)
                                   setEditingStateName(state.name)
                                 }}
-                                title="Edit name"
                               >
-                                <Pencil className="h-3.5 w-3.5" />
+                                <Pencil className="h-3 w-3" />
                               </Button>
                             </>
                           )}
                         </div>
                         <Button
-                          size="sm"
-                          variant="destructive"
-                          onPointerDown={(e) => {
-                            e.stopPropagation()
-                          }}
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation()
                             e.preventDefault()
                             deleteState(state.id)
                           }}
-                          className="h-8 shrink-0"
+                          onPointerDown={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                          }}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       
-                      {/* State Type Controls */}
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-2 border-t">
+                      <div className="space-y-2 pt-2 border-t">
                         <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={state.isInitial || false}
                             onChange={(e) => {
                               e.stopPropagation()
-                              setChain((prev) => ({
-                                ...prev,
-                                states: prev.states.map((s) => 
-                                  s.id === state.id 
-                                    ? { ...s, isInitial: e.target.checked, isFinal: e.target.checked ? false : s.isFinal }
-                                    : s
-                                ),
-                              }))
+                              setChain((prev) => {
+                                const isInitial = e.target.checked
+                                const regularStateCount = prev.states.filter(s => !s.isInitial && !s.isFinal && s.id !== state.id).length
+                                return {
+                                  ...prev,
+                                  states: prev.states.map((s) => 
+                                    s.id === state.id 
+                                      ? { 
+                                          ...s, 
+                                          isInitial, 
+                                          isFinal: isInitial ? false : s.isFinal,
+                                          color: generateStateColor(regularStateCount, isInitial, s.isFinal && !isInitial)
+                                        }
+                                      : s
+                                  ),
+                                }
+                              })
                             }}
                             onPointerDown={(e) => e.stopPropagation()}
                             className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
@@ -2784,14 +4011,23 @@ function ToolsContent() {
                             checked={state.isFinal || false}
                             onChange={(e) => {
                               e.stopPropagation()
-                              setChain((prev) => ({
-                                ...prev,
-                                states: prev.states.map((s) => 
-                                  s.id === state.id 
-                                    ? { ...s, isFinal: e.target.checked, isInitial: e.target.checked ? false : s.isInitial }
-                                    : s
-                                ),
-                              }))
+                              setChain((prev) => {
+                                const isFinal = e.target.checked
+                                const regularStateCount = prev.states.filter(s => !s.isInitial && !s.isFinal && s.id !== state.id).length
+                                return {
+                                  ...prev,
+                                  states: prev.states.map((s) => 
+                                    s.id === state.id 
+                                      ? { 
+                                          ...s, 
+                                          isFinal, 
+                                          isInitial: isFinal ? false : s.isInitial,
+                                          color: generateStateColor(regularStateCount, s.isInitial && !isFinal, isFinal)
+                                        }
+                                      : s
+                                  ),
+                                }
+                              })
                             }}
                             onPointerDown={(e) => e.stopPropagation()}
                             className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
@@ -2809,38 +4045,20 @@ function ToolsContent() {
                         ) : (
                           chain.transitions
                             .filter((t) => t.from === state.id)
-                            .map((t) => {
-                              const to = chain.states.find((s) => s.id === t.to)
+                            .map((transition) => {
+                              const toState = chain.states.find((s) => s.id === transition.to)
                               return (
-                                <div key={t.id} className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs font-mono shrink-0 min-w-[2.5rem] justify-center">
-                                    {to?.name}
-                                  </Badge>
-                                  <Slider
-                                    value={[Number.isFinite(t.probability) ? t.probability : 0]}
-                                    onValueChange={(values) => updateTransitionProbability(t.id, roundProbability(values[0] ?? 0))}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    className="flex-1 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_.bg-primary]:h-1.5"
-                                  />
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    value={Number.isFinite(t.probability) ? t.probability.toFixed(2) : "0.00"}
-                                    onChange={(e) => {
-                                      const parsed = Number.parseFloat(e.target.value)
-                                      updateTransitionProbability(
-                                        t.id,
-                                        roundProbability(Number.isFinite(parsed) ? parsed : 0),
-                                      )
-                                    }}
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-16 h-7 text-xs font-mono text-center transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60"
-                                  />
+                                <div key={transition.id} className="flex items-center gap-2 text-xs">
+                                  <span className="w-16 font-medium">{toState?.name || "Unknown"}</span>
+                                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-primary transition-all duration-300"
+                                      style={{ width: `${(transition.probability || 0) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="w-12 text-right text-muted-foreground">
+                                    {((transition.probability || 0) * 100).toFixed(1)}%
+                                  </span>
                                 </div>
                               )
                             })
@@ -2849,8 +4067,10 @@ function ToolsContent() {
                     </div>
                   </Popover.Content>
                 </Popover.Root>
-                  )
-                })}
+                    )
+                  }),
+                [chain.states, visibleIds, getStatePosition, openPopovers, selectedState, currentState, highlightedStateId, draggingStateId, editingStateId, editingStateName, chain.transitions, addTransition, deleteState, updateTransitionProbability, roundProbability, setChain, setSelectedState, setDraggingStateId, setEditingStateId, setEditingStateName, setIsPanning, dragRenderTick]
+              )}
 
               {chain.states.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center animate-in fade-in-0 zoom-in-95 duration-500">
