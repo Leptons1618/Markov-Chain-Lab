@@ -1,6 +1,6 @@
 # Pre-deployment performance, reliability, and security plan
 
-This checklist captures concrete improvements to apply before production. It’s tailored to this repo (Next.js 15 App Router, React 19, pnpm, Tailwind v4) and Azure hosting.
+This checklist captures concrete improvements to apply before production. It’s tailored to this repo (Next.js 15 App Router, React 19, pnpm, Tailwind v4) and Vercel hosting.
 
 ## Objectives
 
@@ -11,9 +11,9 @@ This checklist captures concrete improvements to apply before production. It’s
 ## High-impact changes (do these first)
 
 1) Replace local file writes with a database or feature-flag them off
-- Current admin APIs write to `data/lms.json` which isn’t durable on Azure.
+- Current admin APIs write to `data/lms.json` which isn’t durable on Vercel.
 - Minimal path: disable mutation endpoints in production behind an env flag.
-- Preferred: add a DB (e.g., Postgres/Supabase, or Azure Database for PostgreSQL) and migrate read/write paths.
+- Preferred: add a DB (e.g., Postgres/Supabase) and migrate read/write paths.
 
 2) Image optimization
 - In `next.config.mjs`, `images.unoptimized: true` disables Next’s image pipeline. For production, remove this or scope remote patterns explicitly.
@@ -108,7 +108,7 @@ export default bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })({});
   - Tailwind v4 is already good; keep global CSS small, prefer component styles.
 - Error boundaries and logging
   - Add `error.tsx` and `not-found.tsx` per route segments.
-  - Log server errors to Application Insights or Sentry.
+  - Log server errors to Vercel Analytics or Sentry.
 - Security headers (via middleware)
   - Add a strict Content Security Policy (CSP), `X-Frame-Options`, `Referrer-Policy`, HSTS.
 
@@ -130,17 +130,20 @@ export function middleware(req: Request) {
 - Accessibility and i18n
   - Run an a11y audit; ensure UI components expose correct roles/labels.
 
-## Azure-specific performance and ops
+## Vercel-specific performance and ops
 
-- App Service plan
-  - Enable Always On; configure autoscale on CPU/Memory/Requests.
-  - Use Premium v3 for better perf and scaling characteristics.
-- CDN/Front Door
-  - Put Azure Front Door or Azure CDN in front for global caching of static assets (`_next/static`, images, fonts).
+- Edge Network
+  - Vercel automatically provides global CDN and edge caching for static assets (`_next/static`, images, fonts).
+  - Static pages are automatically cached at the edge.
+- Serverless Functions
+  - API routes run as serverless functions with automatic scaling.
+  - Configure function regions for optimal latency.
 - Compression
-  - App Service serves gzip; for Brotli, use Front Door/CDN.
+  - Vercel automatically serves gzip and Brotli compression.
 - Observability
-  - Enable Application Insights; add distributed tracing IDs to logs.
+  - Use Vercel Analytics for performance monitoring.
+  - Integrate with logging services (e.g., Sentry) for error tracking.
+  - Add distributed tracing IDs to logs.
 
 ## CI/CD hardening (GitHub Actions)
 
@@ -168,5 +171,5 @@ export function middleware(req: Request) {
 - [ ] Static/ISR routes marked; dynamic routes intentional
 - [ ] Heavy components are dynamically imported
 - [ ] Security headers set; no mixed content; CSP validated
-- [ ] Observability configured (App Insights/Sentry)
-- [ ] Rollback plan tested (slot swap or redeploy prior run)
+- [ ] Observability configured (Vercel Analytics/Sentry)
+- [ ] Rollback plan tested (Vercel deployment rollback)

@@ -84,11 +84,11 @@ This creates:
 **IMPORTANT: This is critical for production deployments!**
 
 1. Go to **Authentication** → **URL Configuration** in Supabase dashboard
-2. Set your **Site URL** to your production domain (e.g., `https://your-app.amplifyapp.com`)
+2. Set your **Site URL** to your production domain (e.g., `https://your-app.vercel.app`)
 3. Add redirect URLs (you can add multiple):
    - `http://localhost:3000/auth/callback` (for local development)
    - `https://your-production-domain.com/auth/callback` (for production)
-   - `https://your-app.amplifyapp.com/auth/callback` (if using AWS Amplify)
+   - `https://your-app.vercel.app/auth/callback` (if using Vercel)
 
 **Note:** The redirect URL must match exactly, including the protocol (http/https) and trailing path.
 
@@ -148,23 +148,26 @@ When users sign in:
 
 ## Production Deployment
 
-### AWS Amplify Deployment Checklist
+### Vercel Deployment Checklist
 
-1. **Set Environment Variables in AWS Amplify:**
-   - Go to your Amplify app → **App settings** → **Environment variables**
-   - Add:
+1. **Set Environment Variables in Vercel:**
+   - Go to your Vercel project → **Settings** → **Environment Variables**
+   - Add the following variables for Production, Preview, and Development environments:
      - `NEXT_PUBLIC_SUPABASE_URL` = Your Supabase project URL
      - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = Your Supabase anon key
      - `SUPABASE_SERVICE_ROLE_KEY` = Your Supabase service role key (for admin features)
-     - `NEXT_PUBLIC_SITE_URL` = Your Amplify app URL (e.g., `https://main.xxxxx.amplifyapp.com`)
+     - `NEXT_PUBLIC_SITE_URL` = Your Vercel deployment URL (e.g., `https://your-app.vercel.app`)
    
    **CRITICAL:** `NEXT_PUBLIC_SITE_URL` must be set to your production domain. This ensures email confirmation links and OAuth redirects work correctly.
+   
+   **Note:** If you're using a custom domain, set `NEXT_PUBLIC_SITE_URL` to your custom domain (e.g., `https://yourdomain.com`)
 
 2. **Configure Supabase Redirect URLs:**
    - Go to Supabase Dashboard → **Authentication** → **URL Configuration**
-   - Set **Site URL** to your Amplify app URL (e.g., `https://main.xxxxx.amplifyapp.com`)
+   - Set **Site URL** to your Vercel deployment URL (e.g., `https://your-app.vercel.app`)
    - Add **Redirect URLs**:
-     - `https://your-amplify-app.amplifyapp.com/auth/callback`
+     - `https://your-app.vercel.app/auth/callback` (Vercel deployment)
+     - `https://your-custom-domain.com/auth/callback` (if using custom domain)
      - `http://localhost:3000/auth/callback` (for local development)
 
 3. **Update Google OAuth Redirect URIs:**
@@ -172,12 +175,19 @@ When users sign in:
    - Navigate to **APIs & Services** → **Credentials**
    - Click on your OAuth 2.0 Client ID
    - Under **Authorized redirect URIs**, add:
-     - `https://your-project.supabase.co/auth/v1/callback` (Supabase callback)
-     - `https://your-amplify-app.amplifyapp.com/auth/callback` (Your production app)
+     - `https://your-project.supabase.co/auth/v1/callback` (Supabase callback - REQUIRED)
+     - `https://your-app.vercel.app/auth/callback` (Your Vercel deployment)
+     - `https://your-custom-domain.com/auth/callback` (If using custom domain)
    - Click **Save**
 
-4. **Verify Configuration:**
-   - Ensure HTTPS is enabled (Amplify provides this automatically)
+4. **Deploy to Vercel:**
+   - Connect your GitHub repository to Vercel
+   - Vercel will automatically detect Next.js and configure build settings
+   - Ensure environment variables are set before deploying
+   - After deployment, verify your production URL
+
+5. **Verify Configuration:**
+   - Ensure HTTPS is enabled (Vercel provides this automatically)
    - Test the authentication flow in production
    - Check browser console for any errors
    - Monitor Supabase dashboard → **Authentication** → **Logs** for issues
@@ -185,20 +195,21 @@ When users sign in:
 ### Common Production Issues
 
 **"localhost refused to connect" error:**
-- ✅ **MOST IMPORTANT:** Set `NEXT_PUBLIC_SITE_URL` environment variable in Amplify to your production URL (e.g., `https://main.xxxxx.amplifyapp.com`)
+- ✅ **MOST IMPORTANT:** Set `NEXT_PUBLIC_SITE_URL` environment variable in Vercel to your production URL (e.g., `https://your-app.vercel.app`)
 - ✅ Check Supabase URL Configuration has your production URL
 - ✅ Check Google Cloud Console has your production redirect URI
-- ✅ Verify all environment variables are set correctly in Amplify
+- ✅ Verify all environment variables are set correctly in Vercel
 - ✅ Clear browser cache and try again
-- ✅ After setting `NEXT_PUBLIC_SITE_URL`, redeploy your Amplify app
+- ✅ After setting `NEXT_PUBLIC_SITE_URL`, redeploy your Vercel project
 
 **Email confirmation not sending:**
-- ✅ Ensure `NEXT_PUBLIC_SITE_URL` is set correctly in Amplify
+- ✅ Ensure `NEXT_PUBLIC_SITE_URL` is set correctly in Vercel
 - ✅ Check Supabase → Authentication → Email Templates are enabled
 - ✅ Verify email confirmation is enabled in Supabase → Authentication → Settings
 - ✅ Check Supabase → Authentication → Logs for email sending errors
 
 **OAuth redirects to wrong domain:**
-- The code now uses `NEXT_PUBLIC_SITE_URL` environment variable (with fallback to `window.location.origin`)
-- Ensure `NEXT_PUBLIC_SITE_URL` is set correctly in Amplify
+- The code uses `NEXT_PUBLIC_SITE_URL` environment variable (with fallback to `window.location.origin`)
+- Ensure `NEXT_PUBLIC_SITE_URL` is set correctly in Vercel
 - Verify Supabase Site URL matches your production domain exactly
+- If using a custom domain, ensure both Vercel and Supabase are configured with the custom domain

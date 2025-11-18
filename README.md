@@ -97,7 +97,24 @@ The application uses **Supabase** for authentication and user management.
 
 ## Persistence
 
-User progress and admin data are stored in **Supabase** (PostgreSQL). Content data is currently stored in JSON files (`data/lms.json`) and managed through the admin panel.
+User progress, admin data, and tool designs are stored in **Supabase** (PostgreSQL). Content data is currently stored in JSON files (`data/lms.json`) and managed through the admin panel.
+
+## Deployment
+
+This application is designed to be deployed on **Vercel**. See `docs/AUTHENTICATION_SETUP.md` for detailed deployment instructions.
+
+### Quick Deploy to Vercel
+
+1. Connect your GitHub repository to [Vercel](https://vercel.com)
+2. Set environment variables in Vercel project settings:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_SITE_URL` (your Vercel deployment URL)
+3. Configure Supabase redirect URLs (see `docs/AUTHENTICATION_SETUP.md`)
+4. Deploy!
+
+Vercel will automatically detect Next.js and configure the build. Your app will be available at `https://your-app.vercel.app`.
 
 ## Documentation
 
