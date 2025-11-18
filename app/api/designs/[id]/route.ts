@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getDesignStore, saveDesignStore } from "@/lib/server/design-store"
+import { createClient } from "@/lib/supabase/server"
 
 // DELETE a specific design
 export async function DELETE(
@@ -7,18 +7,38 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const store = getDesignStore()
-    const initialLength = store.designs.length
-    store.designs = store.designs.filter((d) => d.id !== id)
-    
-    if (store.designs.length === initialLength) {
-      return NextResponse.json({ success: false, error: "Design not found" }, { status: 404 })
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401 }
+      )
     }
+
+    const { id } = await params
+
+    const { error } = await supabase
+      .from('user_designs')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('design_id', id)
     
-    await saveDesignStore()
+    if (error) {
+      console.error('Failed to delete design:', error)
+      return NextResponse.json(
+        { success: false, error: "Failed to delete design" },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to delete design" }, { status: 500 })
+    console.error('Error in DELETE /api/designs/[id]:', error)
+    return NextResponse.json(
+      { success: false, error: "Failed to delete design" },
+      { status: 500 }
+    )
   }
 }

@@ -47,6 +47,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { MainNav } from "@/components/main-nav"
+import { useAuth } from "@/components/auth/auth-provider"
+import { loadDesignsFromSupabase, saveDesignToSupabase, deleteDesignFromSupabase, mergeDesigns, type SavedDesign as SavedDesignType } from "@/lib/designs-sync"
 
 interface State {
   id: string
@@ -189,6 +191,7 @@ function scaleDesignToCanvas(design: MarkovChain, targetWidth: number, targetHei
 
 function ToolsContent() {
   const searchParams = useSearchParams()
+  const { user, isGuest } = useAuth()
   const [chain, setChain] = useState<MarkovChain>({ states: [], transitions: [] })
   const [originalExampleDesign, setOriginalExampleDesign] = useState<MarkovChain | null>(null)
   const [selectedState, setSelectedState] = useState<string | null>(null)
@@ -431,17 +434,38 @@ function ToolsContent() {
         .catch((err) => console.error("Failed to load example:", err))
     }
 
-    // Load saved designs from localStorage
-    try {
-      const savedDesignsData = localStorage.getItem('markov-saved-designs')
-      if (savedDesignsData) {
-        const designs = JSON.parse(savedDesignsData)
-        setSavedDesigns(designs)
+    // Load saved designs from localStorage and database
+    const loadDesigns = async () => {
+      try {
+        // Load from localStorage first (for guest users or fallback)
+        const savedDesignsData = localStorage.getItem('markov-saved-designs')
+        const localDesigns = savedDesignsData ? JSON.parse(savedDesignsData) : []
+
+        // If user is authenticated, load from database and merge
+        if (user && !isGuest) {
+          const { designs: remoteDesigns, error } = await loadDesignsFromSupabase()
+          if (error) {
+            console.error("Failed to load designs from database:", error)
+            // Fallback to localStorage
+            setSavedDesigns(localDesigns)
+          } else {
+            // Merge local and remote designs
+            const merged = mergeDesigns(localDesigns, remoteDesigns)
+            setSavedDesigns(merged)
+            // Update localStorage with merged designs
+            localStorage.setItem('markov-saved-designs', JSON.stringify(merged))
+          }
+        } else {
+          // Guest user - only use localStorage
+          setSavedDesigns(localDesigns)
+        }
+      } catch (err) {
+        console.error("Failed to load designs:", err)
       }
-    } catch (err) {
-      console.error("Failed to load designs from localStorage:", err)
     }
-  }, [searchParams])
+
+    loadDesigns()
+  }, [searchParams, user, isGuest])
 
   // Handle window resize to rescale loaded examples responsively
   useEffect(() => {
@@ -791,7 +815,7 @@ function ToolsContent() {
     setSaveDialogOpen(true)
   }, [chain.states.length])
 
-  const handleSaveConfirm = useCallback(() => {
+  const handleSaveConfirm = useCallback(async () => {
     if (!saveName.trim()) {
       alert("Please enter a name for your design")
       return
@@ -815,8 +839,17 @@ function ToolsContent() {
       // Add new design
       const updatedDesigns = [...existingDesigns, newDesign]
       localStorage.setItem('markov-saved-designs', JSON.stringify(updatedDesigns))
-      
       setSavedDesigns(updatedDesigns)
+
+      // Save to database if authenticated
+      if (user && !isGuest) {
+        const { error } = await saveDesignToSupabase(newDesign)
+        if (error) {
+          console.error("Failed to save design to database:", error)
+          // Design is still saved locally, so we continue
+        }
+      }
+
       setHasUnsavedChanges(false)
       setSaveDialogOpen(false)
       setSaveName("")
@@ -824,7 +857,7 @@ function ToolsContent() {
       console.error("Failed to save design:", error)
       alert("Failed to save design. Please try again.")
     }
-  }, [saveName, chain])
+  }, [saveName, chain, user, isGuest])
 
   const loadDesign = useCallback(
     (design: SavedDesign) => {
@@ -844,7 +877,7 @@ function ToolsContent() {
     [resetSimulation],
   )
 
-  const deleteDesign = useCallback((id: string) => {
+  const deleteDesign = useCallback(async (id: string) => {
     try {
       const savedDesignsData = localStorage.getItem('markov-saved-designs')
       if (savedDesignsData) {
@@ -852,12 +885,21 @@ function ToolsContent() {
         const updatedDesigns = designs.filter((d: SavedDesign) => d.id !== id)
         localStorage.setItem('markov-saved-designs', JSON.stringify(updatedDesigns))
         setSavedDesigns(updatedDesigns)
+
+        // Delete from database if authenticated
+        if (user && !isGuest) {
+          const { error } = await deleteDesignFromSupabase(id)
+          if (error) {
+            console.error("Failed to delete design from database:", error)
+            // Design is still deleted locally, so we continue
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to delete design:", error)
       alert("Failed to delete design. Please try again.")
     }
-  }, [])
+  }, [user, isGuest])
 
   const newDesign = useCallback(() => {
     if (hasUnsavedChanges) {

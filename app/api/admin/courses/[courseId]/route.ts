@@ -1,5 +1,24 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getStore, saveStore } from "@/lib/server/lms-store"
+import { createClient } from "@/lib/supabase/server"
+import { isAdmin } from "@/lib/admin-auth"
+
+// Helper function to check admin privileges
+async function checkAdminAccess() {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { authorized: false, error: "Not authenticated", status: 401 }
+  }
+
+  const adminStatus = await isAdmin(user.id)
+  if (!adminStatus) {
+    return { authorized: false, error: "Access denied. Admin privileges required.", status: 403 }
+  }
+
+  return { authorized: true, user }
+}
 
 // GET single course
 export async function GET(
@@ -27,6 +46,15 @@ export async function PUT(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
+    // Check admin privileges
+    const authCheck = await checkAdminAccess()
+    if (!authCheck.authorized) {
+      return NextResponse.json(
+        { success: false, error: authCheck.error },
+        { status: authCheck.status }
+      )
+    }
+
     const { courseId } = await params
     const body = await request.json()
     const { courses } = getStore()
@@ -55,6 +83,15 @@ export async function DELETE(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
+    // Check admin privileges
+    const authCheck = await checkAdminAccess()
+    if (!authCheck.authorized) {
+      return NextResponse.json(
+        { success: false, error: authCheck.error },
+        { status: authCheck.status }
+      )
+    }
+
     const { courseId } = await params
     const { courses } = getStore()
     const courseIndex = courses.findIndex(c => c.id === courseId)

@@ -39,5 +39,5 @@ export function setGuestMode(enabled: boolean): void {
  * Get guest mode warning message
  */
 export function getGuestModeWarning(): string {
-  return "You're in guest mode. Your progress and achievements are stored locally and may be lost if you clear your browser data. Sign in to save your progress across devices."
+  return "Progress is stored locally. Sign in to save across devices."
 }

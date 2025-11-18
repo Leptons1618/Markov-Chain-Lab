@@ -40,27 +40,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Check guest mode first
-    const guest = isGuestMode()
-    setIsGuest(guest)
-
-    if (guest) {
-      setLoading(false)
-      return
-    }
-
-    // Get initial session
+    // Get initial session first to check if user is authenticated
+    // This ensures that if user signed in while in guest mode, we detect it
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error('Error getting session:', error)
+        // Check guest mode as fallback
+        const guest = isGuestMode()
+        setIsGuest(guest)
         setUser(null)
         setLoading(false)
         return
       }
 
-      // Set user from session - don't verify immediately to avoid timing issues
-      setUser(session?.user ?? null)
-      setLoading(false)
+      // If user has a session, disable guest mode and set user
+      if (session?.user) {
+        setIsGuest(false)
+        setGuestMode(false)
+        setUser(session.user)
+        setLoading(false)
+        
+        // Continue with verification below
+      } else {
+        // No session - check guest mode
+        const guest = isGuestMode()
+        setIsGuest(guest)
+        setUser(null)
+        setLoading(false)
+        return
+      }
       
       // Verify user exists asynchronously (only to detect deleted accounts)
       if (session?.user) {
@@ -114,8 +122,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser)
       
       if (newUser) {
+        // Disable guest mode when user signs in
         setIsGuest(false)
         setGuestMode(false)
+        
+        // Clear guest mode from localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('markov-guest-mode')
+        }
         
         // Create initial user_progress record on sign-up/sign-in
         if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
@@ -248,6 +262,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       })
+      
+      // If sign in successful, disable guest mode
+      if (!error) {
+        setIsGuest(false)
+        setGuestMode(false)
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('markov-guest-mode')
+        }
+      }
+      
       return { error }
     } catch (error) {
       return { error: error as Error }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/admin-auth'
+import { createServiceClient } from '@/lib/supabase/service'
 
 /**
  * Admin authentication API route
@@ -20,6 +21,22 @@ export async function GET(request: NextRequest) {
           error: 'Not authenticated'
         },
         { status: 401 }
+      )
+    }
+
+    // Verify user still exists in auth system (check if user was deleted)
+    const serviceClient = createServiceClient()
+    const { data: userData, error: userError } = await serviceClient.auth.admin.getUserById(user.id)
+    
+    if (userError || !userData) {
+      // User was deleted
+      return NextResponse.json(
+        { 
+          authenticated: false,
+          isAdmin: false,
+          error: 'User account not found'
+        },
+        { status: 404 }
       )
     }
 

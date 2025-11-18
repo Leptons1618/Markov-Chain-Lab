@@ -1,5 +1,24 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getStore, updateCourseLessonCounts, saveStore, type Lesson } from "@/lib/server/lms-store"
+import { createClient } from "@/lib/supabase/server"
+import { isAdmin } from "@/lib/admin-auth"
+
+// Helper function to check admin privileges
+async function checkAdminAccess() {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { authorized: false, error: "Not authenticated", status: 401 }
+  }
+
+  const adminStatus = await isAdmin(user.id)
+  if (!adminStatus) {
+    return { authorized: false, error: "Access denied. Admin privileges required.", status: 403 }
+  }
+
+  return { authorized: true, user }
+}
 
 // GET all lessons or filter by courseId
 export async function GET(request: NextRequest) {
@@ -22,6 +41,15 @@ export async function GET(request: NextRequest) {
 // POST create new lesson
 export async function POST(request: NextRequest) {
   try {
+    // Check admin privileges
+    const authCheck = await checkAdminAccess()
+    if (!authCheck.authorized) {
+      return NextResponse.json(
+        { success: false, error: authCheck.error },
+        { status: authCheck.status }
+      )
+    }
+
     const body = await request.json()
     const { courseId, title, description, content } = body
 

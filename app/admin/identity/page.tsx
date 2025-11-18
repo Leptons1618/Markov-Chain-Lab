@@ -5,10 +5,42 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Shield, ShieldCheck, User, Search, Loader2, AlertCircle } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Shield, ShieldCheck, User, Search, Loader2, AlertCircle, Eye, MoreVertical, Mail, Trash2, RotateCcw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/components/auth/auth-provider"
+import Link from "next/link"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface UserWithProgress {
   id: string
@@ -31,6 +63,11 @@ export default function IdentityManagerPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [updating, setUpdating] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null)
+  const [resetProgressDialogOpen, setResetProgressDialogOpen] = useState<string | null>(null)
 
   useEffect(() => {
     loadUsers()
@@ -92,11 +129,106 @@ export default function IdentityManagerPage() {
     }
   }
 
+  const sendResetPassword = async (userId: string) => {
+    if (actionLoading) return
+
+    setActionLoading(userId)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send reset password email')
+      }
+
+      alert('Password reset email sent successfully')
+    } catch (err) {
+      console.error('Failed to send reset password:', err)
+      setError(err instanceof Error ? err.message : 'Failed to send reset password email')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const resetProgress = async (userId: string) => {
+    if (actionLoading) return
+
+    setActionLoading(userId)
+    setError(null)
+    setResetProgressDialogOpen(null)
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/reset-progress`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to reset progress')
+      }
+
+      // Reload users to reflect changes
+      await loadUsers()
+      alert('User progress reset successfully')
+    } catch (err) {
+      console.error('Failed to reset progress:', err)
+      setError(err instanceof Error ? err.message : 'Failed to reset progress')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const deleteUser = async (userId: string) => {
+    if (actionLoading) return
+
+    setActionLoading(userId)
+    setError(null)
+    setDeleteDialogOpen(null)
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/delete`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete user')
+      }
+
+      // Reload users to reflect changes
+      await loadUsers()
+      alert('User deleted successfully')
+    } catch (err) {
+      console.error('Failed to delete user:', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete user')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const filteredUsers = users.filter(
     (user) =>
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex)
+
+  // Reset to page 1 when search term or page size changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, pageSize])
 
   return (
     <div className="space-y-8">
@@ -114,8 +246,8 @@ export default function IdentityManagerPage() {
         </Alert>
       )}
 
-      {/* Search */}
-      <div className="flex gap-4">
+      {/* Search and Page Size Controls */}
+      <div className="flex gap-4 items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -125,9 +257,22 @@ export default function IdentityManagerPage() {
             className="pl-10 cursor-text"
           />
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Show:</span>
+          <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Users List */}
+      {/* Users Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -140,94 +285,248 @@ export default function IdentityManagerPage() {
           </p>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredUsers.map((user) => (
-            <Card key={user.id} className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
+        <>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Last Sign In</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">{user.name}</h3>
-                        {user.isAdmin && (
-                          <Badge variant="default" className="gap-1">
-                            <ShieldCheck className="h-3 w-3" />
-                            Admin
-                          </Badge>
-                        )}
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          {user.id === currentUser?.id && (
+                            <span className="text-xs text-muted-foreground">(You)</span>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Progress</p>
-                      <div className="flex items-center gap-2">
-                        <Progress value={user.progress.percentage} className="flex-1" />
-                        <span className="text-sm font-medium min-w-[3rem]">
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{user.email}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-[120px]">
+                        <div className="flex-1">
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {user.progress.completedLessons}/{user.progress.totalLessons}
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all"
+                              style={{ width: `${user.progress.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium min-w-[2.5rem]">
                           {user.progress.percentage}%
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {user.progress.completedLessons} of {user.progress.totalLessons} lessons completed
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Joined</p>
-                      <p className="text-sm font-medium">
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
                         {new Date(user.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Last Sign In</p>
-                      <p className="text-sm font-medium">
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
                         {user.lastSignIn
                           ? new Date(user.lastSignIn).toLocaleDateString()
                           : 'Never'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {user.isAdmin ? (
+                        <Badge variant="default" className="gap-1">
+                          <ShieldCheck className="h-3 w-3" />
+                          Admin
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">User</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/admin/identity/${user.id}`}>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Eye className="h-4 w-4" />
+                            Details
+                          </Button>
+                        </Link>
+                        <Button
+                          variant={user.isAdmin ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => toggleAdminRole(user.id, user.isAdmin)}
+                          disabled={updating === user.id || user.id === currentUser?.id}
+                          className="gap-2"
+                        >
+                          {updating === user.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Updating...
+                            </>
+                          ) : user.isAdmin ? (
+                            <>
+                              <Shield className="h-4 w-4" />
+                              Remove Admin
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="h-4 w-4" />
+                              Make Admin
+                            </>
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={actionLoading === user.id}>
+                              {actionLoading === user.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreVertical className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => sendResetPassword(user.id)}
+                              disabled={actionLoading === user.id}
+                            >
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Reset Password
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setResetProgressDialogOpen(user.id)}
+                              disabled={actionLoading === user.id}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Reset Progress
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteDialogOpen(user.id)}
+                              disabled={actionLoading === user.id || user.id === currentUser?.id}
+                              variant="destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
 
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant={user.isAdmin ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => toggleAdminRole(user.id, user.isAdmin)}
-                    disabled={updating === user.id || user.id === currentUser?.id}
-                    className="gap-2 min-w-[120px]"
-                  >
-                    {updating === user.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Updating...
-                      </>
-                    ) : user.isAdmin ? (
-                      <>
-                        <Shield className="h-4 w-4" />
-                        Remove Admin
-                      </>
-                    ) : (
-                      <>
-                        <ShieldCheck className="h-4 w-4" />
-                        Make Admin
-                      </>
-                    )}
-                  </Button>
-                  {user.id === currentUser?.id && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      (You)
-                    </p>
-                  )}
-                </div>
+          {/* Delete User Dialog */}
+          <AlertDialog open={deleteDialogOpen !== null} onOpenChange={(open) => !open && setDeleteDialogOpen(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete User</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this user? This action cannot be undone. All user data including progress will be permanently deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteDialogOpen && deleteUser(deleteDialogOpen)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Reset Progress Dialog */}
+          <AlertDialog open={resetProgressDialogOpen !== null} onOpenChange={(open) => !open && setResetProgressDialogOpen(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset User Progress</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to reset this user's progress? All lesson completion data will be cleared. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => resetProgressDialogOpen && resetProgress(resetProgressDialogOpen)}
+                >
+                  Reset Progress
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of{" "}
+                {filteredUsers.length} users
               </div>
-            </Card>
-          ))}
-        </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className="w-10"
+                        >
+                          {page}
+                        </Button>
+                      )
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return <span key={page} className="px-2">...</span>
+                    }
+                    return null
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Summary Stats */}

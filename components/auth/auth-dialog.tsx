@@ -302,7 +302,7 @@ export function AuthDialog({ open, onOpenChange, defaultTab = "signin" }: AuthDi
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Guest mode stores your progress locally. Your data may be lost if you clear your browser data or switch devices. Sign in to save your progress permanently.
+                Progress is stored locally. Sign in to save across devices.
               </AlertDescription>
             </Alert>
             <Button

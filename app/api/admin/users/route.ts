@@ -75,14 +75,14 @@ export async function GET(request: NextRequest) {
     // Get all user progress
     const { data: userProgress, error: progressError } = await serviceClient
       .from('user_progress')
-      .select('user_id, progress')
+      .select('user_id, progress_data')
 
     if (progressError) {
       console.error('Error fetching user progress:', progressError)
     }
 
     const progressMap = new Map(
-      (userProgress || []).map(up => [up.user_id, up.progress])
+      (userProgress || []).map(up => [up.user_id, up.progress_data || {}])
     )
 
     // Combine user data with progress and admin status

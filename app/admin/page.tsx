@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Plus, Settings, Loader2 } from "lucide-react"
+import { BookOpen, Plus, Users, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { fetchCourses, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
 
@@ -78,15 +78,15 @@ export default function AdminPage() {
               </Card>
             </Link>
 
-            <Link href="/admin/settings">
+            <Link href="/admin/identity">
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Settings</p>
-                    <p className="text-2xl font-bold">⚙</p>
+                    <p className="text-sm text-muted-foreground">Identity</p>
+                    <p className="text-2xl font-bold">👥</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-chart-3/10 flex items-center justify-center">
-                    <Settings className="h-5 w-5 text-chart-3" />
+                    <Users className="h-5 w-5 text-chart-3" />
                   </div>
                 </div>
               </Card>
