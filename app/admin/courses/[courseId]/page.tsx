@@ -2,14 +2,22 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Plus, Edit, Trash2, Save, Loader2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ArrowLeft, Plus, Edit, Trash2, Save, Loader2, Upload } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { fetchCourse, fetchLessonsByCourse, type Course, type Lesson } from "@/lib/lms"
@@ -24,6 +32,9 @@ export default function CourseDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const lessonFileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch course and lessons data
   useEffect(() => {
@@ -117,6 +128,51 @@ export default function CourseDetailPage() {
     } catch (error) {
       console.error("Failed to delete lesson:", error)
       alert("Failed to delete lesson. Please try again.")
+    }
+  }
+
+  const handleImportLesson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith(".json")) {
+      alert("Please upload a JSON file")
+      return
+    }
+
+    setImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("type", "lesson")
+      formData.append("courseId", courseId)
+
+      const response = await fetch("/api/admin/content/import-single", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        alert(`Import failed: ${data.error}`)
+        return
+      }
+
+      alert(`Lesson imported successfully!`)
+      
+      // Reload lessons
+      const courseLessons = await fetchLessonsByCourse(courseId)
+      setLessons(courseLessons.sort((a, b) => a.order - b.order))
+      setImportDialogOpen(false)
+      if (lessonFileInputRef.current) {
+        lessonFileInputRef.current.value = ""
+      }
+    } catch (error) {
+      console.error("Import error:", error)
+      alert("Failed to import lesson")
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -246,12 +302,23 @@ export default function CourseDetailPage() {
                   <CardTitle>Lessons</CardTitle>
                   <CardDescription>Manage course lessons</CardDescription>
                 </div>
-                <Link href={`/admin/courses/${courseId}/lessons/new`}>
-                  <Button size="sm" className="cursor-pointer">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Lesson
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setImportDialogOpen(true)}
+                    className="cursor-pointer"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import
                   </Button>
-                </Link>
+                  <Link href={`/admin/courses/${courseId}/lessons/new`}>
+                    <Button size="sm" className="cursor-pointer">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Lesson
+                    </Button>
+                  </Link>
+                </div>
               </CardHeader>
               <CardContent>
                 {lessons.length === 0 ? (
@@ -369,6 +436,44 @@ export default function CourseDetailPage() {
           </div>
         </div>
         ) : null}
+
+      {/* Import Lesson Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Lesson</DialogTitle>
+            <DialogDescription>
+              Upload a JSON file containing lesson data to import into this course
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Lesson JSON File</label>
+              <Input
+                ref={lessonFileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportLesson}
+                disabled={importing}
+                className="cursor-pointer"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImportDialogOpen(false)
+                if (lessonFileInputRef.current) {
+                  lessonFileInputRef.current.value = ""
+                }
+              }}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

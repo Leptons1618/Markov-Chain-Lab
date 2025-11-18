@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Save, Eye, Copy, Loader2 } from "lucide-react"
+import { Save, Eye, Copy, Loader2, Upload } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { fetchLesson, type Lesson } from "@/lib/lms"
@@ -25,6 +25,8 @@ export default function LessonEditorPage() {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [importingMarkdown, setImportingMarkdown] = useState(false)
+  const markdownFileInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch lesson data
   useEffect(() => {
@@ -69,6 +71,29 @@ export default function LessonEditorPage() {
       ...prev!,
       [name]: value,
     }))
+  }
+
+  const handleImportMarkdown = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !lessonData) return
+
+    setImportingMarkdown(true)
+    try {
+      const fileContent = await file.text()
+      setLessonData((prev) => ({
+        ...prev!,
+        content: fileContent,
+      }))
+      alert("Markdown content imported successfully!")
+    } catch (error) {
+      console.error("Import error:", error)
+      alert("Failed to import markdown file")
+    } finally {
+      setImportingMarkdown(false)
+      if (markdownFileInputRef.current) {
+        markdownFileInputRef.current.value = ""
+      }
+    }
   }
 
   const handleAutoSave = async () => {
@@ -236,8 +261,43 @@ export default function LessonEditorPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Lesson Content</CardTitle>
-                  <CardDescription>Write your lesson content in Markdown format</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Lesson Content</CardTitle>
+                      <CardDescription>Write your lesson content in Markdown format</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        ref={markdownFileInputRef}
+                        type="file"
+                        accept=".md,.markdown,.txt"
+                        onChange={handleImportMarkdown}
+                        disabled={importingMarkdown || isSaving}
+                        className="hidden"
+                        id="markdown-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markdownFileInputRef.current?.click()}
+                        disabled={importingMarkdown || isSaving}
+                        className="cursor-pointer"
+                      >
+                        {importingMarkdown ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Importing...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Import Markdown
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <Textarea

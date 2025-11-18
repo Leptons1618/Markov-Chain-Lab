@@ -274,7 +274,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/courses", label: "Courses" },
-    { href: "/admin/content-sync", label: "Sync" },
     { href: "/admin/identity", label: "Identity", icon: Users },
   ]
 
