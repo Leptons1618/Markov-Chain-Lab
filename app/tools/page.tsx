@@ -270,6 +270,18 @@ function SpeedDial({ value, onChange, min = 50, max = 1000, step = 50 }: { value
     }
   }, [isDragging, min, max, step, onChange])
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    // Scroll up (negative deltaY) = faster animation = decrease ms value
+    // Scroll down (positive deltaY) = slower animation = increase ms value
+    const delta = e.deltaY > 0 ? step : -step
+    const newValue = Math.max(min, Math.min(max, value + delta))
+    const clampedValue = Math.round(newValue / step) * step
+    if (clampedValue !== value) {
+      onChange(clampedValue)
+    }
+  }, [value, min, max, step, onChange])
+
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative">
@@ -277,6 +289,7 @@ function SpeedDial({ value, onChange, min = 50, max = 1000, step = 50 }: { value
           ref={dialRef}
           className="relative w-20 h-20 rounded-full border-2 border-border bg-muted/30 flex items-center justify-center cursor-pointer select-none touch-none"
           onMouseDown={handleMouseDown}
+          onWheel={handleWheel}
         >
           {/* Dial background circle */}
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
@@ -299,7 +312,7 @@ function SpeedDial({ value, onChange, min = 50, max = 1000, step = 50 }: { value
               strokeWidth="2.5"
               strokeDasharray={`${(percentage / 100) * 270 * Math.PI * 40 / 180} ${360 * Math.PI * 40 / 180}`}
               transform="rotate(-135 50 50)"
-              style={{ transition: 'stroke-dasharray 0.1s ease-out' }}
+              style={{ transition: 'none' }}
             />
           </svg>
           
@@ -313,14 +326,9 @@ function SpeedDial({ value, onChange, min = 50, max = 1000, step = 50 }: { value
               left: '50%',
               marginLeft: '-2px',
               marginTop: '-24px',
-              transition: 'transform 0.05s linear',
+              transition: 'none',
             }}
           />
-          
-          {/* Center value display */}
-          <div className="relative z-10 text-center">
-            <div className="text-sm font-bold text-foreground">{value}</div>
-          </div>
         </div>
         {/* Speed labels */}
         <div className="absolute -bottom-5 left-0 right-0 flex justify-between text-[9px] text-muted-foreground">
@@ -384,6 +392,9 @@ function ToolsContent() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [saveName, setSaveName] = useState("")
   const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([])
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false)
+  const [deleteDesignDialogOpen, setDeleteDesignDialogOpen] = useState(false)
+  const [designToDelete, setDesignToDelete] = useState<SavedDesign | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [pathHistoryLimit, setPathHistoryLimit] = useState<number | "all">(10)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -484,7 +495,7 @@ function ToolsContent() {
     path.push({ stateId: currentStateId, char: null, step: 0 })
     setCurrentPath([...path])
     setHighlightedStateId(currentStateId)
-    await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+    await new Promise((resolve) => setTimeout(resolve, Math.max(50, stringTestSpeed)))
 
     if (hasLabels) {
       // DFA/NFA mode: use labels
@@ -515,7 +526,10 @@ function ToolsContent() {
         // Take first matching transition (DFA should have only one)
         const transition = outgoingTransitions[0]
         setHighlightedTransitionId(transition.id)
-        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed / 2))
+        setCurrentChar(char)
+        // Update path immediately when transition is highlighted
+        const transitionDelay = Math.max(30, stringTestSpeed / 3)
+        await new Promise((resolve) => setTimeout(resolve, transitionDelay))
 
         currentStateId = transition.to
         path.push({ stateId: currentStateId, char, step: i + 1 })
@@ -523,7 +537,7 @@ function ToolsContent() {
         setHighlightedStateId(currentStateId)
         setHighlightedTransitionId(null)
         setCurrentChar(null)
-        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+        await new Promise((resolve) => setTimeout(resolve, Math.max(50, stringTestSpeed - transitionDelay)))
       }
     } else {
       // Markov mode: use probabilities (sample deterministically for testing)
@@ -545,13 +559,18 @@ function ToolsContent() {
         // Use highest probability transition
         const transition = outgoingTransitions.reduce((max, t) => (t.probability > max.probability ? t : max))
         setHighlightedTransitionId(transition.id)
-        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed / 2))
+        setCurrentChar(char)
+        // Update path immediately when transition is highlighted
+        const transitionDelay = Math.max(30, stringTestSpeed / 3)
+        await new Promise((resolve) => setTimeout(resolve, transitionDelay))
 
         currentStateId = transition.to
         path.push({ stateId: currentStateId, char, step: i + 1 })
+        setCurrentPath([...path])
         setHighlightedStateId(currentStateId)
         setHighlightedTransitionId(null)
-        await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
+        setCurrentChar(null)
+        await new Promise((resolve) => setTimeout(resolve, Math.max(50, stringTestSpeed - transitionDelay)))
       }
     }
 
@@ -1260,6 +1279,8 @@ function ToolsContent() {
       transitionUsage: {},
       pathHistory: [startStateId],
     })
+    // Initialize path trace for real-time display
+    setCurrentPath([{ stateId: startStateId, char: null, step: 0 }])
   }, [chain.states])
 
   const stepSimulation = useCallback(async () => {
@@ -1282,16 +1303,28 @@ function ToolsContent() {
 
     if (!selectedTransition) return
 
+    const nextState = selectedTransition.to
+    
+    // Update path trace immediately for real-time display (before animation delay)
+    setCurrentPath((prev) => {
+      return [...prev, { stateId: nextState, char: null, step: prev.length }]
+    })
+    
+    // Also update pathHistory immediately for consistency
+    setSimulationMetrics((prev) => ({
+      ...prev,
+      pathHistory: [...prev.pathHistory, nextState],
+    }))
+    
     // Animate transition
     setSimulationTransitionId(selectedTransition.id)
     await new Promise((resolve) => setTimeout(resolve, simulationSpeed / 2))
 
-    const nextState = selectedTransition.to
     setCurrentState(nextState)
     setSimulationTransitionId(null)
     setSimulationStep((prev) => prev + 1)
 
-    // Update metrics
+    // Update metrics (ensure all metrics are synced)
     setSimulationMetrics((prev) => ({
       stateVisits: {
         ...prev.stateVisits,
@@ -1301,7 +1334,7 @@ function ToolsContent() {
         ...prev.transitionUsage,
         [selectedTransition!.id]: (prev.transitionUsage[selectedTransition!.id] || 0) + 1,
       },
-      pathHistory: [...prev.pathHistory, nextState],
+      pathHistory: prev.pathHistory, // Already updated above
     }))
     
     // Brief pause before next step
@@ -1319,6 +1352,7 @@ function ToolsContent() {
       transitionUsage: {},
       pathHistory: [],
     })
+    setCurrentPath([])
     if (autoRunIntervalRef.current) {
       clearInterval(autoRunIntervalRef.current)
       autoRunIntervalRef.current = null
@@ -1479,12 +1513,8 @@ function ToolsContent() {
 
   const newDesign = useCallback(() => {
     if (hasUnsavedChanges) {
-      const confirmed = window.confirm("You have unsaved changes. Do you want to save before creating a new design?")
-      if (confirmed) {
-        // Open save dialog
-        setSaveDialogOpen(true)
-        return
-      }
+      setUnsavedChangesDialogOpen(true)
+      return
     }
     setChain({ states: [], transitions: [] })
     setHasUnsavedChanges(false)
@@ -1493,6 +1523,21 @@ function ToolsContent() {
     resetSimulation()
     setPanOffset({ x: 0, y: 0 })
   }, [hasUnsavedChanges, resetSimulation])
+
+  const handleUnsavedChangesSave = useCallback(() => {
+    setUnsavedChangesDialogOpen(false)
+    setSaveDialogOpen(true)
+  }, [])
+
+  const handleUnsavedChangesDiscard = useCallback(() => {
+    setUnsavedChangesDialogOpen(false)
+    setChain({ states: [], transitions: [] })
+    setHasUnsavedChanges(false)
+    setSelectedState(null)
+    setSelectedTransition(null)
+    resetSimulation()
+    setPanOffset({ x: 0, y: 0 })
+  }, [resetSimulation])
 
   const exportChain = useCallback(() => {
     const data = {
@@ -2096,16 +2141,25 @@ function ToolsContent() {
                   </Select>
                 </div>
                 <div className="flex items-center gap-1 flex-wrap text-xs">
-                  {(pathHistoryLimit === "all" ? simulationMetrics.pathHistory : simulationMetrics.pathHistory.slice(-pathHistoryLimit))
-                    .map((stateId, idx, arr) => {
+                  {(() => {
+                    // Always prefer currentPath if available (for real-time updates), otherwise use pathHistory
+                    const pathToDisplay = currentPath.length > 0 
+                      ? currentPath.map(p => p.stateId)
+                      : simulationMetrics.pathHistory
+                    const limitedPath = pathHistoryLimit === "all" ? pathToDisplay : pathToDisplay.slice(-pathHistoryLimit)
+                    return limitedPath.map((stateId, idx, arr) => {
                       const state = chain.states.find((s) => s.id === stateId)
+                      const isCurrentStep = isSimulating && idx === arr.length - 1 && currentState === stateId
                       return (
                         <span key={idx} className="flex items-center gap-1">
-                          <Badge variant="outline" className="text-xs">{state?.name}</Badge>
+                          <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
+                            {state?.name}
+                          </Badge>
                           {idx < arr.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />}
                         </span>
                       )
-                    })}
+                    })
+                  })()}
                 </div>
               </div>
             </CardContent>
@@ -2169,6 +2223,40 @@ function ToolsContent() {
                 </div>
               </div>
 
+            {/* Path Trace - Always visible during testing or when result exists */}
+            {(isTestingString && currentPath.length > 0) || (stringTestResult && (currentPath.length > 0 || stringTestResult.path.length > 0)) ? (
+              <div className="space-y-2 border-t pt-3 mt-3">
+                <Label className="text-xs text-muted-foreground">Path Trace</Label>
+                <div className="flex items-center gap-1 flex-wrap text-xs min-h-[2rem]">
+                  {(currentPath.length > 0 ? currentPath : stringTestResult?.path || []).map((step, idx) => {
+                    const state = chain.states.find((s) => s.id === step.stateId)
+                    const isCurrentStep = step.stateId === highlightedStateId
+                    return (
+                      <span key={idx} className="flex items-center gap-1">
+                        <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
+                          {state?.name}
+                        </Badge>
+                        {idx < (currentPath.length > 0 ? currentPath : stringTestResult?.path || []).length - 1 && step.char && (
+                          <>
+                            <span className={`font-medium ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`}>
+                              '{step.char}'
+                            </span>
+                            <ArrowRight className={`h-3 w-3 shrink-0 ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                          </>
+                        )}
+                      </span>
+                    )
+                  })}
+                  {currentChar && (
+                    <span className="flex items-center gap-1 ml-1">
+                      <span className="text-primary font-bold animate-pulse">'{currentChar}'</span>
+                      <ArrowRight className="h-3 w-3 text-primary animate-pulse shrink-0" />
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             {stringTestResult && (
               <div className="space-y-3 border-t pt-3">
                 <div className="flex items-center gap-2">
@@ -2188,43 +2276,10 @@ function ToolsContent() {
                     <span className="text-sm text-destructive">{stringTestResult.error}</span>
                   )}
                 </div>
-
-                {(currentPath.length > 0 || (stringTestResult && stringTestResult.path.length > 0)) && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Path Trace</Label>
-                    <div className="flex items-center gap-1 flex-wrap text-xs">
-                      {(currentPath.length > 0 ? currentPath : stringTestResult?.path || []).map((step, idx) => {
-                        const state = chain.states.find((s) => s.id === step.stateId)
-                        const isCurrentStep = step.stateId === highlightedStateId
-                        return (
-                          <span key={idx} className="flex items-center gap-1">
-                            <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
-                              {state?.name}
-                            </Badge>
-                            {idx < (currentPath.length > 0 ? currentPath : stringTestResult?.path || []).length - 1 && step.char && (
-                              <>
-                                <span className={`font-medium ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`}>
-                                  '{step.char}'
-                                </span>
-                                <ArrowRight className={`h-3 w-3 shrink-0 ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
-                              </>
-                            )}
-                          </span>
-                        )
-                      })}
-                      {currentChar && (
-                        <span className="flex items-center gap-1 ml-1">
-                          <span className="text-primary font-bold animate-pulse">'{currentChar}'</span>
-                          <ArrowRight className="h-3 w-3 text-primary animate-pulse shrink-0" />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-            <div className="space-y-2 border-t pt-3">
+            <div className={`space-y-2 border-t ${(isTestingString && currentPath.length > 0) || (stringTestResult && (currentPath.length > 0 || stringTestResult.path.length > 0)) ? 'pt-6' : 'pt-3'}`}>
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">Animation Speed</Label>
                 <span className="text-xs text-muted-foreground">{stringTestSpeed}ms</span>
@@ -2995,17 +3050,25 @@ function ToolsContent() {
                 </h2>
                 <Popover.Root>
                   <Popover.Trigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent focus-visible:ring-0 cursor-pointer">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 bg-muted/50 hover:bg-muted focus-visible:ring-0 cursor-pointer rounded-md">
                       <Info className="h-4 w-4 text-muted-foreground opacity-80 hover:opacity-100 transition-opacity" />
                     </Button>
                   </Popover.Trigger>
                   <Popover.Content 
                     side="left" 
-                    className="max-w-sm z-50"
+                    align="start"
+                    sideOffset={8}
+                    alignOffset={0}
+                    avoidCollisions={false}
+                    className="max-w-sm z-50 max-h-[70vh] overflow-y-auto bg-card border border-border shadow-lg"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
+                    onWheel={(e) => {
+                      // Allow natural scrolling within the popover
+                      e.stopPropagation()
+                    }}
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-3 p-1">
                       <div>
                         <p className="font-semibold text-sm mb-2">Instructions</p>
                         <ul className="text-xs space-y-1 text-muted-foreground">
@@ -3466,13 +3529,13 @@ function ToolsContent() {
                               d={pathData}
                               className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
                               stroke={transitionColor}
-                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
+                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "5" : "3"}
                               fill="none"
                               markerEnd="url(#arrowhead)"
                               opacity="1"
                               style={{
-                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
-                                transition: draggingStateId ? 'none' : 'all 0.3s ease-in-out',
+                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 12px ${transitionColor})` : undefined,
+                                transition: draggingStateId ? 'none' : 'all 0.05s linear',
                               }}
                         />
                         <rect
@@ -3524,12 +3587,12 @@ function ToolsContent() {
                               y2={toY}
                               className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
                               stroke={transitionColor}
-                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
+                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "5" : "3"}
                               markerEnd="url(#arrowhead)"
                               opacity="1"
                               style={{
-                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
-                                transition: draggingStateId ? 'none' : 'all 0.3s ease-in-out',
+                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 12px ${transitionColor})` : undefined,
+                                transition: draggingStateId ? 'none' : 'all 0.05s linear',
                               }}
                         />
                         <rect
@@ -3680,13 +3743,13 @@ function ToolsContent() {
                           d={pathData}
                           className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
                           stroke={transitionColor}
-                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "5" : "3"}
                           fill="none"
                           markerEnd="url(#arrowhead)"
                           opacity="1"
                           style={{
-                            filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
-                            transition: draggingStateId ? 'none' : 'all 0.3s ease-in-out',
+                            filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 12px ${transitionColor})` : undefined,
+                            transition: draggingStateId ? 'none' : 'all 0.05s linear',
                           }}
                         />
                         <rect
@@ -3750,7 +3813,7 @@ function ToolsContent() {
                         boxShadow: (highlightedStateId === state.id || currentState === state.id)
                           ? `0 0 20px ${state.color}CC, 0 0 0 3px ${state.color}60` 
                           : state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
-                        transition: draggingStateId === state.id ? 'none' : undefined,
+                        transition: draggingStateId === state.id ? 'none' : 'all 0.05s linear',
                       }}
                       onPointerDown={(e) => {
                         if (e.button !== 0) return
@@ -4169,9 +4232,8 @@ function ToolsContent() {
                             size="sm"
                             variant="destructive"
                             onClick={() => {
-                              if (confirm(`Delete "${design.name}"?`)) {
-                                deleteDesign(design.id)
-                              }
+                              setDesignToDelete(design)
+                              setDeleteDesignDialogOpen(true)
                             }}
                             className="transition-all duration-150"
                           >
@@ -4188,6 +4250,61 @@ function ToolsContent() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setLibraryOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={unsavedChangesDialogOpen} onOpenChange={setUnsavedChangesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Do you want to save before creating a new design?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnsavedChangesDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleUnsavedChangesDiscard}>
+              Discard
+            </Button>
+            <Button onClick={handleUnsavedChangesSave}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Design Confirmation Dialog */}
+      <Dialog open={deleteDesignDialogOpen} onOpenChange={setDeleteDesignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Design</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{designToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setDeleteDesignDialogOpen(false)
+              setDesignToDelete(null)
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                if (designToDelete) {
+                  deleteDesign(designToDelete.id)
+                  setDeleteDesignDialogOpen(false)
+                  setDesignToDelete(null)
+                }
+              }}
+            >
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
