@@ -1192,7 +1192,7 @@ function ToolsContent() {
     // Validate: only single character labels allowed
     if (label !== undefined && label !== "" && label.length > 1) {
       // Show toast error but don't lose focus
-      toast.error("Label must be a single character (a-z, 0-9)", {
+      toast("error", "Label must be a single character (a-z, 0-9)", {
         title: "Invalid Label",
         duration: 3000,
       })
@@ -1372,7 +1372,7 @@ function ToolsContent() {
       const convergenceRate = computeConvergenceRate(matrix)
       setConvergenceAnalysis({
         ...analysis,
-        convergenceRate,
+        convergenceRate: convergenceRate ?? undefined,
       })
     } catch (error) {
       console.error("Error computing convergence analysis:", error)
@@ -1399,10 +1399,8 @@ function ToolsContent() {
   // Save/Export functionality (must come after resetSimulation)
   const saveDesign = useCallback(() => {
     if (chain.states.length === 0) {
-      toast({
+      toast("error", "Cannot save an empty design. Please add at least one state.", {
         title: "Cannot Save",
-        description: "Cannot save an empty design. Please add at least one state.",
-        variant: "destructive",
         duration: 3000,
       })
       return
@@ -1412,10 +1410,8 @@ function ToolsContent() {
 
   const handleSaveConfirm = useCallback(async () => {
     if (!saveName.trim()) {
-      toast({
+      toast("error", "Please enter a name for your design.", {
         title: "Name Required",
-        description: "Please enter a name for your design.",
-        variant: "destructive",
         duration: 3000,
       })
       return
@@ -1455,10 +1451,8 @@ function ToolsContent() {
       setSaveName("")
     } catch (error) {
       console.error("Failed to save design:", error)
-      toast({
+      toast("error", "Failed to save design. Please try again.", {
         title: "Save Failed",
-        description: "Failed to save design. Please try again.",
-        variant: "destructive",
         duration: 4000,
       })
     }
@@ -1502,10 +1496,8 @@ function ToolsContent() {
       }
     } catch (error) {
       console.error("Failed to delete design:", error)
-      toast({
+      toast("error", "Failed to delete design. Please try again.", {
         title: "Delete Failed",
-        description: "Failed to delete design. Please try again.",
-        variant: "destructive",
         duration: 4000,
       })
     }
@@ -1664,24 +1656,19 @@ function ToolsContent() {
             setSelectedState(null)
             setSelectedTransition(null)
             resetSimulation()
-            toast({
+            toast("success", "Design imported successfully.", {
               title: "Import Successful",
-              description: "Design imported successfully.",
               duration: 3000,
             })
           } else {
-            toast({
+            toast("error", "Invalid file format. Please select a valid Markov chain JSON file.", {
               title: "Invalid File",
-              description: "Invalid file format. Please select a valid Markov chain JSON file.",
-              variant: "destructive",
               duration: 4000,
             })
           }
         } catch (error) {
-          toast({
+          toast("error", "Error reading file. Please select a valid JSON file.", {
             title: "Import Error",
-            description: "Error reading file. Please select a valid JSON file.",
-            variant: "destructive",
             duration: 4000,
           })
           console.error(error)
@@ -2336,8 +2323,8 @@ function ToolsContent() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              {(automatonType === "dfa" || automatonType === "nfa") && (
-                <p className="text-xs text-muted-foreground">{automatonType.toUpperCase()} mode: Using transition labels</p>
+              {automatonType !== "markov" && (
+                <p className="text-xs text-muted-foreground">{(automatonType === "dfa" ? "DFA" : "NFA")} mode: Using transition labels</p>
               )}
             </div>
 
@@ -4055,7 +4042,7 @@ function ToolsContent() {
                                           ...s, 
                                           isInitial, 
                                           isFinal: isInitial ? false : s.isFinal,
-                                          color: generateStateColor(regularStateCount, isInitial, s.isFinal && !isInitial)
+                                          color: generateStateColor(regularStateCount, isInitial, !!(s.isFinal && !isInitial))
                                         }
                                       : s
                                   ),
@@ -4085,7 +4072,7 @@ function ToolsContent() {
                                           ...s, 
                                           isFinal, 
                                           isInitial: isFinal ? false : s.isInitial,
-                                          color: generateStateColor(regularStateCount, s.isInitial && !isFinal, isFinal)
+                                          color: generateStateColor(regularStateCount, !!(s.isInitial && !isFinal), !!isFinal)
                                         }
                                       : s
                                   ),
