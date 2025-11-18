@@ -42,8 +42,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [userDeleted, setUserDeleted] = useState(false)
   const previousAdminStatusRef = useRef<boolean | null>(null)
 
-  // Check admin status with caching
-  const checkAdminStatus = async (skipCache = false) => {
+  // Check admin status with caching - memoized to prevent hook order issues
+  const checkAdminStatus = useCallback(async (skipCache = false) => {
     if (!user) {
       setIsAdmin(false)
       setCheckingAuth(false)
@@ -109,7 +109,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     } finally {
       setCheckingAuth(false)
     }
-  }
+  }, [user])
 
   // Initial check
   useEffect(() => {
@@ -121,14 +121,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       previousAdminStatusRef.current = null
     }
     checkAdminStatus()
-  }, [user])
+  }, [user, checkAdminStatus])
 
   // Set up Realtime subscription for admin status changes
   useEffect(() => {
-    if (!user || checkingAuth) return
+    // Always call hooks - use early return after hook setup
+    if (!user || checkingAuth) {
+      return
+    }
 
     let channel: ReturnType<typeof import('@/lib/supabase/client').createClient>['channel'] | null = null
-    let cleanup: (() => void) | null = null
+    let fallbackInterval: NodeJS.Timeout | null = null
 
     // Import createClient dynamically to avoid SSR issues
     import('@/lib/supabase/client').then(({ createClient }) => {
@@ -182,43 +185,52 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           } else if (status === 'CHANNEL_ERROR') {
             console.error('Realtime channel error - falling back to periodic check')
             // Fallback: if Realtime fails, do periodic checks
-            const fallbackInterval = setInterval(() => {
-              checkAdminStatus(true)
-            }, 30000) // Check every 30 seconds as fallback
-            cleanup = () => clearInterval(fallbackInterval)
+            if (!fallbackInterval) {
+              fallbackInterval = setInterval(() => {
+                checkAdminStatus(true)
+              }, 30000) // Check every 30 seconds as fallback
+            }
           }
         })
-
-      cleanup = () => {
-        if (channel) {
-          supabase.removeChannel(channel)
-        }
-      }
     }).catch((error) => {
       console.error('Failed to set up Realtime subscription:', error)
       // Fallback: if Realtime fails, do periodic checks
-      const fallbackInterval = setInterval(() => {
-        checkAdminStatus(true)
-      }, 30000) // Check every 30 seconds as fallback
-      cleanup = () => clearInterval(fallbackInterval)
+      if (!fallbackInterval) {
+        fallbackInterval = setInterval(() => {
+          checkAdminStatus(true)
+        }, 30000) // Check every 30 seconds as fallback
+      }
     })
 
     return () => {
-      if (cleanup) {
-        cleanup()
+      if (channel) {
+        import('@/lib/supabase/client').then(({ createClient }) => {
+          const supabase = createClient()
+          supabase.removeChannel(channel!)
+        }).catch(() => {
+          // Ignore cleanup errors
+        })
+      }
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval)
       }
     }
-  }, [user, checkingAuth])
+  }, [user, checkingAuth, checkAdminStatus])
 
   // Also listen for auth state changes (user deletion)
   useEffect(() => {
-    if (!user) return
+    // Always call hooks - use early return after hook setup
+    if (!user) {
+      return
+    }
+
+    let subscription: { unsubscribe: () => void } | null = null
 
     import('@/lib/supabase/client').then(({ createClient }) => {
       const supabase = createClient()
       
       const {
-        data: { subscription },
+        data: { subscription: authSubscription },
       } = supabase.auth.onAuthStateChange((event, session) => {
         // If user is signed out unexpectedly, they might have been deleted
         if (event === 'SIGNED_OUT' && session === null) {
@@ -230,10 +242,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         }
       })
 
-      return () => {
+      subscription = authSubscription
+    }).catch((error) => {
+      console.error('Failed to set up auth state listener:', error)
+    })
+
+    return () => {
+      if (subscription) {
         subscription.unsubscribe()
       }
-    })
+    }
   }, [user])
 
   const handleLogout = useCallback(async () => {
