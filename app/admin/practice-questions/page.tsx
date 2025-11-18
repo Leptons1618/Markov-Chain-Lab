@@ -172,8 +172,8 @@ export default function PracticeQuestionsPage() {
     }
   }
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  // FileUpload passes a File directly, so accept a File instead of an input change event
+  const handleFileSelect = async (file: File) => {
     if (!file) return
 
     if (!file.name.endsWith(".json")) {
@@ -184,7 +184,7 @@ export default function PracticeQuestionsPage() {
     try {
       const text = await file.text()
       const parsed = JSON.parse(text)
-      
+
       // Validate structure
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
         error("Invalid file format. Expected JSON with 'questions' array.")
@@ -198,6 +198,11 @@ export default function PracticeQuestionsPage() {
       console.error("File parse error:", err)
       error("Failed to parse JSON file. Please check the file format.")
     }
+  }
+
+  const handleFileRemove = () => {
+    setPreviewFile(null)
+    setPreviewData(null)
   }
 
   const handleUpload = async () => {
