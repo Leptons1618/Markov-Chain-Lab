@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Eye, Code, Copy, Check, List, X, FileText } from "lucide-react"
+import { smartWrapEquation, formatWrappedEquation } from "@/lib/equation-wrapper"
 
 // Small presentational icons used for copy actions
 function IconClipboard({ className }: { className?: string }) {
@@ -103,6 +105,7 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
   const [rawFlash, setRawFlash] = useState(false)
   const [copyFlash, setCopyFlash] = useState(false)
   const [tocFlash, setTocFlash] = useState(false)
+  const [copiedRaw, setCopiedRaw] = useState(false)
 
   // dynamic imports with graceful fallback for optional math libs
   useEffect(() => {
@@ -188,6 +191,17 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
 
   // Always call hooks, even if libs are not loaded yet
   const text = useMemo(() => content ?? "", [content])
+  
+  const handleCopyRaw = useCallback(() => {
+    try {
+      navigator.clipboard?.writeText(text)
+      setCopiedRaw(true)
+      setTimeout(() => setCopiedRaw(false), 2000)
+    } catch {
+      // ignore
+    }
+  }, [text])
+  
   const toc = useMemo(() => {
     const lines = text.split("\n")
     const out: { level: number; text: string; id: string }[] = []
@@ -290,19 +304,19 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
 
     function headingWithAnchor(level: number, id: string, children: any) {
       const Tag = `h${level}` as React.ElementType
-      // Map levels to explicit typography classes to ensure different sizes
+      // Map levels to explicit typography classes with visual hierarchy
       const sizeClass =
         level === 1
-          ? "text-3xl md:text-4xl font-bold mt-8 mb-4 leading-tight"
+          ? "text-3xl md:text-4xl font-bold mt-12 mb-6 leading-tight pb-3 border-b-2 border-primary/20"
           : level === 2
-          ? "text-2xl md:text-3xl font-semibold mt-8 mb-3 leading-tight"
+          ? "text-2xl md:text-3xl font-semibold mt-10 mb-4 leading-tight flex items-center gap-3 before:content-[''] before:w-1 before:h-6 before:bg-primary before:rounded-full"
           : level === 3
-          ? "text-xl md:text-2xl font-semibold mt-6 mb-2 leading-tight"
+          ? "text-xl md:text-2xl font-semibold mt-8 mb-3 leading-tight text-primary/90"
           : level === 4
-          ? "text-lg font-semibold mt-5 mb-2 leading-snug"
+          ? "text-lg font-semibold mt-6 mb-2 leading-snug"
           : level === 5
-          ? "text-base font-medium mt-4 mb-2 leading-snug"
-          : "text-sm font-medium mt-3 mb-2 leading-snug"
+          ? "text-base font-medium mt-5 mb-2 leading-snug"
+          : "text-sm font-medium mt-4 mb-2 leading-snug"
 
       // Render the heading text on the left and the anchor on the right.
       // Use flex to align the anchor to the end while preserving semantics.
@@ -310,7 +324,7 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
       // @ts-ignore
       return (
         // @ts-ignore
-        <Tag id={id} className={`group scroll-mt-24 flex items-center justify-between gap-3 ${sizeClass}`}>
+        <Tag id={id} className={`group scroll-mt-24 flex items-center justify-between gap-3 ${sizeClass} transition-colors hover:text-primary`}>
           <span className="flex-1">{children}</span>
         </Tag>
       )
@@ -353,7 +367,7 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
         }
 
         if (inline) {
-          return <code className="rounded px-1 py-0.5 bg-muted text-sm break-words" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{children}</code>
+          return <code className="rounded-md px-1.5 py-0.5 bg-primary/10 text-primary font-mono text-sm break-words border border-primary/20" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{children}</code>
         }
 
         const lines = codeText.split(/\r?\n/)
@@ -415,11 +429,22 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
           if (rehypeKatex && katexModule) {
             return <BlockMath latex={latex} id={id} />
           }
+          
+          // Smart wrap equation if it's too long (fallback when KaTeX not available)
+          const maxWidth = typeof window !== 'undefined' ? Math.min(100, window.innerWidth / 8) : 80
+          const wrapped = smartWrapEquation(latex, maxWidth)
+
           return (
             <div id={id} className="my-6 not-prose max-w-full w-full">
               <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full w-full">
                 <div className="flex flex-col sm:flex-row items-start justify-between gap-2 max-w-full w-full">
-                  <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto flex-1 min-w-0 max-w-full w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', maxWidth: '100%' }}>{latex}</pre>
+                  {wrapped && wrapped.lines.length > 1 ? (
+                    <pre className="whitespace-pre text-sm font-mono overflow-x-auto flex-1 min-w-0 max-w-full w-full leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'normal' }}>
+                      {formatWrappedEquation(wrapped)}
+                    </pre>
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto flex-1 min-w-0 max-w-full w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', maxWidth: '100%' }}>{latex}</pre>
+                  )}
                   <div className="flex flex-col items-end gap-2 flex-shrink-0 self-start sm:self-auto">
                     <CopyButton text={latex} variant="lambda" title="Copy LaTeX" ariaLabel="Copy LaTeX" className="px-2 py-1 text-xs rounded-md border" />
                   </div>
@@ -428,17 +453,20 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
             </div>
           )
         }
-        // Ensure consistent paragraph spacing and line-height
-        const className = [props?.className, "mt-4 mb-4 leading-relaxed text-base"].filter(Boolean).join(" ")
+        // Ensure consistent paragraph spacing and line-height with better readability
+        const className = [props?.className, "mt-5 mb-5 leading-relaxed text-base md:text-lg text-foreground/90"].filter(Boolean).join(" ")
         return <p {...props} className={className}>{children}</p>
       },
       video: ({ node, ...props }: any) => <video {...props} controls className="rounded-lg shadow-md max-w-full h-auto" />,
       blockquote: ({ children, ...props }: any) => (
         <blockquote 
           {...props} 
-          className="border-l-4 border-primary/50 pl-4 pr-4 py-2 my-6 italic bg-muted/30 rounded-r-md text-base leading-relaxed"
+          className="border-l-4 border-primary/60 pl-6 pr-4 py-4 my-8 italic bg-gradient-to-r from-primary/5 via-primary/5 to-transparent rounded-r-lg text-base md:text-lg leading-relaxed shadow-sm"
         >
-          {children}
+          <div className="flex items-start gap-3">
+            <span className="text-primary text-2xl leading-none">"</span>
+            <span className="flex-1">{children}</span>
+          </div>
         </blockquote>
       ),
       div: ({ node, children, ...props }: any) => {
@@ -489,79 +517,108 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       {!hideToolbar && (
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* study/reading mode removed */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-card/50 border border-border/50 rounded-lg backdrop-blur-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Toggle Raw/Preview */}
           <button
             onClick={() => {
               setShowRaw((s) => !s)
               setRawFlash(true)
-              window.setTimeout(() => setRawFlash(false), 700)
+              setTimeout(() => setRawFlash(false), 300)
             }}
-            className="px-2 py-1 rounded-md border text-sm relative overflow-hidden"
-            title="Toggle raw/preview"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-background hover:bg-muted transition-all duration-200 text-sm font-medium group"
+            title={showRaw ? "Switch to Preview" : "Switch to Raw"}
             aria-pressed={showRaw}
           >
-            <span className="flex items-center gap-2">
-              <span className={`transition-transform duration-200 ${rawFlash ? 'translate-y-0 scale-100 opacity-0' : ''}`}>{showRaw ? 'Preview' : 'Raw'}</span>
-              {/* tick animation appears briefly on click */}
-              <svg
-                viewBox="0 0 24 24"
-                className={`absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 transition-transform duration-300 ${rawFlash ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                aria-hidden
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </span>
+            {showRaw ? (
+              <>
+                <Eye className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                <span>Preview</span>
+              </>
+            ) : (
+              <>
+                <Code className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                <span>Raw</span>
+              </>
+            )}
+            {rawFlash && (
+              <Check className="h-4 w-4 text-emerald-500 animate-in fade-in-0 zoom-in-75 duration-200" />
+            )}
           </button>
-          <CopyButton text={text} title="Copy raw markdown" ariaLabel="Copy raw markdown" className="focus:outline-none focus:ring-2 focus:ring-offset-1" />
+
+          {/* Copy Raw Markdown */}
+          <button
+            onClick={handleCopyRaw}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-background hover:bg-muted transition-all duration-200 text-sm font-medium group relative"
+            title="Copy raw markdown"
+          >
+            {copiedRaw ? (
+              <>
+                <Check className="h-4 w-4 text-emerald-500 animate-in fade-in-0 zoom-in-75 duration-200" />
+                <span className="text-emerald-500">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+
+          {/* Toggle TOC */}
           <button
             onClick={() => {
               setShowToc((t) => !t)
               setTocFlash(true)
-              window.setTimeout(() => setTocFlash(false), 700)
+              setTimeout(() => setTocFlash(false), 300)
             }}
-            className="px-2 py-1 rounded-md border text-sm relative overflow-hidden"
-            title="Toggle table of contents"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-background hover:bg-muted transition-all duration-200 text-sm font-medium group"
+            title={showToc ? "Hide Table of Contents" : "Show Table of Contents"}
             aria-pressed={showToc}
           >
-            <span className="flex items-center gap-2">
-              <span className={`${tocFlash ? 'opacity-0' : 'opacity-100'} transition-opacity duration-150`}>{showToc ? 'Hide TOC' : 'Show TOC'}</span>
-            </span>
-            <svg
-              viewBox="0 0 24 24"
-              className={`absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 transition-all duration-300 ${tocFlash ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
+            {showToc ? (
+              <>
+                <X className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                <span>Hide TOC</span>
+              </>
+            ) : (
+              <>
+                <List className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                <span>Show TOC</span>
+              </>
+            )}
+            {tocFlash && (
+              <Check className="h-4 w-4 text-emerald-500 animate-in fade-in-0 zoom-in-75 duration-200" />
+            )}
           </button>
         </div>
 
-        <div className="text-sm text-muted-foreground">{wordCount} words • ~{readingTimeMinutes} min</div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <FileText className="h-4 w-4" />
+          <span>{wordCount} words</span>
+          <span>•</span>
+          <span>~{readingTimeMinutes} min</span>
+        </div>
       </div>
       )}
       <div className="w-full max-w-full overflow-x-hidden">
-        <div ref={containerRef} className="prose prose-lg md:prose-xl max-w-none lg:max-w-5xl xl:max-w-6xl mx-auto dark:prose-invert w-full">
+        <div ref={containerRef} className="prose prose-lg md:prose-xl max-w-none dark:prose-invert w-full">
           {/* TOC at start of content (collapsed by default) */}
           {showToc && toc.length > 0 && (
-            <div className="mb-4 p-3 border rounded bg-card">
-              <div className="flex items-center justify-between">
-                <strong className="text-sm">Contents</strong>
-                <span className="text-xs text-muted-foreground">{toc.length}</span>
+            <div className="mb-6 p-4 border border-border/50 rounded-lg bg-card/50 backdrop-blur-sm shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <List className="h-4 w-4 text-primary" />
+                  <strong className="text-sm font-semibold">Table of Contents</strong>
+                </div>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{toc.length} sections</span>
               </div>
-              <nav className="mt-2 text-sm">
-                <ul className="space-y-1">
+              <nav className="text-sm">
+                <ul className="space-y-2">
                   {toc.map((h) => (
-                    <li key={h.id} style={{ marginLeft: (h.level - 1) * 8 }}>
+                    <li key={h.id} style={{ marginLeft: `${(h.level - 1) * 12}px` }}>
                       <a
                         href={`#${h.id}`}
                         onClick={(e) => {
@@ -572,7 +629,11 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
                             window.scrollTo({ top: y, behavior: "smooth" })
                           }
                         }}
-                        className={`hover:underline ${activeHeading === h.id ? 'font-semibold text-primary' : ''}`}
+                        className={`block py-1 px-2 rounded-md transition-all duration-200 hover:bg-muted/50 ${
+                          activeHeading === h.id 
+                            ? 'font-semibold text-primary bg-primary/10 border-l-2 border-primary pl-3' 
+                            : 'text-foreground hover:text-primary'
+                        }`}
                       >
                         {h.text}
                       </a>
@@ -935,7 +996,16 @@ function BlockMath({ latex, id }: { latex: string; id: string }) {
     }
   }, [latex])
 
-  // copy handled by CopyButton component
+  // Smart wrap equation if it's too long
+  const wrapped = useMemo(() => {
+    if (rendered) {
+      // For rendered KaTeX, check if it overflows
+      return null
+    }
+    // For raw LaTeX, wrap if longer than reasonable width
+    const maxWidth = typeof window !== 'undefined' ? Math.min(100, window.innerWidth / 8) : 80
+    return smartWrapEquation(latex, maxWidth)
+  }, [latex, rendered])
 
   return (
     <div id={id} className="my-6 not-prose max-w-full w-full">
@@ -944,7 +1014,7 @@ function BlockMath({ latex, id }: { latex: string; id: string }) {
           <div className="prose max-w-none flex-1 min-w-0 w-full" style={{ overflow: 'auto', maxWidth: '100%' }}>
             {rendered ? (
               <div 
-                className="overflow-x-auto max-w-full w-full" 
+                className="overflow-x-auto max-w-full w-full katex-equation-wrapper" 
                 style={{ 
                   overflowWrap: 'anywhere',
                   maxWidth: '100%',
@@ -952,6 +1022,10 @@ function BlockMath({ latex, id }: { latex: string; id: string }) {
                 }}
                 dangerouslySetInnerHTML={{ __html: rendered }} 
               />
+            ) : wrapped && wrapped.lines.length > 1 ? (
+              <pre className="whitespace-pre text-sm font-mono overflow-x-auto max-w-full w-full leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'normal' }}>
+                {formatWrappedEquation(wrapped)}
+              </pre>
             ) : (
               <pre className="whitespace-pre-wrap break-words text-sm font-mono overflow-x-auto max-w-full w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', maxWidth: '100%' }}>{latex}</pre>
             )}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, ArrowRight, CheckCircle, Lightbulb, Calculator, RotateCcw, Clock } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle, Lightbulb, Calculator, RotateCcw, Clock, Eye, Code, Copy, Check, List, X, BookOpen, Target, TrendingUp, Sparkles, BookMarked, Award, Zap } from "lucide-react"
 import Link from "next/link"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { fetchLesson, fetchLessonsByCourse, fetchCourses, type Lesson, type Course } from "@/lib/lms"
@@ -21,6 +21,7 @@ export default function LessonPage({ params }: { params: any }) {
   const [courses, setCourses] = useState<Course[]>([])
   const [isLessonCompleted, setIsLessonCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [readingProgress, setReadingProgress] = useState(0)
   const { user, isGuest } = useAuth()
   const [coinFlips, setCoinFlips] = useState({
     heads: 0,
@@ -72,6 +73,20 @@ export default function LessonPage({ params }: { params: any }) {
       loadLesson()
     }
   }, [lessonId])
+
+  // Calculate reading progress (scroll-based)
+  useEffect(() => {
+    const handleScroll = () => {
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      const scrollTop = window.scrollY
+      const progress = (scrollTop / (documentHeight - windowHeight)) * 100
+      setReadingProgress(Math.min(100, Math.max(0, progress)))
+    }
+    
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const getCurrentLessonIndex = () => {
     return allLessons.findIndex((l) => l.id === lessonId)
@@ -198,112 +213,239 @@ export default function LessonPage({ params }: { params: any }) {
     )
   }
 
-  // Render markdown content directly (GFM). For structured JSON content, we can extend later.
+  const estimatedTime = formatEstimatedTime(estimateLessonTime(lesson.content))
+  const lessonNumber = currentLessonIndex + 1
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       <MainNav currentPath="/learn" showOverallProgress={true} overallProgress={progressPercentage} />
+      
+      {/* Reading Progress Bar */}
+      <div className="sticky top-16 z-30 h-1 bg-muted/50">
+        <div 
+          className="h-full bg-gradient-to-r from-primary via-primary/90 to-primary transition-all duration-150"
+          style={{ width: `${readingProgress}%` }}
+        />
+      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-8 space-y-8 w-full overflow-x-hidden">
-        <div className="space-y-4">
-          <Badge variant="outline">{lesson.title}</Badge>
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{lesson.title}</h1>
-              <p className="text-lg text-muted-foreground mt-2">{lesson.description}</p>
+      {/* Blog-style Header */}
+      <article className="w-full max-w-5xl mx-auto px-4 py-8 sm:px-6 md:px-8 lg:px-12 space-y-6 overflow-x-hidden">
+        {/* Hero Section */}
+        <header className="space-y-6 pb-8 border-b border-border/50">
+          {/* Breadcrumb & Meta */}
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Badge variant="outline" className="text-xs px-2 py-0.5 h-6">
+              <BookOpen className="h-3 w-3 mr-1" />
+              Lesson {lessonNumber} of {totalLessons}
+            </Badge>
+            <Badge variant="secondary" className="text-xs px-2 py-0.5 h-6 bg-primary/10 text-primary border-primary/20">
+              <Clock className="h-3 w-3 mr-1" />
+              {estimatedTime}
+            </Badge>
+            {isLessonCompleted && (
+              <Badge variant="default" className="text-xs px-2 py-0.5 h-6 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                <Award className="h-3 w-3 mr-1" />
+                Completed
+              </Badge>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground ml-auto">
+              <TrendingUp className="h-3 w-3" />
+              <span>{Math.round(progressPercentage)}% Course Progress</span>
+            </div>
+          </div>
+
+          {/* Title & Description */}
+          <div className="space-y-4">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              {lesson.title}
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl">
+              {lesson.description}
+            </p>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="flex flex-wrap items-center gap-4 pt-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Target className="h-4 w-4 text-primary" />
+              <span>Learning Objective</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span>{formatEstimatedTime(estimateLessonTime(lesson.content))}</span>
+              <Zap className="h-4 w-4 text-amber-500" />
+              <span>Interactive Content</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              <span>Hands-on Practice</span>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="space-y-8">
-          <Card className="p-4 sm:p-6 md:p-8 overflow-x-auto max-w-full">
-            <div className="min-w-0 max-w-full">
-              <MarkdownRenderer content={lesson.content} />
-            </div>
-          </Card>
-        </div>
-
-        {!isLessonCompleted && (
-          <div className="flex justify-center pt-4">
-            <Button onClick={markLessonComplete} size="lg" className="cursor-pointer transition-all duration-300 hover:scale-105">
-              <CheckCircle className="mr-2 h-5 w-5" />
-              Mark Lesson Complete
-            </Button>
+        {/* Main Content */}
+        <div className="max-w-4xl mx-auto">
+          <div className="prose prose-lg md:prose-xl max-w-none dark:prose-invert prose-headings:font-bold prose-headings:tracking-tight prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:font-semibold prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:bg-muted/50 prose-pre:border prose-blockquote:border-l-4 prose-blockquote:border-primary/50 prose-blockquote:bg-muted/30 prose-blockquote:pl-4 prose-blockquote:italic">
+            <MarkdownRenderer content={lesson.content} />
           </div>
-        )}
-        
-        {isLessonCompleted && (
-          <div className="flex justify-center pt-4">
-            <Badge variant="secondary" className="text-sm px-4 py-2 bg-primary/10 text-primary border-primary/20">
-              <CheckCircle className="mr-2 h-4 w-4 inline" />
-              Lesson Completed!
-            </Badge>
-          </div>
-        )}
 
-        <div className="flex items-center justify-between pt-8 border-t border-border">
-          {previousLesson ? (
-            <Link href={`/learn/${previousLesson.id}`}>
-              <Button variant="outline" className="cursor-pointer bg-transparent transition-all duration-200 hover:scale-105">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Previous
-              </Button>
-            </Link>
-          ) : (
-            <Button variant="outline" disabled className="cursor-not-allowed bg-transparent opacity-50">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Previous
-            </Button>
-          )}
-
-
-          {nextLesson ? (
-            <Link href={`/learn/${nextLesson.id}`}>
-              <Button className="cursor-pointer transition-all duration-200 hover:scale-105" disabled={!isLessonCompleted}>
-                Next Lesson
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          ) : isLessonCompleted ? (
-            <div className="flex items-center gap-2">
-              {nextCourse ? (
-                <Link
-                  href="/learn"
-                  onClick={() => {
-                    try { localStorage.setItem('markov-selected-course', nextCourse.id) } catch {}
-                  }}
-                >
-                  <Button className="cursor-pointer transition-all duration-200 hover:scale-105 bg-primary">
-                    Next Course: {nextCourse.title}
-                    <ArrowRight className="ml-2 h-4 w-4" />
+          {/* Completion Section */}
+          <div className="mt-12 pt-8 border-t border-border/50">
+            {!isLessonCompleted ? (
+              <Card className="p-6 bg-gradient-to-br from-primary/5 via-primary/5 to-transparent border-primary/20">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      Ready to move forward?
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Mark this lesson as complete to unlock the next one
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={markLessonComplete} 
+                    size="lg" 
+                    className="cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                  >
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Mark Complete
                   </Button>
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-emerald-500/20">
+                    <Award className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                      Lesson Completed!
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Great job! You're making excellent progress.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Footer */}
+        <footer className="mt-12 pt-8 border-t border-border/50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Previous Lesson */}
+            <div className="w-full">
+              {previousLesson ? (
+                <Link href={`/learn/${previousLesson.id}`} className="block w-full">
+                  <Card className="p-4 hover:bg-muted/50 transition-all cursor-pointer group border-border/50 h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-md bg-muted group-hover:bg-primary/10 transition-colors flex-shrink-0">
+                        <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-1">Previous Lesson</div>
+                        <div className="font-medium line-clamp-2 break-words">{previousLesson.title}</div>
+                      </div>
+                    </div>
+                  </Card>
                 </Link>
               ) : (
-                <Link href="/learn">
-                  <Button className="cursor-pointer transition-all duration-200 hover:scale-105 bg-primary">
-                    Course Complete!
-                    <CheckCircle className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Card className="p-4 opacity-50 border-border/50 h-full">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-md bg-muted flex-shrink-0">
+                      <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground mb-1">Previous Lesson</div>
+                      <div className="font-medium">No previous lesson</div>
+                    </div>
+                  </div>
+                </Card>
               )}
-              <Link href="/learn">
-                <Button variant="outline" className="cursor-pointer">
-                  Back to Learn
-                </Button>
-              </Link>
             </div>
-          ) : (
-            <Button disabled className="cursor-not-allowed opacity-50">
-              Finish Lesson First
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
+
+            {/* Next Lesson */}
+            <div className="w-full">
+              {nextLesson ? (
+                <Link href={`/learn/${nextLesson.id}`} className="block w-full">
+                  <Card className={`p-4 transition-all cursor-pointer group border-border/50 h-full ${
+                    isLessonCompleted 
+                      ? 'hover:bg-primary/5 hover:border-primary/30' 
+                      : 'opacity-60 cursor-not-allowed'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-md transition-colors flex-shrink-0 ${
+                        isLessonCompleted 
+                          ? 'bg-primary/10 group-hover:bg-primary/20' 
+                          : 'bg-muted'
+                      }`}>
+                        <ArrowRight className={`h-4 w-4 transition-colors ${
+                          isLessonCompleted 
+                            ? 'text-primary' 
+                            : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-muted-foreground mb-1">Next Lesson</div>
+                        <div className="font-medium line-clamp-2 break-words">{nextLesson.title}</div>
+                        {!isLessonCompleted && (
+                          <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            Complete this lesson first
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ) : isLessonCompleted ? (
+                <div className="space-y-2 h-full flex flex-col">
+                  {nextCourse ? (
+                    <Link
+                      href="/learn"
+                      onClick={() => {
+                        try { localStorage.setItem('markov-selected-course', nextCourse.id) } catch {}
+                      }}
+                      className="block"
+                    >
+                      <Button className="w-full cursor-pointer transition-all duration-200 hover:scale-105 shadow-lg">
+                        <BookMarked className="mr-2 h-4 w-4" />
+                        <span className="truncate">Next Course: {nextCourse.title}</span>
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/learn" className="block">
+                      <Button className="w-full cursor-pointer transition-all duration-200 hover:scale-105 shadow-lg bg-emerald-600 hover:bg-emerald-700">
+                        <Award className="mr-2 h-4 w-4" />
+                        Course Complete!
+                        <CheckCircle className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  )}
+                  <Link href="/learn" className="block">
+                    <Button variant="outline" className="w-full cursor-pointer">
+                      Back to Learn
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <Card className="p-4 opacity-60 border-border/50 h-full">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-md bg-muted flex-shrink-0">
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground mb-1">Next Lesson</div>
+                      <div className="font-medium">Complete this lesson first</div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+        </footer>
+      </article>
     </div>
   )
 }
