@@ -229,16 +229,16 @@ export default function NewExamplePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Link href="/admin/examples">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+          <Button variant="outline" size="sm" className="shrink-0">
+            <ArrowLeft className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Back</span>
           </Button>
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Create New Example</h1>
-          <p className="text-muted-foreground">Add a new example Markov chain</p>
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold break-words">Create New Example</h1>
+          <p className="text-muted-foreground break-words">Add a new example Markov chain</p>
         </div>
       </div>
 
@@ -331,7 +331,7 @@ export default function NewExamplePage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <Label htmlFor="design">Design (JSON) *</Label>
                   <div className="text-xs text-muted-foreground">
                     Compatible with tools export format

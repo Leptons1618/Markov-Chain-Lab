@@ -210,45 +210,54 @@ export default function UserDetailsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="space-y-2 min-w-0">
           <div className="flex items-center gap-3">
             <Link href="/admin/identity">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+              <Button variant="ghost" size="sm" className="shrink-0">
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Back</span>
               </Button>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold">User Details</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold break-words">User Details</h1>
+          <p className="text-muted-foreground break-words">
             Detailed information about {userDetails.user.name}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={sendResetPassword}
             disabled={actionLoading}
+            className="w-full sm:w-auto"
+            size="sm"
           >
-            <Mail className="h-4 w-4 mr-2" />
-            Send Reset Password
+            <Mail className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Send Reset Password</span>
+            <span className="sm:hidden">Reset Password</span>
           </Button>
           <Button
             variant="outline"
             onClick={() => setResetProgressDialogOpen(true)}
             disabled={actionLoading}
+            className="w-full sm:w-auto"
+            size="sm"
           >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset Progress
+            <RotateCcw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Reset Progress</span>
+            <span className="sm:hidden">Reset Progress</span>
           </Button>
           <Button
             variant="destructive"
             onClick={() => setDeleteDialogOpen(true)}
             disabled={actionLoading || userDetails.user.id === currentUser?.id}
+            className="w-full sm:w-auto"
+            size="sm"
           >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete User
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Delete User</span>
+            <span className="sm:hidden">Delete</span>
           </Button>
         </div>
       </div>

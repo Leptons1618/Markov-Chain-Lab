@@ -317,35 +317,40 @@ export default function ExamplesPage() {
   return (
     <div className="space-y-8">
       {/* Title and Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">Manage Examples</h1>
           <p className="text-muted-foreground">Create, edit, and organize example Markov chains</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             onClick={() => setImportDialogOpen(true)}
             variant="outline"
-            className="cursor-pointer"
+            className="cursor-pointer w-full sm:w-auto"
+            size="sm"
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Import
+            <Upload className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Import</span>
+            <span className="sm:hidden">Import</span>
           </Button>
           <Button
             onClick={handleSync}
             disabled={syncing}
             variant="outline"
-            className="cursor-pointer"
+            className="cursor-pointer w-full sm:w-auto"
+            size="sm"
           >
             {syncing ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Syncing...
+                <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                <span className="hidden sm:inline">Syncing...</span>
+                <span className="sm:hidden">Syncing...</span>
               </>
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sync from JSON
+                <RefreshCw className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sync from JSON</span>
+                <span className="sm:hidden">Sync</span>
               </>
             )}
           </Button>
@@ -353,24 +358,28 @@ export default function ExamplesPage() {
             onClick={handleExport}
             disabled={exporting}
             variant="outline"
-            className="cursor-pointer"
+            className="cursor-pointer w-full sm:w-auto"
+            size="sm"
           >
             {exporting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Exporting...
+                <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                <span className="hidden sm:inline">Exporting...</span>
+                <span className="sm:hidden">Exporting...</span>
               </>
             ) : (
               <>
-                <Download className="h-4 w-4 mr-2" />
-                Export
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export</span>
+                <span className="sm:hidden">Export</span>
               </>
             )}
           </Button>
-          <Link href="/admin/examples/new">
-            <Button className="cursor-pointer">
-              <Plus className="h-4 w-4 mr-2" />
-              New Example
+          <Link href="/admin/examples/new" className="w-full sm:w-auto">
+            <Button className="cursor-pointer w-full sm:w-auto" size="sm">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Example</span>
+              <span className="sm:hidden">New Example</span>
             </Button>
           </Link>
         </div>
@@ -411,13 +420,13 @@ export default function ExamplesPage() {
           filteredExamples.map((example) => (
             <Card key={example.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-xl">{example.title}</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                      <Sparkles className="h-5 w-5 text-primary shrink-0" />
+                      <CardTitle className="text-xl break-words">{example.title}</CardTitle>
                     </div>
-                    <CardDescription className="text-base mb-3">{example.description}</CardDescription>
+                    <CardDescription className="text-base mb-3 break-words">{example.description}</CardDescription>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge
                         variant="outline"
@@ -437,11 +446,11 @@ export default function ExamplesPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 shrink-0 sm:ml-4">
                     <Link href={`/admin/examples/${example.id}`}>
                       <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
+                        <Edit className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Edit</span>
                       </Button>
                     </Link>
                     <Button
@@ -466,10 +475,10 @@ export default function ExamplesPage() {
 
       {/* Import Dialog */}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import Examples</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="break-words">Import Examples</DialogTitle>
+            <DialogDescription className="break-words">
               Upload a JSON file containing examples. Existing examples with the same ID will be updated.
             </DialogDescription>
           </DialogHeader>
@@ -507,20 +516,30 @@ export default function ExamplesPage() {
               </Card>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setImportDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={handleUpload} disabled={!previewFile || importing}>
+            <Button 
+              onClick={handleUpload} 
+              disabled={!previewFile || importing}
+              className="w-full sm:w-auto"
+            >
               {importing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Importing...
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                  <span className="hidden sm:inline">Importing...</span>
+                  <span className="sm:hidden">Importing...</span>
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
+                  <Upload className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Import</span>
+                  <span className="sm:hidden">Import</span>
                 </>
               )}
             </Button>

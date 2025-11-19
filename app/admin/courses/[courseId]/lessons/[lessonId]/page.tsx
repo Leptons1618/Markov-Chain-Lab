@@ -189,17 +189,17 @@ export default function LessonEditorPage() {
 
   return (
     <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Edit Lesson</h1>
-            <p className="text-muted-foreground mt-1">{lessonData?.title || 'Loading...'}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold break-words">Edit Lesson</h1>
+            <p className="text-muted-foreground mt-1 break-words">{lessonData?.title || 'Loading...'}</p>
           </div>
-          <div className="flex items-center gap-4">
-            {saveStatus === "saving" && <span className="text-sm text-muted-foreground">Saving...</span>}
-            {saveStatus === "saved" && <span className="text-sm text-green-600">Saved</span>}
-            <Button onClick={handleSave} disabled={isSaving} className="cursor-pointer">
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Save"}
+          <div className="flex items-center gap-4 shrink-0">
+            {saveStatus === "saving" && <span className="text-sm text-muted-foreground hidden sm:inline">Saving...</span>}
+            {saveStatus === "saved" && <span className="text-sm text-green-600 hidden sm:inline">Saved</span>}
+            <Button onClick={handleSave} disabled={isSaving} className="cursor-pointer" size="sm">
+              <Save className="h-4 w-4 sm:mr-2" />
+              {isSaving ? <span className="hidden sm:inline">Saving...</span> : <span className="hidden sm:inline">Save</span>}
             </Button>
           </div>
         </div>

@@ -263,35 +263,40 @@ export default function CoursesPage() {
   return (
     <div className="space-y-8">
           {/* Title and Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold">Manage Courses</h1>
               <p className="text-muted-foreground">Create, edit, and organize your course content</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 onClick={() => setImportDialogOpen(true)}
                 variant="outline"
-                className="cursor-pointer"
+                className="cursor-pointer w-full sm:w-auto"
+                size="sm"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Import
+                <Upload className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Import</span>
+                <span className="sm:hidden">Import</span>
               </Button>
               <Button
                 onClick={handleExport}
                 disabled={exporting}
                 variant="outline"
-                className="cursor-pointer"
+                className="cursor-pointer w-full sm:w-auto"
+                size="sm"
               >
                 {exporting ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Exporting...
+                    <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                    <span className="hidden sm:inline">Exporting...</span>
+                    <span className="sm:hidden">Exporting...</span>
                   </>
                 ) : (
                   <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
+                    <Download className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Export</span>
+                    <span className="sm:hidden">Export</span>
                   </>
                 )}
               </Button>
@@ -299,24 +304,28 @@ export default function CoursesPage() {
                 onClick={handleSync}
                 disabled={syncing}
                 variant="outline"
-                className="cursor-pointer"
+                className="cursor-pointer w-full sm:w-auto"
+                size="sm"
               >
                 {syncing ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Syncing...
+                    <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                    <span className="hidden sm:inline">Syncing...</span>
+                    <span className="sm:hidden">Syncing...</span>
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Sync
+                    <RefreshCw className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Sync</span>
+                    <span className="sm:hidden">Sync</span>
                   </>
                 )}
               </Button>
-              <Link href="/admin/courses/new">
-                <Button className="cursor-pointer">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Course
+              <Link href="/admin/courses/new" className="w-full sm:w-auto">
+                <Button className="cursor-pointer w-full sm:w-auto" size="sm">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">New Course</span>
+                  <span className="sm:hidden">New Course</span>
                 </Button>
               </Link>
             </div>
@@ -356,18 +365,18 @@ export default function CoursesPage() {
             ) : (
               filteredCourses.map((course) => (
                 <Card key={course.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{course.title}</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold break-words">{course.title}</h3>
                         <Badge variant={course.status === "published" ? "default" : "secondary"}>{course.status}</Badge>
                       </div>
-                      <p className="text-muted-foreground mb-3">{course.description}</p>
+                      <p className="text-muted-foreground mb-3 break-words">{course.description}</p>
                       <p className="text-sm text-muted-foreground">
                         {course.lessons} lessons • Created {new Date(course.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                       <Link href={`/admin/courses/${course.id}`}>
                         <Button variant="outline" size="sm" className="cursor-pointer bg-transparent">
                           <Edit className="h-4 w-4" />
@@ -406,15 +415,15 @@ export default function CoursesPage() {
           }
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                 <Upload className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <DialogTitle className="text-xl">Import Content</DialogTitle>
-                <DialogDescription className="mt-1">
+              <div className="min-w-0">
+                <DialogTitle className="text-xl break-words">Import Content</DialogTitle>
+                <DialogDescription className="mt-1 break-words">
                   Upload JSON file to import courses, lessons, or full LMS data. Preview the contents before uploading.
                 </DialogDescription>
               </div>
@@ -516,31 +525,31 @@ export default function CoursesPage() {
             {/* Preview Section */}
             {previewData && (
               <div className="space-y-3 border-2 border-primary/20 rounded-lg p-5 bg-gradient-to-br from-primary/5 to-primary/10 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/20">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-lg bg-primary/20 shrink-0">
                       <CheckCircle2 className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <h4 className="text-sm font-semibold flex items-center gap-2">
-                        Preview Ready
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold flex flex-wrap items-center gap-2">
+                        <span>Preview Ready</span>
                         {importType === "lms" && (
                           <>
-                            <Badge variant="secondary" className="ml-1">
+                            <Badge variant="secondary" className="text-xs">
                               {previewData.courses?.length || 0} courses
                             </Badge>
-                            <Badge variant="secondary">
+                            <Badge variant="secondary" className="text-xs">
                               {previewData.lessons?.length || 0} lessons
                             </Badge>
                           </>
                         )}
                         {(importType === "course" || importType === "lesson") && (
-                          <Badge variant="secondary" className="ml-1">
+                          <Badge variant="secondary" className="text-xs">
                             {importType === "course" ? "Course" : "Lesson"}
                           </Badge>
                         )}
                       </h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 break-words">
                         Review the content below before uploading
                       </p>
                     </div>
@@ -555,7 +564,7 @@ export default function CoursesPage() {
                         fileInputRef.current.value = ""
                       }
                     }}
-                    className="cursor-pointer hover:bg-destructive/10 hover:text-destructive"
+                    className="cursor-pointer hover:bg-destructive/10 hover:text-destructive shrink-0 self-start sm:self-center"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -631,7 +640,7 @@ export default function CoursesPage() {
               </div>
             )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -645,23 +654,26 @@ export default function CoursesPage() {
                 }
               }}
               disabled={importing}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpload}
               disabled={!previewFile || importing || (importType === "lesson" && !selectedCourseId)}
-              className="cursor-pointer min-w-[120px]"
+              className="cursor-pointer w-full sm:w-auto min-w-[120px]"
             >
               {importing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                  <span className="hidden sm:inline">Uploading...</span>
+                  <span className="sm:hidden">Uploading...</span>
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload {importType === "lms" ? "Content" : importType === "course" ? "Course" : "Lesson"}
+                  <Upload className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Upload {importType === "lms" ? "Content" : importType === "course" ? "Course" : "Lesson"}</span>
+                  <span className="sm:hidden">Upload</span>
                 </>
               )}
             </Button>

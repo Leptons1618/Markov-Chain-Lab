@@ -30,7 +30,7 @@ export async function GET(
       )
     }
 
-    const { userId } = params
+    const { userId } = await params
     const serviceClient = createServiceClient()
 
     // Get user from auth.users

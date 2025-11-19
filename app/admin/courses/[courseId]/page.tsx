@@ -197,7 +197,7 @@ export default function CourseDetailPage() {
             {/* Course Details */}
             <div className="lg:col-span-2 space-y-8">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <CardTitle>Course Details</CardTitle>
                     <CardDescription>Edit course information</CardDescription>
@@ -207,9 +207,9 @@ export default function CourseDetailPage() {
                     size="sm"
                     onClick={() => setIsEditing(!isEditing)}
                     disabled={saving}
-                    className="cursor-pointer bg-transparent"
+                    className="cursor-pointer bg-transparent shrink-0"
                   >
-                    <Edit className="h-4 w-4 mr-2" />
+                    <Edit className="h-4 w-4 sm:mr-2" />
                     {isEditing ? "Cancel" : "Edit"}
                   </Button>
                 </CardHeader>
@@ -297,25 +297,27 @@ export default function CourseDetailPage() {
 
             {/* Lessons */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <CardTitle>Lessons</CardTitle>
                   <CardDescription>Manage course lessons</CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => setImportDialogOpen(true)}
-                    className="cursor-pointer"
+                    className="cursor-pointer w-full sm:w-auto"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import
+                    <Upload className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Import</span>
+                    <span className="sm:hidden">Import</span>
                   </Button>
-                  <Link href={`/admin/courses/${courseId}/lessons/new`}>
-                    <Button size="sm" className="cursor-pointer">
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Lesson
+                  <Link href={`/admin/courses/${courseId}/lessons/new`} className="w-full sm:w-auto">
+                    <Button size="sm" className="cursor-pointer w-full sm:w-auto">
+                      <Plus className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">New Lesson</span>
+                      <span className="sm:hidden">New Lesson</span>
                     </Button>
                   </Link>
                 </div>
