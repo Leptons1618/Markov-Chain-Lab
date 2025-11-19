@@ -36,6 +36,15 @@ import {
   Pencil,
   Maximize2,
   Check,
+  Copy,
+  Scissors,
+  Eraser,
+  ZoomIn,
+  ZoomOut,
+  Grid,
+  Layers,
+  GitBranch,
+  Network,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -53,6 +62,11 @@ import { computeStationaryDistribution, computeConvergenceRate, buildTransitionM
 import { generateTextString } from "@/lib/text-generation"
 import { analyzeLanguage } from "@/lib/language-analysis"
 import { useToast } from "@/lib/hooks/use-toast"
+import { chainToRegularGrammar, chainToProbabilisticGrammar } from "@/lib/grammar-conversion"
+import type { Grammar } from "@/lib/grammar"
+import { GrammarDisplay } from "@/components/grammar-display"
+import { GrammarEditor } from "@/components/grammar-editor"
+import { grammarToChain } from "@/lib/grammar-parser"
 
 interface State {
   id: string
@@ -404,7 +418,7 @@ function ToolsContent() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({})
   // Controlled tabs to prevent resets on re-render
-  const [activeTab, setActiveTab] = useState<"build" | "simulate" | "analyze">("build")
+  const [activeTab, setActiveTab] = useState<"build" | "simulate" | "analyze" | "grammar">("build")
   // Automaton type selector - Auto-detect based on labels
   const [automatonType, setAutomatonType] = useState<"markov" | "dfa" | "nfa">("markov")
   const automatonTypeManuallySet = useRef(false)
@@ -429,13 +443,23 @@ function ToolsContent() {
   // Track pinch gesture data
   const pinchRef = useRef<{ mid: { x: number; y: number }; dist: number } | null>(null)
   const [toolboxOpen, setToolboxOpen] = useState(false)
-  const [toolboxOpacity, setToolboxOpacity] = useState(0.4)
-  const [hoveredTool, setHoveredTool] = useState<number | null>(null)
-  const [mouseAngle, setMouseAngle] = useState<number>(0)
-  const toolboxTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const toolboxRef = useRef<HTMLDivElement | null>(null)
   const [isToolboxLocked, setIsToolboxLocked] = useState(false)
-  const lastActiveTimeRef = useRef<number>(Date.now())
+  const [isViewFitted, setIsViewFitted] = useState(false)
+
+  // Close toolbox when clicking outside (unless locked)
+  useEffect(() => {
+    if (!toolboxOpen || isToolboxLocked) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolboxRef.current && !toolboxRef.current.contains(e.target as Node)) {
+        setToolboxOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [toolboxOpen, isToolboxLocked])
 
   // Phase 1: String Acceptance Testing state
   const [testString, setTestString] = useState("")
@@ -735,137 +759,14 @@ function ToolsContent() {
     description?: string
   } | null>(null)
 
+  // Grammar state
+  const [grammar, setGrammar] = useState<Grammar | null>(null)
+
   // Phase 2: Text Generation state
   const [generatedText, setGeneratedText] = useState("")
   const [textGenerationLength, setTextGenerationLength] = useState(10)
   const [textGenerationMode, setTextGenerationMode] = useState<"probabilistic" | "deterministic">("probabilistic")
 
-  // Constants for radial menu
-  const RADIAL_TOOL_COUNT = 8
-
-  // Smooth opacity transition based on proximity and idle time
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!toolboxRef.current) return
-      
-      const rect = toolboxRef.current.getBoundingClientRect()
-      const centerX = rect.left + rect.width / 2
-      const centerY = rect.top + rect.height / 2
-      const distance = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2))
-      
-      // Auto-show tools on hover (if not locked) - stricter distance check
-      if (!isToolboxLocked && distance < 80) {
-        setToolboxOpen(true)
-        lastActiveTimeRef.current = Date.now()
-      } else if (!isToolboxLocked && distance > 120) {
-        setToolboxOpen(false)
-      }
-      
-      // Calculate angle for radial menu when open (wide 180-degree arc)
-      if (toolboxOpen) {
-        const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX)
-        setMouseAngle(angle)
-        
-        // Calculate which tool is being hovered based on angle
-        const toolCount = RADIAL_TOOL_COUNT
-        // Wide arc from bottom-right (45 deg) to top-left (225 deg)
-        const startAngle = Math.PI / 4 // 45 degrees
-        const endAngle = Math.PI * 1.25 // 225 degrees
-        const angleRange = endAngle - startAngle
-        const anglePerTool = angleRange / (toolCount - 1)
-        
-        // Only highlight if mouse is within the radial menu range (stricter)
-        if (distance > 40 && distance < 85) {
-          // Check if mouse angle is within the wide arc
-          let normalizedAngle = angle
-          if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI
-          
-          // Calculate tool index based on angle
-          let toolIndex = -1
-          for (let i = 0; i < toolCount; i++) {
-            const toolAngle = startAngle + i * anglePerTool
-            const angleDiff = Math.abs(normalizedAngle - toolAngle)
-            const angleDiffWrapped = Math.abs(normalizedAngle - toolAngle + 2 * Math.PI)
-            const minAngleDiff = Math.min(angleDiff, angleDiffWrapped)
-            
-            // Tool is highlighted if mouse is within 15 degrees of it
-            if (minAngleDiff < anglePerTool / 1.5) {
-              toolIndex = i
-              break
-            }
-          }
-          
-          setHoveredTool(toolIndex)
-          lastActiveTimeRef.current = Date.now()
-        } else {
-          setHoveredTool(null)
-        }
-      } else {
-        setHoveredTool(null)
-      }
-      
-      // Proximity-based opacity - only fade when idle AND toolbox is closed
-      const proximityThreshold = 150
-      const timeSinceActive = Date.now() - lastActiveTimeRef.current
-      const idleThreshold = 3000 // 3 seconds of idle time before fading
-      
-      // Clear any existing timeout
-      if (toolboxTimeoutRef.current) {
-        clearTimeout(toolboxTimeoutRef.current)
-        toolboxTimeoutRef.current = null
-      }
-      
-      // If toolbox is open or locked, keep it fully visible
-      if (toolboxOpen || isToolboxLocked) {
-        setToolboxOpacity(1)
-        lastActiveTimeRef.current = Date.now()
-      } else if (distance < proximityThreshold) {
-        // Mouse is near - keep it visible
-        setToolboxOpacity(1)
-        lastActiveTimeRef.current = Date.now()
-      } else if (timeSinceActive < idleThreshold) {
-        // Recently active - keep it visible for a while
-        setToolboxOpacity(1)
-        // Set timeout to start fading after idle threshold
-        toolboxTimeoutRef.current = setTimeout(() => {
-          if (!toolboxOpen && !isToolboxLocked) {
-            setToolboxOpacity(0.4)
-          }
-        }, idleThreshold - timeSinceActive)
-      } else {
-        // Been idle for a while - fade it
-        setToolboxOpacity(0.4)
-      }
-    }
-
-    const handleTouchStart = () => {
-      setToolboxOpacity(1)
-      lastActiveTimeRef.current = Date.now()
-      if (toolboxTimeoutRef.current) {
-        clearTimeout(toolboxTimeoutRef.current)
-        toolboxTimeoutRef.current = null
-      }
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('touchstart', handleTouchStart)
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('touchstart', handleTouchStart)
-      if (toolboxTimeoutRef.current) {
-        clearTimeout(toolboxTimeoutRef.current)
-      }
-    }
-  }, [toolboxOpen, isToolboxLocked])
-
-  // Reset opacity and hoveredTool when toolbox closes
-  useEffect(() => {
-    if (!toolboxOpen) {
-      setHoveredTool(null)
-      setIsToolboxLocked(false)
-    }
-  }, [toolboxOpen])
   const [editingStateId, setEditingStateId] = useState<string | null>(null)
   const [editingStateName, setEditingStateName] = useState("")
 
@@ -1080,6 +981,7 @@ function ToolsContent() {
 
   // Zoom to fit all nodes in view with padding
   const zoomToFit = useCallback(() => {
+    setIsViewFitted(true)
     if (chain.states.length === 0) return
     
     // Calculate bounding box of all nodes
@@ -1136,6 +1038,11 @@ function ToolsContent() {
   useEffect(() => {
     zoomToFitRef.current = zoomToFit
   }, [zoomToFit])
+
+  // Reset fitted state when chain changes significantly
+  useEffect(() => {
+    setIsViewFitted(false)
+  }, [chain.states.length])
 
   const addState = useCallback(
     (x: number, y: number) => {
@@ -1399,6 +1306,22 @@ function ToolsContent() {
       setLanguageAnalysis(null)
     }
   }, [chain.states.length, chain.transitions.length, automatonType])
+
+  // Compute grammar from chain
+  useEffect(() => {
+    if (chain.states.length === 0) {
+      setGrammar(null)
+      return
+    }
+
+    try {
+      const generatedGrammar = chainToRegularGrammar(chain, automatonType)
+      setGrammar(generatedGrammar)
+    } catch (error) {
+      console.error("Error generating grammar:", error)
+      setGrammar(null)
+    }
+  }, [chain, automatonType])
 
   // Save/Export functionality (must come after resetSimulation)
   const saveDesign = useCallback(() => {
@@ -1757,21 +1680,63 @@ function ToolsContent() {
   }, [selectedState])
   
   // Sidebar Tabs component reused for desktop and mobile (memoized to prevent re-renders during drag)
-  const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze"; onChange: (val: "build" | "simulate" | "analyze") => void }) => (
+  const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze" | "grammar"; onChange: (val: "build" | "simulate" | "analyze" | "grammar") => void }) => (
     <Tabs value={value} onValueChange={(v) => onChange(v as any)} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 bg-muted/50">
-        <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer">
+      <TabsList className="grid w-full grid-cols-4 bg-muted/50 gap-1 p-1">
+        <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
           Build
         </TabsTrigger>
-        <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer">
+        <TabsTrigger value="simulate" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
           Simulate
         </TabsTrigger>
-        <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer">
+        <TabsTrigger value="analyze" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
           Analyze
+        </TabsTrigger>
+        <TabsTrigger value="grammar" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+          Grammar
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="build" className="space-y-4">
+      <TabsContent value="build" className="space-y-4 mt-4">
+        {/* Design Ground Rules */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Design Ground Rules
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground font-medium">Node Placement Guidelines:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground ml-2">
+                <li>Nodes are automatically clamped to canvas bounds (50px margin)</li>
+                <li>Keep at least 150px distance between nodes to avoid overlap</li>
+                <li>Initial state is typically placed at the center</li>
+                <li>Use arrow keys to nudge selected nodes (Shift + Arrow for larger steps)</li>
+                <li>Drag nodes to reposition them</li>
+              </ul>
+            </div>
+            <div className="pt-2 border-t space-y-1.5">
+              <p className="text-xs text-muted-foreground font-medium">Canvas Bounds:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground ml-2">
+                <li>Desktop: 2000×1500px</li>
+                <li>Tablet: 1600×1200px</li>
+                <li>Mobile: 1200×900px</li>
+                <li>Nodes cannot overflow canvas boundaries</li>
+              </ul>
+            </div>
+            <div className="pt-2 border-t space-y-1.5">
+              <p className="text-xs text-muted-foreground font-medium">Tips:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground ml-2">
+                <li>Use "Zoom to Fit" button to center and scale your automaton</li>
+                <li>Pan by dragging empty canvas area</li>
+                <li>Zoom with mouse wheel or pinch gesture</li>
+                <li>When converting from grammar, nodes start from center</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
         {/* Automaton Type Selector */}
         <Card>
           <CardHeader className="pb-3">
@@ -1853,10 +1818,10 @@ function ToolsContent() {
                 return (
                   <div
                     key={transition.id}
-                    className="flex flex-col gap-3 text-sm p-2 rounded-md hover:bg-muted/50 transition-colors duration-150 sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(0,70px)_minmax(0,2fr)_minmax(0,80px)_auto] sm:items-center sm:gap-3"
+                    className="flex flex-col gap-3 text-sm p-3 sm:p-2 rounded-md border border-border/50 hover:bg-muted/50 transition-colors duration-150 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,100px)_auto] sm:items-center sm:gap-3 sm:border-0"
                   >
                     {/* State labels - Column 1 */}
-                    <div className="flex items-center gap-2 min-w-0 w-full">
+                    <div className="flex items-center gap-2 min-w-0 w-full flex-wrap sm:flex-nowrap">
                       <TooltipProvider>
                         <Tooltip delayDuration={500}>
                           <TooltipTrigger asChild>
@@ -1886,8 +1851,8 @@ function ToolsContent() {
                       </TooltipProvider>
                     </div>
 
-                    {/* Column 2: Label input (DFA/NFA) or empty space (Markov) */}
-                    <div className="flex items-center justify-start">
+                    {/* Column 2: Label input (DFA/NFA) or Probability input (Markov) */}
+                    <div className="flex items-center justify-start w-full sm:w-auto gap-2">
                       {(automatonType === "dfa" || automatonType === "nfa") ? (
                         <Input
                           ref={(el) => {
@@ -1928,34 +1893,11 @@ function ToolsContent() {
                             }
                           }}
                           placeholder="a-z, 0-9"
-                          className="w-16 h-8 text-xs font-mono text-center font-semibold"
+                          className="w-full sm:w-16 h-8 text-xs font-mono text-center font-semibold"
                           title="Single character label (a-z, 0-9)"
                         />
                       ) : (
-                        <div className="w-16" /> // Spacer for alignment
-                      )}
-                    </div>
-
-                    {/* Column 3: Probability slider (Markov) or empty space (DFA/NFA with label) */}
-                    <div className="flex items-center gap-2 min-w-0 w-full">
-                      {(automatonType === "markov" || !transition.label) ? (
-                        <Slider
-                          value={[Number.isFinite(transition.probability) ? transition.probability : 0]}
-                          onValueChange={(values) => updateTransitionProbability(transition.id, roundProbability(values[0] ?? 0))}
-                          min={0}
-                          max={1}
-                          step={0.01}
-                          className="flex-1 min-w-[80px] [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5 [&_.bg-primary]:h-0.5"
-                        />
-                      ) : (
-                        <div className="flex-1" /> // Spacer
-                      )}
-                    </div>
-
-                    {/* Column 4: Probability number input (Markov) or empty space (DFA/NFA with label) */}
-                    <div className="relative shrink-0">
-                      {(automatonType === "markov" || !transition.label) ? (
-                        <>
+                        <div className="relative shrink-0 w-full sm:w-auto flex justify-start">
                           <Input
                             type="number"
                             min="0"
@@ -1969,7 +1911,7 @@ function ToolsContent() {
                                 roundProbability(Number.isFinite(parsed) ? parsed : 0),
                               )
                             }}
-                            className="w-[4.5rem] h-8 text-xs font-mono text-left pl-2 pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-full sm:w-[4.5rem] h-8 text-xs font-mono text-left pl-2 pr-1 transition-all duration-150 focus:ring-2 focus:ring-primary/50 border-border/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l border-border/60">
                             <button
@@ -2001,14 +1943,12 @@ function ToolsContent() {
                               </svg>
                             </button>
                           </div>
-                        </>
-                      ) : (
-                        <div className="w-[4.5rem]" /> // Spacer for alignment
+                        </div>
                       )}
                     </div>
 
-                    {/* Column 5: Delete button - Always visible */}
-                    <div className="flex items-center justify-end sm:justify-end">
+                    {/* Column 3: Delete button - Always visible */}
+                    <div className="flex items-center justify-start sm:justify-end w-full sm:w-auto pt-2 sm:pt-0 border-t border-border/50 sm:border-0">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -2027,7 +1967,7 @@ function ToolsContent() {
         )}
       </TabsContent>
 
-      <TabsContent value="simulate" className="space-y-4">
+      <TabsContent value="simulate" className="space-y-4 mt-4">
         {/* Simulation Controls - Only show for Markov chains */}
         {automatonType === "markov" && (
           <Card>
@@ -2562,7 +2502,7 @@ function ToolsContent() {
         )}
       </TabsContent>
 
-      <TabsContent value="analyze" className="space-y-4">
+      <TabsContent value="analyze" className="space-y-4 mt-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Transition Matrix</CardTitle>
@@ -2640,44 +2580,35 @@ function ToolsContent() {
                 <Label className="text-xs text-muted-foreground">Outgoing Transitions per State</Label>
                 {chain.states.map((state) => {
                   const outgoing = chain.transitions.filter((t) => t.from === state.id).length
-                  const totalProb = chain.transitions.filter((t) => t.from === state.id).reduce((sum, t) => sum + t.probability, 0)
-                  const isValid = Math.abs(totalProb - 1.0) < 0.01 || outgoing === 0
-                  return (
-                    <div key={state.id} className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{state.name}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={isValid ? "secondary" : "destructive"} className="text-xs">
-                          {outgoing} ({totalProb.toFixed(2)})
-                        </Badge>
-                        {!isValid && <span className="text-xs text-destructive">⚠ Invalid</span>}
+                  // Only show probability for Markov chains
+                  if (automatonType === "markov") {
+                    const totalProb = chain.transitions.filter((t) => t.from === state.id).reduce((sum, t) => sum + t.probability, 0)
+                    const isValid = Math.abs(totalProb - 1.0) < 0.01 || outgoing === 0
+                    return (
+                      <div key={state.id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{state.name}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={isValid ? "secondary" : "destructive"} className="text-xs">
+                            {outgoing} ({totalProb.toFixed(2)})
+                          </Badge>
+                          {!isValid && <span className="text-xs text-destructive">⚠ Invalid</span>}
+                        </div>
                       </div>
-                    </div>
-                  )
+                    )
+                  } else {
+                    // For DFA/NFA, just show count
+                    return (
+                      <div key={state.id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{state.name}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {outgoing} transition{outgoing !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    )
+                  }
                 })}
               </div>
 
-              {chain.transitions.length > 0 && (
-                <div className="pt-2 border-t">
-                  <Label className="text-xs text-muted-foreground mb-2 block">Transition Probabilities</Label>
-                  <div className="space-y-1.5">
-                    {chain.transitions.map((transition) => {
-                      const fromState = chain.states.find((s) => s.id === transition.from)
-                      const toState = chain.states.find((s) => s.id === transition.to)
-                      return (
-                        <div key={transition.id} className="flex items-center gap-2 text-xs">
-                          <span className="font-medium">{fromState?.name}</span>
-                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-medium">{toState?.name}</span>
-                          <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden ml-2">
-                            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${transition.probability * 100}%` }} />
-                          </div>
-                          <span className="text-muted-foreground w-12 text-right">{(transition.probability * 100).toFixed(0)}%</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
@@ -2867,6 +2798,75 @@ function ToolsContent() {
             </Card>
           )
         ) : null}
+
+      </TabsContent>
+
+      <TabsContent value="grammar" className="space-y-4 mt-4">
+        <GrammarEditor
+          initialGrammar={grammar}
+          onConvertToChain={(grammar) => {
+            try {
+              const result = grammarToChain(grammar, automatonType === "nfa" ? "nfa" : "dfa")
+              
+              if (result.errors.length > 0) {
+                // Show all errors for CFG detection (they're informative)
+                const errorMessage = result.errors.length > 1 
+                  ? result.errors.join("\n")
+                  : result.errors[0]
+                toast("error", errorMessage, {
+                  title: "Conversion Error",
+                  duration: 8000,
+                })
+                return
+              }
+
+              // Update chain with converted grammar
+              setChain(result.chain)
+              
+              // Update automaton type if needed
+              if (automatonType === "markov") {
+                setAutomatonType("dfa")
+                automatonTypeManuallySet.current = true
+              }
+
+              toast("success", "Grammar converted to automaton. Nodes placed from center.", {
+                title: "Success!",
+                duration: 3000,
+              })
+
+              // Switch to Build tab to see the result
+              setActiveTab("build")
+              
+              // Auto zoom to fit after a short delay
+              setTimeout(() => {
+                if (zoomToFitRef.current) {
+                  zoomToFitRef.current()
+                }
+              }, 100)
+            } catch (error) {
+              console.error("Error converting grammar:", error)
+              toast("error", error instanceof Error ? error.message : "Unknown error", {
+                title: "Conversion Failed",
+                duration: 5000,
+              })
+            }
+          }}
+        />
+
+        {/* Show generated grammar from chain */}
+        {grammar && chain.states.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Generated Grammar</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Grammar automatically generated from your automaton. Edit above to convert back to chain.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <GrammarDisplay grammar={grammar} automatonType={automatonType} />
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
     </Tabs>
   ))
@@ -3054,20 +3054,33 @@ function ToolsContent() {
   // Reset pan/zoom to defaults (recenter view without clearing canvas)
   const resetView = useCallback(() => {
     // Just reset pan and zoom to default view
+    setIsViewFitted(false)
     scheduleViewUpdate({ pan: { x: 0, y: 0 }, scale: 1 })
   }, [scheduleViewUpdate])
 
-  // Radial menu tools configuration (must be after all action functions are defined)
+  // Combined Fit/Reset View toggle
+  const toggleFitResetView = useCallback(() => {
+    if (isViewFitted) {
+      resetView()
+    } else {
+      zoomToFit()
+    }
+  }, [isViewFitted, resetView, zoomToFit])
+
+  // Radial menu tools configuration - Essential tools only (must be after all action functions are defined)
   const radialTools = useMemo(() => [
     { icon: FilePlus, label: 'New Chain', action: newDesign },
     { icon: Save, label: 'Save', action: saveDesign },
     { icon: FolderOpen, label: 'Library', action: () => setLibraryOpen(true) },
     { icon: Upload, label: 'Import', action: handleImportClick },
     { icon: Download, label: 'Export', action: exportChain },
-    { icon: FileText, label: 'Report', action: exportReport },
-    { icon: RotateCcw, label: 'Reset', action: resetView },
-    { icon: Maximize2, label: 'Fit View', action: zoomToFit, disabled: chain.states.length === 0 },
-  ], [chain.states.length, newDesign, saveDesign, handleImportClick, exportChain, exportReport, resetView, zoomToFit])
+    { 
+      icon: isViewFitted ? RotateCcw : Maximize2, 
+      label: isViewFitted ? 'Reset View' : 'Fit View', 
+      action: toggleFitResetView, 
+      disabled: !isViewFitted && chain.states.length === 0 
+    },
+  ], [chain.states.length, isViewFitted, newDesign, saveDesign, handleImportClick, exportChain, toggleFitResetView])
 
   // Remove double-click/double-tap to reset view - now handled by button
 
@@ -3395,124 +3408,91 @@ function ToolsContent() {
 
         <main className="flex-1 relative overflow-hidden">
           <TooltipProvider>
-          {/* Redesigned Radial Toolbox - Wide Arc */}
+          {/* Simplified Radial Toolbox - Click-based */}
           <div 
             ref={toolboxRef}
-            className="hidden lg:block absolute top-10 right-10 z-[60] transition-opacity duration-300"
-            style={{ opacity: toolboxOpacity }}
-            onMouseEnter={() => {
-              setToolboxOpacity(1)
-              lastActiveTimeRef.current = Date.now()
-              if (!isToolboxLocked) {
-                setToolboxOpen(true)
-              }
-            }}
-            onMouseLeave={() => {
-              if (!isToolboxLocked) {
-                setToolboxOpen(false)
-              }
-            }}
+            className="hidden lg:block absolute top-10 right-10 z-[60]"
           >
             <div className="relative">
               {/* Center Button */}
-              <button
-                onClick={() => {
-                  setIsToolboxLocked(!isToolboxLocked)
-                  setToolboxOpen(true) // Always ensure it's open on click
-                  lastActiveTimeRef.current = Date.now()
-                }}
-                className="relative h-10 w-10 rounded-full shadow-lg transition-all duration-300 bg-gradient-to-br from-primary via-primary to-primary/90 hover:scale-110 cursor-pointer backdrop-blur-xl border-2 border-primary/20 group z-10"
-                aria-label="Toggle toolbox lock"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
-                <div className="relative z-10 flex items-center justify-center transition-transform duration-300">
-                  {isToolboxLocked ? (
-                    <X className="h-4 w-4 text-primary-foreground" />
-                  ) : (
-                    <Wrench className="h-4 w-4 text-primary-foreground" />
-                  )}
-                </div>
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        setIsToolboxLocked(!isToolboxLocked)
+                        setToolboxOpen(!toolboxOpen)
+                      }}
+                      className="relative h-10 w-10 rounded-full shadow-md bg-primary hover:bg-primary/90 cursor-pointer border-2 border-primary/20 transition-all"
+                      aria-label="Toggle toolbox"
+                    >
+                      <div className="flex items-center justify-center">
+                        {isToolboxLocked ? (
+                          <X className="h-4 w-4 text-primary-foreground" />
+                        ) : (
+                          <Wrench className="h-4 w-4 text-primary-foreground" />
+                        )}
+                      </div>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{toolboxOpen ? 'Close tools' : 'Open tools'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              {/* Tool Menu Items - Wide Arc */}
+              {/* Tool Menu Items - Simple Arc */}
               {toolboxOpen && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                   {radialTools.map((tool, index) => {
                     const totalTools = radialTools.length
-                    // Wide arc from bottom-right (45 deg) to top-left (225 deg)
+                    // Simple arc from bottom-right to top-left
                     const startAngle = Math.PI / 4 // 45 degrees
                     const endAngle = Math.PI * 1.25 // 225 degrees
                     const angleRange = endAngle - startAngle
-                    const anglePerTool = angleRange / (totalTools - 1)
+                    const anglePerTool = totalTools > 1 ? angleRange / (totalTools - 1) : 0
                     const angle = startAngle + index * anglePerTool
-                    const radius = 65 // A comfortable radius for the wider arc
+                    const radius = 60
                     
                     const x = Math.cos(angle) * radius
                     const y = Math.sin(angle) * radius
                     
-                    const isHovered = hoveredTool === index
                     const isDisabled = tool.disabled
 
                     return (
-                      <div
-                        key={index}
-                        className="absolute pointer-events-auto animate-in fade-in-0 zoom-in-75 duration-200"
-                        style={{
-                          left: `${x}px`,
-                          top: `${y}px`,
-                          transform: 'translate(-50%, -50%)',
-                          animationDelay: `${index * 20}ms`,
-                          opacity: hoveredTool !== null && !isHovered ? 0.5 : 1,
-                          transition: 'opacity 200ms ease-out, transform 200ms ease-out',
-                        }}
-                      >
-                        <div className="flex flex-col items-center gap-1.5">
-                          {/* Tool Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (!isDisabled) {
-                                tool.action()
-                                if (!isToolboxLocked) {
-                                  setToolboxOpen(false)
+                      <TooltipProvider key={index}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (!isDisabled) {
+                                  tool.action()
+                                  if (!isToolboxLocked) {
+                                    setToolboxOpen(false)
+                                  }
                                 }
-                              }
-                            }}
-                            disabled={isDisabled}
-                            className={`h-7 w-7 rounded-full border transition-all duration-200 flex items-center justify-center ${
-                              isHovered && !isDisabled
-                                ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-115'
-                                : isDisabled
-                                ? 'bg-muted/30 text-muted-foreground/40 border-border/20 cursor-not-allowed opacity-50'
-                                : 'bg-card/95 backdrop-blur-sm text-card-foreground border-border/40 hover:border-primary/40 cursor-pointer shadow-sm'
-                            }`}
-                            style={{
-                              transition: 'all 200ms ease-out',
-                            }}
-                          >
-                            <tool.icon className="h-3 w-3" />
-                          </button>
-                          
-                          {/* Tool Label - Show on hover */}
-                          {isHovered && (
-                            <div 
-                              className="absolute top-full mt-1 whitespace-nowrap animate-in fade-in-0 slide-in-from-top-1 duration-150"
+                              }}
+                              disabled={isDisabled}
+                              className={`absolute pointer-events-auto h-9 w-9 rounded-full border transition-all flex items-center justify-center ${
+                                isDisabled
+                                  ? 'bg-muted/50 text-muted-foreground border-border/30 cursor-not-allowed opacity-50'
+                                  : 'bg-card text-card-foreground border-border hover:bg-primary hover:text-primary-foreground hover:border-primary cursor-pointer shadow-sm hover:shadow-md'
+                              }`}
                               style={{
-                                pointerEvents: 'none',
+                                left: `${x}px`,
+                                top: `${y}px`,
+                                transform: 'translate(-50%, -50%)',
                               }}
                             >
-                              <div className={`px-2 py-1 rounded-md text-[10px] font-medium shadow-md ${
-                                isDisabled 
-                                  ? 'bg-muted/80 text-muted-foreground/60 border border-border/30'
-                                  : 'bg-primary/90 text-primary-foreground border border-primary/50'
-                              }`}>
-                                {tool.label}
-                                {isDisabled && <span className=" ml-1">(disabled)</span>}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                              <tool.icon className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{tool.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )
                   })}
                 </div>

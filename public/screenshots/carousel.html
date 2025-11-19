@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markov Learning Lab - Tools Screenshots</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .carousel-container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .carousel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .carousel-header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .carousel-header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .carousel {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            overflow: hidden;
+        }
+
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+            height: 100%;
+        }
+
+        .carousel-slide {
+            min-width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            background: #f8f9fa;
+        }
+
+        .carousel-slide img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            object-fit: contain;
+        }
+
+        .carousel-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+        }
+
+        .carousel-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .carousel-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .carousel-btn:active {
+            transform: translateY(0);
+        }
+
+        .carousel-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .indicator.active {
+            background: #667eea;
+        }
+
+        .slide-info {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        .slide-info h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .slide-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .carousel {
+                height: 400px;
+            }
+
+            .carousel-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .carousel-slide {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="carousel-container">
+        <div class="carousel-header">
+            <h1>🛠️ Tools Showcase</h1>
+            <p>Interactive Markov Chain Builder & Analysis Tools</p>
+        </div>
+
+        <div class="carousel">
+            <div class="carousel-track" id="carouselTrack">
+                <div class="carousel-slide">
+                    <img src="chain-builder.png" alt="Chain Builder" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EChain Builder Screenshot%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div class="carousel-slide">
+                    <img src="simulation.png" alt="Simulation" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3ESimulation Screenshot%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div class="carousel-slide">
+                    <img src="grammar-editor.png" alt="Grammar Editor" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EGrammar Editor Screenshot%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div class="carousel-slide">
+                    <img src="analysis.png" alt="Analysis" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EAnalysis Screenshot%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div class="carousel-slide">
+                    <img src="string-testing.png" alt="String Testing" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EString Testing Screenshot%3C/text%3E%3C/svg%3E'">
+                </div>
+            </div>
+        </div>
+
+        <div class="slide-info">
+            <h3 id="slideTitle">Chain Builder</h3>
+            <p id="slideDescription">Visual chain builder with drag-and-drop states and transitions</p>
+        </div>
+
+        <div class="carousel-controls">
+            <button class="carousel-btn" onclick="previousSlide()">← Previous</button>
+            <button class="carousel-btn" onclick="nextSlide()">Next →</button>
+        </div>
+
+        <div class="carousel-indicators" id="indicators"></div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = [
+            { title: "Chain Builder", description: "Visual chain builder with drag-and-drop states and transitions" },
+            { title: "Simulation", description: "Real-time simulation with path highlighting and metrics" },
+            { title: "Grammar Editor", description: "Grammar editor with two-way conversion between grammars and automata" },
+            { title: "Analysis", description: "Advanced analysis showing transition matrices and chain properties" },
+            { title: "String Testing", description: "String acceptance testing with visual path tracing" }
+        ];
+
+        function initCarousel() {
+            const indicatorsContainer = document.getElementById('indicators');
+            slides.forEach((_, index) => {
+                const indicator = document.createElement('div');
+                indicator.className = `indicator ${index === 0 ? 'active' : ''}`;
+                indicator.onclick = () => goToSlide(index);
+                indicatorsContainer.appendChild(indicator);
+            });
+            updateSlide();
+        }
+
+        function updateSlide() {
+            const track = document.getElementById('carouselTrack');
+            track.style.transform = `translateX(-${currentSlide * 100}%)`;
+            
+            document.getElementById('slideTitle').textContent = slides[currentSlide].title;
+            document.getElementById('slideDescription').textContent = slides[currentSlide].description;
+            
+            const indicators = document.querySelectorAll('.indicator');
+            indicators.forEach((ind, index) => {
+                ind.classList.toggle('active', index === currentSlide);
+            });
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            updateSlide();
+        }
+
+        function previousSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            updateSlide();
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlide();
+        }
+
+        // Auto-play (optional)
+        // setInterval(nextSlide, 5000);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') previousSlide();
+            if (e.key === 'ArrowRight') nextSlide();
+        });
+
+        initCarousel();
+    </script>
+</body>
+</html>
