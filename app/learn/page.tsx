@@ -79,39 +79,53 @@ export default function LearnPage() {
     return () => window.removeEventListener('lesson-completed', handleLessonCompleted)
   }, [])
 
-  // Fetch courses on mount
+  // Fetch courses on mount - optimized with caching
   useEffect(() => {
     const loadCourses = async () => {
       setLoading(true)
-      const fetchedCourses = await fetchCourses()
-      setCourses(fetchedCourses)
-      if (fetchedCourses.length > 0) {
-        // Respect a pre-selected course (e.g., from Lesson page "Next Course")
-        const preselect = typeof window !== 'undefined' ? localStorage.getItem('markov-selected-course') : null
-        const validPreselect = preselect && fetchedCourses.some(c => c.id === preselect) ? preselect : null
-        setSelectedCourseId(validPreselect || fetchedCourses[0].id)
-        if (validPreselect) localStorage.removeItem('markov-selected-course')
+      try {
+        const fetchedCourses = await fetchCourses()
+        setCourses(fetchedCourses)
+        if (fetchedCourses.length > 0) {
+          // Respect a pre-selected course (e.g., from Lesson page "Next Course")
+          const preselect = typeof window !== 'undefined' ? localStorage.getItem('markov-selected-course') : null
+          const validPreselect = preselect && fetchedCourses.some(c => c.id === preselect) ? preselect : null
+          setSelectedCourseId(validPreselect || fetchedCourses[0].id)
+          if (validPreselect) localStorage.removeItem('markov-selected-course')
+        }
+      } catch (error) {
+        console.error('Failed to load courses:', error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     loadCourses()
   }, [])
 
-  // Prefetch lessons for all courses once courses are known, for stable progress computation across sidebar and header
+  // Prefetch lessons for all courses in parallel - optimized with better error handling
   useEffect(() => {
     if (!courses.length) return
     let cancelled = false
+    const abortController = new AbortController()
+    
     ;(async () => {
       try {
-        const entries = await Promise.all(
+        // Use Promise.allSettled to handle partial failures gracefully
+        const entries = await Promise.allSettled(
           courses.map(async (c) => {
             const ls = await fetchLessonsByCourse(c.id)
             return [c.id, ls.sort((a, b) => a.order - b.order)] as const
           })
         )
         if (cancelled) return
+        
         const map: Record<string, Lesson[]> = {}
-        for (const [id, ls] of entries) map[id] = ls
+        for (const entry of entries) {
+          if (entry.status === 'fulfilled') {
+            const [id, ls] = entry.value
+            map[id] = ls
+          }
+        }
         setCourseLessonsMap(map)
       } catch (e) {
         console.warn("Lesson prefetch failed", e)
@@ -119,19 +133,28 @@ export default function LearnPage() {
     })()
     return () => {
       cancelled = true
+      abortController.abort()
     }
   }, [courses])
 
-  // Fetch lessons when course changes
+  // Optimized: Use prefetched lessons instead of fetching again when course changes
   useEffect(() => {
-    if (selectedCourseId) {
+    if (selectedCourseId && courseLessonsMap[selectedCourseId]) {
+      // Use prefetched lessons immediately for instant UI update
+      setLessons(courseLessonsMap[selectedCourseId])
+    } else if (selectedCourseId) {
+      // Fallback: fetch if not in prefetched map (shouldn't happen normally)
       const loadLessons = async () => {
-        const fetchedLessons = await fetchLessonsByCourse(selectedCourseId)
-        setLessons(fetchedLessons.sort((a, b) => a.order - b.order))
+        try {
+          const fetchedLessons = await fetchLessonsByCourse(selectedCourseId)
+          setLessons(fetchedLessons.sort((a, b) => a.order - b.order))
+        } catch (error) {
+          console.error('Failed to load lessons:', error)
+        }
       }
       loadLessons()
     }
-  }, [selectedCourseId])
+  }, [selectedCourseId, courseLessonsMap])
 
   const currentCourse = courses.find((c) => c.id === selectedCourseId)
   
@@ -223,7 +246,9 @@ export default function LearnPage() {
                   onClick={() => {
                     // Optimistically hydrate lessons for the selected course for snappy UI
                     const prefetched = courseLessonsMap[course.id]
-                    if (prefetched) setLessons(prefetched)
+                    if (prefetched && prefetched.length > 0) {
+                      setLessons(prefetched)
+                    }
                     setSelectedCourseId(course.id)
                     setSidebarOpen(false)
                   }}

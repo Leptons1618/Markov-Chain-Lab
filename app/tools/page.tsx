@@ -2739,6 +2739,10 @@ function ToolsContent() {
 
   // Pointer-based interactions: pan, drag, pinch-zoom
   const onCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Get client coordinates - handle both mouse and touch events
+    const clientX = e.clientX ?? (e as any).touches?.[0]?.clientX ?? 0
+    const clientY = e.clientY ?? (e as any).touches?.[0]?.clientY ?? 0
+    
     // Start panning on middle button or left-drag on empty canvas (not on nodes)
     const targetEl = e.target as HTMLElement
     const onNode = !!targetEl.closest('[data-node-id]')
@@ -2746,11 +2750,11 @@ function ToolsContent() {
     if ((e.button === 1 || (e.button === 0 && !onNode)) && !draggingStateId) {
       e.preventDefault()
       setIsPanning(true)
-      setLastPanPoint({ x: e.clientX, y: e.clientY })
+      setLastPanPoint({ x: clientX, y: clientY })
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     }
 
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    pointersRef.current.set(e.pointerId, { x: clientX, y: clientY })
 
     if (pointersRef.current.size === 2) {
       // Start pinch gesture
@@ -2763,8 +2767,12 @@ function ToolsContent() {
 
   const onCanvasPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // Get client coordinates - handle both mouse and touch events
+      const clientX = e.clientX ?? (e as any).touches?.[0]?.clientX ?? 0
+      const clientY = e.clientY ?? (e as any).touches?.[0]?.clientY ?? 0
+      
       if (pointersRef.current.has(e.pointerId)) {
-        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        pointersRef.current.set(e.pointerId, { x: clientX, y: clientY })
       }
 
       if (pointersRef.current.size >= 2) {
@@ -2791,19 +2799,21 @@ function ToolsContent() {
       }
 
       if (draggingStateId) {
+        // Prevent default to stop scrolling/zooming on mobile
+        e.preventDefault()
+        
         // Check if we've moved beyond the drag threshold
         if (dragStartPosRef.current) {
-          const dx = e.clientX - dragStartPosRef.current.x
-          const dy = e.clientY - dragStartPosRef.current.y
+          const dx = clientX - dragStartPosRef.current.x
+          const dy = clientY - dragStartPosRef.current.y
           const distance = Math.sqrt(dx * dx + dy * dy)
           
           // Only start actual dragging if moved beyond threshold
           if (distance > DRAG_THRESHOLD) {
-            e.preventDefault()
             didDragRef.current = true
             dragStartPosRef.current = null // Clear threshold check
             
-            const { x, y } = clientToWorld(e.clientX, e.clientY)
+            const { x, y } = clientToWorld(clientX, clientY)
             
             // Update refs immediately
             pendingDragPosRef.current = { id: draggingStateId, x, y }
@@ -2819,8 +2829,7 @@ function ToolsContent() {
           }
         } else if (didDragRef.current) {
           // Already dragging, continue with real-time updates
-          e.preventDefault()
-          const { x, y } = clientToWorld(e.clientX, e.clientY)
+          const { x, y } = clientToWorld(clientX, clientY)
           pendingDragPosRef.current = { id: draggingStateId, x, y }
           currentDragPosRef.current = { id: draggingStateId, x, y }
           
@@ -2834,14 +2843,14 @@ function ToolsContent() {
         }
       } else if (isPanning && !draggingStateId) {
         e.preventDefault()
-        const deltaX = e.clientX - lastPanPoint.x
-        const deltaY = e.clientY - lastPanPoint.y
+        const deltaX = clientX - lastPanPoint.x
+        const deltaY = clientY - lastPanPoint.y
         const nextPan = {
           x: Math.max(-MAX_PAN_X, Math.min(MAX_PAN_X, panOffset.x + deltaX)),
           y: Math.max(-MAX_PAN_Y, Math.min(MAX_PAN_Y, panOffset.y + deltaY)),
         }
         scheduleViewUpdate({ pan: nextPan })
-        setLastPanPoint({ x: e.clientX, y: e.clientY })
+        setLastPanPoint({ x: clientX, y: clientY })
       }
     },
     [clientToWorld, isPanning, lastPanPoint, panOffset.x, panOffset.y, scheduleViewUpdate, draggingStateId, scale, getBaseCenterOffset],
@@ -3381,12 +3390,21 @@ function ToolsContent() {
             className={`w-full h-full bg-gradient-to-br from-muted/5 via-background to-muted/10 relative overflow-hidden select-none ${
               isPanning ? "cursor-grabbing" : draggingStateId ? "cursor-move" : "cursor-crosshair"
             }`}
+            style={{
+              touchAction: draggingStateId ? 'none' : 'pan-x pan-y pinch-zoom', // Prevent default touch behaviors when dragging
+            }}
             onClick={handleCanvasClick}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
             onPointerUp={onCanvasPointerUp}
             onWheel={onCanvasWheel}
             onContextMenu={(e) => e.preventDefault()}
+            onTouchStart={(e) => {
+              // Prevent double-tap zoom on mobile when interacting with nodes
+              if ((e.target as HTMLElement).closest('[data-node-id]')) {
+                e.preventDefault()
+              }
+            }}
           >
             <div
               ref={canvasContentRef}
@@ -3801,14 +3819,22 @@ function ToolsContent() {
                           ? `0 0 20px ${state.color}CC, 0 0 0 3px ${state.color}60` 
                           : state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
                         transition: draggingStateId === state.id ? 'none' : 'all 0.05s linear',
+                        touchAction: 'none', // Prevent default touch behaviors (scrolling, zooming) during drag
+                        WebkitTouchCallout: 'none', // Prevent iOS callout menu
+                        WebkitUserSelect: 'none', // Prevent text selection on iOS
+                        userSelect: 'none',
                       }}
                       onPointerDown={(e) => {
-                        if (e.button !== 0) return
+                        if (e.button !== 0 && e.pointerType !== 'touch') return
                         e.stopPropagation()
+                        e.preventDefault() // Prevent default touch behaviors
                         didDragRef.current = false
                         setIsPanning(false)
                         setDraggingStateId(state.id)
-                        dragStartPosRef.current = { x: e.clientX, y: e.clientY }
+                        // Use clientX/clientY for both mouse and touch
+                        const clientX = e.clientX ?? (e as any).touches?.[0]?.clientX ?? 0
+                        const clientY = e.clientY ?? (e as any).touches?.[0]?.clientY ?? 0
+                        dragStartPosRef.current = { x: clientX, y: clientY }
                         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
                       }}
                       onPointerUp={(e) => {
