@@ -355,7 +355,11 @@ function ToolsContent() {
   const [simulationSpeed, setSimulationSpeed] = useState(500)
   const [simulationTransitionId, setSimulationTransitionId] = useState<string | null>(null)
   const [isGeneratingText, setIsGeneratingText] = useState(false)
+  const [isPausedTextGeneration, setIsPausedTextGeneration] = useState(false)
   const [textGenerationPath, setTextGenerationPath] = useState<Array<{ stateId: string; char: string | null }>>([])
+  const [textGenerationSpeed, setTextGenerationSpeed] = useState(500)
+  const textGenerationCancelRef = useRef(false)
+  const textGenerationPauseRef = useRef(false)
   const [simulationMetrics, setSimulationMetrics] = useState<SimulationMetrics>({
     stateVisits: {},
     transitionUsage: {},
@@ -1792,7 +1796,7 @@ function ToolsContent() {
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[9999]" position="popper">
                 <SelectItem value="markov">Markov Chain (Probabilistic)</SelectItem>
                 <SelectItem value="dfa">DFA (Deterministic Finite Automaton)</SelectItem>
                 <SelectItem value="nfa">NFA (Nondeterministic Finite Automaton)</SelectItem>
@@ -2029,6 +2033,9 @@ function ToolsContent() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Simulation Controls</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Step through the chain manually or automatically. Tracks state visits and transition usage over time. Use this to understand how the chain behaves probabilistically.
+              </p>
             </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -2288,6 +2295,9 @@ function ToolsContent() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Text Generation</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Generate sequences by walking through the chain probabilistically. Shows the pattern of state transitions.
+              </p>
             </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -2300,6 +2310,7 @@ function ToolsContent() {
                 value={textGenerationLength}
                 onChange={(e) => setTextGenerationLength(Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)))}
                 className="w-full"
+                disabled={isGeneratingText}
               />
             </div>
 
@@ -2308,12 +2319,12 @@ function ToolsContent() {
               <Select 
                 value={textGenerationMode} 
                 onValueChange={(value: "probabilistic" | "deterministic") => setTextGenerationMode(value)}
-                disabled={automatonType === "markov" ? textGenerationMode === "deterministic" : false}
+                disabled={automatonType === "markov" ? textGenerationMode === "deterministic" : false || isGeneratingText}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]" position="popper">
                   <SelectItem value="probabilistic">Probabilistic (Markov)</SelectItem>
                   <SelectItem 
                     value="deterministic"
@@ -2328,86 +2339,175 @@ function ToolsContent() {
               )}
             </div>
 
-            <Button
-              onClick={async () => {
-                if (chain.states.length === 0) return
-                setIsGeneratingText(true)
-                setTextGenerationPath([])
-                setHighlightedStateId(null)
-                setHighlightedTransitionId(null)
-                setGeneratedText("")
-                
-                try {
-                  // Find initial state
-                  const initialStates = chain.states.filter((s) => s.isInitial === true)
-                  let currentStateId = initialStates.length > 0 ? initialStates[0].id : chain.states[0].id
-                  
-                  const path: Array<{ stateId: string; char: string | null }> = []
-                  const generatedSequence: string[] = []
-                  
-                  // Highlight initial state
-                  setHighlightedStateId(currentStateId)
-                  path.push({ stateId: currentStateId, char: null })
-                  setTextGenerationPath([...path])
-                  const initialState = chain.states.find((s) => s.id === currentStateId)
-                  if (initialState) generatedSequence.push(initialState.name)
-                  await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
-                  
-                  // Generate text with animations
-                  for (let i = 1; i < textGenerationLength; i++) {
-                    const outgoingTransitions = chain.transitions.filter((t) => t.from === currentStateId)
-                    if (outgoingTransitions.length === 0) break
-                    
-                    // Sample transition probabilistically
-                    const random = Math.random()
-                    let cumulative = 0
-                    let selectedTransition: Transition | null = null
-                    
-                    for (const transition of outgoingTransitions) {
-                      cumulative += transition.probability
-                      if (random <= cumulative) {
-                        selectedTransition = transition
-                        break
-                      }
-                    }
-                    
-                    if (!selectedTransition) break
-                    
-                    // Animate transition
-                    setHighlightedTransitionId(selectedTransition.id)
-                    await new Promise((resolve) => setTimeout(resolve, stringTestSpeed / 2))
-                    
-                    currentStateId = selectedTransition.to
-                    setHighlightedStateId(currentStateId)
-                    setHighlightedTransitionId(null)
-                    
-                    path.push({ stateId: currentStateId, char: null })
-                    setTextGenerationPath([...path])
-                    const nextState = chain.states.find((s) => s.id === currentStateId)
-                    if (nextState) generatedSequence.push(nextState.name)
-                    await new Promise((resolve) => setTimeout(resolve, stringTestSpeed))
-                  }
-                  
-                  setGeneratedText(generatedSequence.join(" "))
-                  
-                  // Clear highlights after a delay
-                  setTimeout(() => {
+            {/* Speed Control */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Animation Speed</Label>
+                <span className="text-xs text-muted-foreground">{textGenerationSpeed}ms</span>
+              </div>
+              <SpeedDial
+                value={textGenerationSpeed}
+                onChange={setTextGenerationSpeed}
+                min={50}
+                max={1000}
+                step={50}
+              />
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex gap-2">
+              {!isGeneratingText ? (
+                <Button
+                  onClick={async () => {
+                    if (chain.states.length === 0) return
+                    setIsGeneratingText(true)
+                    setIsPausedTextGeneration(false)
+                    textGenerationCancelRef.current = false
+                    textGenerationPauseRef.current = false
+                    setTextGenerationPath([])
                     setHighlightedStateId(null)
                     setHighlightedTransitionId(null)
-                    setTextGenerationPath([])
-                  }, 1500)
-                } catch (error) {
-                  console.error("Error generating text:", error)
-                  setGeneratedText("Error: " + (error instanceof Error ? error.message : "Unknown error"))
-                } finally {
-                  setIsGeneratingText(false)
-                }
-              }}
-              disabled={chain.states.length === 0 || isGeneratingText}
-              className="w-full"
-            >
-              {isGeneratingText ? "Generating..." : "Generate Text"}
-            </Button>
+                    setGeneratedText("")
+                    
+                    try {
+                      // Find initial state
+                      const initialStates = chain.states.filter((s) => s.isInitial === true)
+                      let currentStateId = initialStates.length > 0 ? initialStates[0].id : chain.states[0].id
+                      
+                      const path: Array<{ stateId: string; char: string | null }> = []
+                      const generatedSequence: string[] = []
+                      
+                      // Highlight initial state
+                      setHighlightedStateId(currentStateId)
+                      path.push({ stateId: currentStateId, char: null })
+                      setTextGenerationPath([...path])
+                      const initialState = chain.states.find((s) => s.id === currentStateId)
+                      if (initialState) generatedSequence.push(initialState.name)
+                      
+                      // Wait with pause support
+                      const wait = async (ms: number) => {
+                        const start = Date.now()
+                        while (Date.now() - start < ms) {
+                          if (textGenerationCancelRef.current) return
+                          // Check pause state from ref to avoid stale closure
+                          while (textGenerationPauseRef.current && !textGenerationCancelRef.current) {
+                            await new Promise(resolve => setTimeout(resolve, 100))
+                          }
+                          if (textGenerationCancelRef.current) return
+                          await new Promise(resolve => setTimeout(resolve, 50))
+                        }
+                      }
+                      
+                      await wait(textGenerationSpeed)
+                      if (textGenerationCancelRef.current) return
+                      
+                      // Generate text with animations
+                      for (let i = 1; i < textGenerationLength; i++) {
+                        if (textGenerationCancelRef.current) break
+                        
+                        const outgoingTransitions = chain.transitions.filter((t) => t.from === currentStateId)
+                        if (outgoingTransitions.length === 0) break
+                        
+                        // Sample transition probabilistically
+                        const random = Math.random()
+                        let cumulative = 0
+                        let selectedTransition: Transition | null = null
+                        
+                        for (const transition of outgoingTransitions) {
+                          cumulative += transition.probability
+                          if (random <= cumulative) {
+                            selectedTransition = transition
+                            break
+                          }
+                        }
+                        
+                        if (!selectedTransition) break
+                        
+                        // Animate transition
+                        setHighlightedTransitionId(selectedTransition.id)
+                        await wait(textGenerationSpeed / 2)
+                        if (textGenerationCancelRef.current) break
+                        
+                        currentStateId = selectedTransition.to
+                        setHighlightedStateId(currentStateId)
+                        setHighlightedTransitionId(null)
+                        
+                        path.push({ stateId: currentStateId, char: null })
+                        setTextGenerationPath([...path])
+                        const nextState = chain.states.find((s) => s.id === currentStateId)
+                        if (nextState) generatedSequence.push(nextState.name)
+                        setGeneratedText(generatedSequence.join(" "))
+                        
+                        await wait(textGenerationSpeed)
+                        if (textGenerationCancelRef.current) break
+                      }
+                      
+                      if (!textGenerationCancelRef.current) {
+                        setGeneratedText(generatedSequence.join(" "))
+                        
+                        // Clear highlights after a delay
+                        setTimeout(() => {
+                          setHighlightedStateId(null)
+                          setHighlightedTransitionId(null)
+                          setTextGenerationPath([])
+                        }, 1500)
+                      }
+                    } catch (error) {
+                      console.error("Error generating text:", error)
+                      setGeneratedText("Error: " + (error instanceof Error ? error.message : "Unknown error"))
+                    } finally {
+                      setIsGeneratingText(false)
+                      setIsPausedTextGeneration(false)
+                      textGenerationPauseRef.current = false
+                    }
+                  }}
+                  disabled={chain.states.length === 0}
+                  className="flex-1"
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Generate Text
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => {
+                      const newPauseState = !isPausedTextGeneration
+                      setIsPausedTextGeneration(newPauseState)
+                      textGenerationPauseRef.current = newPauseState
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {isPausedTextGeneration ? (
+                      <>
+                        <Play className="mr-2 h-4 w-4" />
+                        Resume
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="mr-2 h-4 w-4" />
+                        Pause
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      textGenerationCancelRef.current = true
+                      textGenerationPauseRef.current = false
+                      setIsGeneratingText(false)
+                      setIsPausedTextGeneration(false)
+                      setHighlightedStateId(null)
+                      setHighlightedTransitionId(null)
+                    }}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Stop
+                  </Button>
+                </>
+              )}
+            </div>
 
             {(textGenerationPath.length > 0 || generatedText) && (
               <div className="space-y-2 border-t pt-3">
@@ -2436,6 +2536,13 @@ function ToolsContent() {
                     <div className="p-3 bg-muted rounded-md text-sm font-mono break-words">
                       {generatedText}
                     </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {generatedText.split(" ").length === 1 ? (
+                        <>This shows the sequence of states visited. For example, in the poetry analysis, "Vowel Consonant Vowel" means the pattern of letter types (vowel→consonant→vowel), not actual letters.</>
+                      ) : (
+                        <>This shows the sequence of states visited. Each word represents a state in the chain. The pattern shows how states transition probabilistically.</>
+                      )}
+                    </p>
                   </>
                 )}
                 <Button
@@ -2647,26 +2754,30 @@ function ToolsContent() {
         )}
 
         {/* Phase 2: Language Recognition - Only show for DFA/NFA */}
-        {languageAnalysis && (automatonType === "dfa" || automatonType === "nfa") && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Language Recognition</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium">Language Type:</Label>
-                  <Badge variant="default">{languageAnalysis.languageType.toUpperCase()}</Badge>
-                </div>
-                {languageAnalysis.regularExpression && (
-                  <div className="p-2 bg-muted rounded-md text-sm font-mono">
-                    {languageAnalysis.regularExpression}
+        {automatonType === "dfa" || automatonType === "nfa" ? (
+          languageAnalysis ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Language Recognition</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Analyze what language (set of strings) your automaton recognizes. Add transition labels (a-z, 0-9) and mark final states to define your language.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium">Language Type:</Label>
+                    <Badge variant="default">{languageAnalysis.languageType.toUpperCase()}</Badge>
                   </div>
-                )}
-                {languageAnalysis.description && (
-                  <p className="text-xs text-muted-foreground">{languageAnalysis.description}</p>
-                )}
-              </div>
+                  {languageAnalysis.regularExpression && (
+                    <div className="p-2 bg-muted rounded-md text-sm font-mono">
+                      {languageAnalysis.regularExpression}
+                    </div>
+                  )}
+                  {languageAnalysis.description && (
+                    <p className="text-xs text-muted-foreground">{languageAnalysis.description}</p>
+                  )}
+                </div>
 
               <div className="pt-3 border-t space-y-2">
                 <Label className="text-xs text-muted-foreground">Language Properties</Label>
@@ -2732,7 +2843,30 @@ function ToolsContent() {
               )}
             </CardContent>
           </Card>
-        )}
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Language Recognition</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Analyze what language (set of strings) your automaton recognizes. Add transition labels (a-z, 0-9) and mark final states to define your language.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p>To enable language recognition:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs ml-2">
+                    <li>Add transition labels (single characters: a-z, 0-9) in the Build tab</li>
+                    <li>Mark at least one state as final (double-click state → toggle "Final State")</li>
+                    <li>Ensure you have at least one initial state</li>
+                  </ul>
+                  <p className="text-xs mt-2">
+                    Language recognition works for DFA/NFA automata. Switch to DFA or NFA mode in the Build tab.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        ) : null}
       </TabsContent>
     </Tabs>
   ))
