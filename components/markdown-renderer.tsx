@@ -416,10 +416,10 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
             return <BlockMath latex={latex} id={id} />
           }
           return (
-            <div id={id} className="my-6 not-prose max-w-full">
-              <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full">
-                <div className="flex flex-col sm:flex-row items-start justify-between gap-2 max-w-full">
-                  <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto flex-1 min-w-0 max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{latex}</pre>
+            <div id={id} className="my-6 not-prose max-w-full w-full">
+              <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full w-full">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-2 max-w-full w-full">
+                  <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto flex-1 min-w-0 max-w-full w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', maxWidth: '100%' }}>{latex}</pre>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0 self-start sm:self-auto">
                     <CopyButton text={latex} variant="lambda" title="Copy LaTeX" ariaLabel="Copy LaTeX" className="px-2 py-1 text-xs rounded-md border" />
                   </div>
@@ -549,8 +549,8 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
         <div className="text-sm text-muted-foreground">{wordCount} words • ~{readingTimeMinutes} min</div>
       </div>
       )}
-      <div>
-        <div ref={containerRef} className="prose prose-lg md:prose-xl max-w-none lg:max-w-5xl xl:max-w-6xl mx-auto dark:prose-invert">
+      <div className="w-full max-w-full overflow-x-hidden">
+        <div ref={containerRef} className="prose prose-lg md:prose-xl max-w-none lg:max-w-5xl xl:max-w-6xl mx-auto dark:prose-invert w-full">
           {/* TOC at start of content (collapsed by default) */}
           {showToc && toc.length > 0 && (
             <div className="mb-4 p-3 border rounded bg-card">
@@ -938,14 +938,22 @@ function BlockMath({ latex, id }: { latex: string; id: string }) {
   // copy handled by CopyButton component
 
   return (
-    <div id={id} className="my-6 not-prose max-w-full">
-      <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full">
-        <div className="flex flex-col sm:flex-row items-start gap-2 min-w-0 max-w-full">
-          <div className="prose max-w-none flex-1 min-w-0 overflow-x-auto w-full">
+    <div id={id} className="my-6 not-prose max-w-full w-full">
+      <div className="relative rounded-md border border-border bg-card p-4 overflow-x-auto max-w-full w-full">
+        <div className="flex flex-col sm:flex-row items-start gap-2 min-w-0 max-w-full w-full">
+          <div className="prose max-w-none flex-1 min-w-0 w-full" style={{ overflow: 'auto', maxWidth: '100%' }}>
             {rendered ? (
-              <div className="overflow-x-auto max-w-full" style={{ overflowWrap: 'anywhere' }} dangerouslySetInnerHTML={{ __html: rendered }} />
+              <div 
+                className="overflow-x-auto max-w-full w-full" 
+                style={{ 
+                  overflowWrap: 'anywhere',
+                  maxWidth: '100%',
+                  width: '100%'
+                }}
+                dangerouslySetInnerHTML={{ __html: rendered }} 
+              />
             ) : (
-              <pre className="whitespace-pre-wrap break-words text-sm font-mono overflow-x-auto max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{latex}</pre>
+              <pre className="whitespace-pre-wrap break-words text-sm font-mono overflow-x-auto max-w-full w-full" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', maxWidth: '100%' }}>{latex}</pre>
             )}
           </div>
 

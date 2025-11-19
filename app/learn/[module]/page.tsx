@@ -204,7 +204,7 @@ export default function LessonPage({ params }: { params: any }) {
     <div className="min-h-screen bg-background">
       <MainNav currentPath="/learn" showOverallProgress={true} overallProgress={progressPercentage} />
 
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-8 space-y-8 w-full overflow-x-hidden">
         <div className="space-y-4">
           <Badge variant="outline">{lesson.title}</Badge>
           <div className="flex items-start justify-between">
@@ -220,8 +220,10 @@ export default function LessonPage({ params }: { params: any }) {
         </div>
 
         <div className="space-y-8">
-          <Card className="p-4 sm:p-6 md:p-8">
-            <MarkdownRenderer content={lesson.content} />
+          <Card className="p-4 sm:p-6 md:p-8 overflow-x-auto max-w-full">
+            <div className="min-w-0 max-w-full">
+              <MarkdownRenderer content={lesson.content} />
+            </div>
           </Card>
         </div>
 

@@ -167,6 +167,59 @@ body {
   text-decoration: underline;
 }
 
+/* Fix overflow for KaTeX math equations on mobile */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
+.katex {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Ensure math containers don't overflow */
+.not-prose .katex-display,
+.not-prose .katex {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Mobile-specific fixes for long equations */
+@media (max-width: 640px) {
+  .katex-display {
+    font-size: 0.9em;
+  }
+  
+  .katex {
+    font-size: 0.9em;
+  }
+  
+  /* Ensure all math-related elements respect container width */
+  .prose .katex-display,
+  .prose .katex {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+}
+
+/* Ensure KaTeX elements inside containers respect overflow */
+.katex-display > .katex,
+.katex > .katex-html {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Prevent horizontal overflow in math containers */
+[class*="katex"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* Modern thin scrollbar styles */
 * {
   scrollbar-width: thin;
