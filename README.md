@@ -120,15 +120,15 @@ The Tools page is the heart of Markov Learning Lab. Here's what you can do:
 
 | Chain Builder | Simulation | Grammar Editor | Analysis |
 |:---:|:---:|:---:|:---:|
-| ![Chain Builder](public/screenshots/chain-builder.png) | ![Simulation](public/screenshots/simulation.png) | ![Grammar Editor](public/screenshots/grammar-editor.png) | ![Analysis](public/screenshots/analysis.png) |
+| ![Chain Builder](public/screenshots/chain-builder.jpeg) | ![Simulation](public/screenshots/simulation.jpeg) | ![Grammar Editor](public/screenshots/grammar-editor.jpeg) | ![Analysis](public/screenshots/analysis.jpeg) |
 | *Visual chain builder with drag-and-drop states* | *Real-time simulation with path highlighting* | *Grammar editor with two-way conversion* | *Advanced analysis and transition matrices* |
 
 **📝 Note:** Add your screenshots to `/public/screenshots/` directory. Recommended images:
-- `chain-builder.png` - Chain Builder canvas showing states and transitions
-- `simulation.png` - Simulation in action with highlighted paths  
-- `grammar-editor.png` - Grammar Editor with example grammars
-- `analysis.png` - Analysis tab showing transition matrices and properties
-- `string-testing.png` - String acceptance testing visualization
+- `chain-builder.jpeg` - Chain Builder canvas showing states and transitions
+- `simulation.jpeg` - Simulation in action with highlighted paths  
+- `grammar-editor.jpeg` - Grammar Editor with example grammars
+- `analysis.jpeg` - Analysis tab showing transition matrices and properties
+- `string-testing.jpeg` - String acceptance testing visualization
 
 💡 **Interactive Carousel:** Check out [`public/screenshots/carousel.html`](public/screenshots/carousel.html) for a beautiful interactive carousel you can use for presentations or embed in your site!
 
