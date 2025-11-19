@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎓 Markov Learning Lab
+# Markov Learning Lab
 
 **Interactive Markov Chains Learning Platform**
 
@@ -18,48 +18,48 @@
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎯 **Interactive Learning**
+### **Interactive Learning**
 - **Guided Curriculum**: Step-by-step lessons covering Markov Chains fundamentals
 - **Interactive Demos**: Coin flip simulations, convergence visualizations, and real-world examples
 - **Practice Quizzes**: MCQ, True/False, and Numerical questions with instant feedback
 - **Resource Library**: Curated academic papers, books, and educational materials
 
-### 🛠️ **Powerful Tools**
+### **Powerful Tools**
 
 #### **Visual Chain Builder**
-- 🎨 **Drag-and-Drop Interface**: Create states and transitions visually
-- 📊 **Multiple Automaton Types**: Markov Chains, DFA, and NFA support
-- 🔄 **Real-time Simulation**: Step through transitions with visual feedback
-- 📈 **Advanced Analysis**: Transition matrices, convergence analysis, and language recognition
-- 💾 **Save & Export**: Save designs to cloud or export as JSON
+- **Drag-and-Drop Interface**: Create states and transitions visually
+- **Multiple Automaton Types**: Markov Chains, DFA, and NFA support
+- **Real-time Simulation**: Step through transitions with visual feedback
+- **Advanced Analysis**: Transition matrices, convergence analysis, and language recognition
+- **Save & Export**: Save designs to cloud or export as JSON
 
 #### **Grammar Editor**
-- ✍️ **Two-way Conversion**: Convert between grammars and automata
-- 🔍 **Real-time Validation**: Instant feedback on grammar syntax
-- 📚 **Example Library**: Pre-built grammars to learn from
-- 🎯 **CFG Detection**: Smart detection of context-free vs regular grammars
+- **Two-way Conversion**: Convert between grammars and automata
+- **Real-time Validation**: Instant feedback on grammar syntax
+- **Example Library**: Pre-built grammars to learn from
+- **CFG Detection**: Smart detection of context-free vs regular grammars
 
 #### **String Acceptance Testing**
-- ✅ **Visual Path Tracing**: See exactly how strings are processed
-- 🎬 **Animated Transitions**: Step-by-step visualization with speed control
-- 📊 **Accept/Reject Indicators**: Clear visual feedback for string acceptance
+- **Visual Path Tracing**: See exactly how strings are processed
+- **Animated Transitions**: Step-by-step visualization with speed control
+- **Accept/Reject Indicators**: Clear visual feedback for string acceptance
 
 #### **Convergence Analysis**
-- 📉 **Stationary Distribution**: Calculate and visualize steady states
-- 🔄 **Convergence Rate**: Understand how quickly chains converge
-- 📊 **Chain Properties**: Ergodic, irreducible, aperiodic analysis
+- **Stationary Distribution**: Calculate and visualize steady states
+- **Convergence Rate**: Understand how quickly chains converge
+- **Chain Properties**: Ergodic, irreducible, aperiodic analysis
 
-### 🎨 **Modern UI/UX**
-- 🌓 **Dark Mode Support**: Beautiful themes for any preference
-- 📱 **Fully Responsive**: Works seamlessly on desktop, tablet, and mobile
-- ⚡ **Performance Optimized**: Fast loading with parallel data fetching
-- ♿ **Accessible**: Keyboard navigation and screen reader support
+### **Modern UI/UX**
+- **Dark Mode Support**: Beautiful themes for any preference
+- **Fully Responsive**: Works seamlessly on desktop, tablet, and mobile
+- **Performance Optimized**: Fast loading with parallel data fetching
+- **Accessible**: Keyboard navigation and screen reader support
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm/pnpm
@@ -69,8 +69,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/markov-learning-lab.git
-cd markov-learning-lab
+git clone https://github.com/Leptons1618/markov-chain-lab.git
+cd markov-chain-lab
 
 # Install dependencies
 npm install
@@ -102,19 +102,19 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-📖 **Full Setup Guides:**
+**Full Setup Guides:**
 - **[Admin Setup](docs/ADMIN_SETUP.md)** - Admin authentication and user management
 - **[Authentication Setup](docs/AUTHENTICATION_SETUP.md)** - User authentication configuration
 
 ---
 
-## 🛠️ Tools Showcase
+## Tools Showcase
 
 ### Interactive Chain Builder
 
 The Tools page is the heart of Markov Learning Lab. Here's what you can do:
 
-### 📸 Screenshots Gallery
+### Screenshots Gallery
 
 <div align="center">
 
@@ -123,18 +123,9 @@ The Tools page is the heart of Markov Learning Lab. Here's what you can do:
 | ![Chain Builder](public/screenshots/chain-builder.jpeg) | ![Simulation](public/screenshots/simulation.jpeg) | ![Grammar Editor](public/screenshots/grammar-editor.jpeg) | ![Analysis](public/screenshots/analysis.jpeg) |
 | *Visual chain builder with drag-and-drop states* | *Real-time simulation with path highlighting* | *Grammar editor with two-way conversion* | *Advanced analysis and transition matrices* |
 
-**📝 Note:** Add your screenshots to `/public/screenshots/` directory. Recommended images:
-- `chain-builder.jpeg` - Chain Builder canvas showing states and transitions
-- `simulation.jpeg` - Simulation in action with highlighted paths  
-- `grammar-editor.jpeg` - Grammar Editor with example grammars
-- `analysis.jpeg` - Analysis tab showing transition matrices and properties
-- `string-testing.jpeg` - String acceptance testing visualization
-
-💡 **Interactive Carousel:** Check out [`public/screenshots/carousel.html`](public/screenshots/carousel.html) for a beautiful interactive carousel you can use for presentations or embed in your site!
-
 </div>
 
-#### 🎯 Key Features
+#### Key Features
 
 | Feature | Description |
 |---------|-------------|
@@ -149,36 +140,36 @@ The Tools page is the heart of Markov Learning Lab. Here's what you can do:
 | **Text Generation** | Generate sequences by walking through the chain |
 | **Convergence Analysis** | Calculate stationary distributions and properties |
 
-#### 📋 Build Tab Features
-- ✅ **State Management**: Add, delete, and customize states
-- ✅ **Transition Editing**: Set probabilities or labels
-- ✅ **Initial/Final States**: Mark states as initial or final
-- ✅ **Design Guidelines**: Built-in rules for node placement
-- ✅ **Auto Layout**: Smart positioning when converting from grammar
+#### Build Tab Features
+- **State Management**: Add, delete, and customize states
+- **Transition Editing**: Set probabilities or labels
+- **Initial/Final States**: Mark states as initial or final
+- **Design Guidelines**: Built-in rules for node placement
+- **Auto Layout**: Smart positioning when converting from grammar
 
-#### 🎮 Simulate Tab Features
-- ✅ **Step-by-Step Simulation**: Manual control over transitions
-- ✅ **Auto-Run Mode**: Automatic simulation with speed control
-- ✅ **String Testing**: Test strings against DFA/NFA automata
-- ✅ **Path Visualization**: See the exact path through states
-- ✅ **Metrics Tracking**: State visits and transition usage
+#### Simulate Tab Features
+- **Step-by-Step Simulation**: Manual control over transitions
+- **Auto-Run Mode**: Automatic simulation with speed control
+- **String Testing**: Test strings against DFA/NFA automata
+- **Path Visualization**: See the exact path through states
+- **Metrics Tracking**: State visits and transition usage
 
-#### 📊 Analyze Tab Features
-- ✅ **Transition Matrix**: Visual representation of probabilities
-- ✅ **Chain Properties**: State count, transition validation
-- ✅ **Convergence Analysis**: Stationary distribution (Markov chains)
-- ✅ **Language Analysis**: Recognized strings and examples (DFA/NFA)
+#### Analyze Tab Features
+- **Transition Matrix**: Visual representation of probabilities
+- **Chain Properties**: State count, transition validation
+- **Convergence Analysis**: Stationary distribution (Markov chains)
+- **Language Analysis**: Recognized strings and examples (DFA/NFA)
 
-#### 📝 Grammar Tab Features
-- ✅ **Grammar Editor**: Write grammars in standard notation
-- ✅ **Real-time Parsing**: Instant validation and error detection
-- ✅ **Example Library**: Pre-built grammars to learn from
-- ✅ **Two-way Conversion**: Grammar ↔ Automaton conversion
-- ✅ **CFG Detection**: Smart detection of grammar types
+#### Grammar Tab Features
+- **Grammar Editor**: Write grammars in standard notation
+- **Real-time Parsing**: Instant validation and error detection
+- **Example Library**: Pre-built grammars to learn from
+- **Two-way Conversion**: Grammar ↔ Automaton conversion
+- **CFG Detection**: Smart detection of grammar types
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Comprehensive guides for development, setup, and usage:
 
@@ -195,7 +186,7 @@ Comprehensive guides for development, setup, and usage:
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 markov-learning-lab/
@@ -220,7 +211,7 @@ markov-learning-lab/
 
 ---
 
-## 🎓 Learning Path
+## Learning Path
 
 1. **Start with Basics** → Explore the Learn section for fundamental concepts
 2. **Try Examples** → Load pre-built examples in the Tools page
@@ -231,7 +222,7 @@ markov-learning-lab/
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Deploy to Vercel
 
@@ -242,15 +233,15 @@ markov-learning-lab/
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `NEXT_PUBLIC_SITE_URL`
 3. **Configure Supabase** redirect URLs
-4. **Deploy!** 🎉
+4. **Deploy!** 
 
-Vercel automatically detects Next.js and configures the build. Your app will be live at `https://your-app.vercel.app`.
+Vercel automatically detects Next.js and configures the build. Add custom domains as needed. My app is live at `https://www.markovchainlab.dev/`.
 
 ---
 
-## 🛣️ Roadmap
+## Roadmap
 
-### ✅ Completed
+### Completed
 - Visual Chain Builder with drag-and-drop
 - Multiple automaton types (Markov, DFA, NFA)
 - Grammar Editor with two-way conversion
@@ -259,12 +250,12 @@ Vercel automatically detects Next.js and configures the build. Your app will be 
 - Mobile-responsive design
 - Save/Load designs (Supabase)
 
-### 🚧 In Progress
+### In Progress
 - Enhanced validation and error handling
 - More example grammars and chains
 - Advanced analysis tools
 
-### 📋 Planned
+### Planned
 - MDX-based lesson content
 - More interactive demos
 - Collaborative features
@@ -275,7 +266,7 @@ See [ROADMAP.md](docs/ROADMAP.md) for detailed plans.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how you can help:
 
@@ -295,13 +286,13 @@ Contributions are welcome! Here's how you can help:
 
 ---
 
-## 📄 License
+## License
 
-TBD. License will be added before open-sourcing.
+This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [Next.js](https://nextjs.org/) and [React](https://react.dev/)
 - UI components inspired by [shadcn/ui](https://ui.shadcn.com/)
@@ -314,6 +305,6 @@ TBD. License will be added before open-sourcing.
 
 **Made with ❤️ for learners and educators**
 
-[Report Bug](https://github.com/yourusername/markov-learning-lab/issues) • [Request Feature](https://github.com/yourusername/markov-learning-lab/issues) • [Documentation](docs/)
+[Report Bug](https://github.com/Leptons1618/markov-chain-lab/issues) • [Request Feature](https://github.com/Leptons1618/markov-chain-lab/issues) • [Documentation](docs/)
 
 </div>

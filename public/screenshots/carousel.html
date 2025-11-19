@@ -169,27 +169,13 @@
 
         <div class="carousel">
             <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide">
-                    <img src="chain-builder.png" alt="Chain Builder" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EChain Builder Screenshot%3C/text%3E%3C/svg%3E'">
-                </div>
-                <div class="carousel-slide">
-                    <img src="simulation.png" alt="Simulation" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3ESimulation Screenshot%3C/text%3E%3C/svg%3E'">
-                </div>
-                <div class="carousel-slide">
-                    <img src="grammar-editor.png" alt="Grammar Editor" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EGrammar Editor Screenshot%3C/text%3E%3C/svg%3E'">
-                </div>
-                <div class="carousel-slide">
-                    <img src="analysis.png" alt="Analysis" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EAnalysis Screenshot%3C/text%3E%3C/svg%3E'">
-                </div>
-                <div class="carousel-slide">
-                    <img src="string-testing.png" alt="String Testing" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27600%27%3E%3Crect fill=%27%23f0f0f0%27 width=%27800%27 height=%27600%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 fill=%27%23999%27 font-size=%2720%27%3EString Testing Screenshot%3C/text%3E%3C/svg%3E'">
-                </div>
+                <!-- Slides will be dynamically generated -->
             </div>
         </div>
 
         <div class="slide-info">
-            <h3 id="slideTitle">Chain Builder</h3>
-            <p id="slideDescription">Visual chain builder with drag-and-drop states and transitions</p>
+            <h3 id="slideTitle">Loading...</h3>
+            <p id="slideDescription">Discovering screenshots...</p>
         </div>
 
         <div class="carousel-controls">
@@ -202,15 +188,59 @@
 
     <script>
         let currentSlide = 0;
-        const slides = [
-            { title: "Chain Builder", description: "Visual chain builder with drag-and-drop states and transitions" },
-            { title: "Simulation", description: "Real-time simulation with path highlighting and metrics" },
-            { title: "Grammar Editor", description: "Grammar editor with two-way conversion between grammars and automata" },
-            { title: "Analysis", description: "Advanced analysis showing transition matrices and chain properties" },
-            { title: "String Testing", description: "String acceptance testing with visual path tracing" }
+        let slides = [];
+
+        // List of screenshot files - add new files here
+        const screenshotFiles = [
+            'analysis.jpeg',
+            'chain-builder.jpeg',
+            'grammar-editor.jpeg',
+            'simulation.jpeg',
+            'tools.jpeg'
         ];
 
+        // Function to convert filename to title case
+        function filenameToTitle(filename) {
+            // Remove extension
+            const nameWithoutExt = filename.replace(/\.(jpeg|jpg|png|gif|webp)$/i, '');
+            // Replace hyphens and underscores with spaces
+            const words = nameWithoutExt.replace(/[-_]/g, ' ');
+            // Convert to title case
+            return words.split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        }
+
+        // Generate slides data from filenames
+        function generateSlidesData() {
+            return screenshotFiles.map(filename => ({
+                filename: filename,
+                title: filenameToTitle(filename),
+                description: `${filenameToTitle(filename)} screenshot`
+            }));
+        }
+
         function initCarousel() {
+            slides = generateSlidesData();
+            
+            // Generate slide elements
+            const track = document.getElementById('carouselTrack');
+            slides.forEach(slide => {
+                const slideDiv = document.createElement('div');
+                slideDiv.className = 'carousel-slide';
+                
+                const img = document.createElement('img');
+                img.src = slide.filename;
+                img.alt = slide.title;
+                img.onerror = function() {
+                    this.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect fill='%23f0f0f0' width='800' height='600'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%23999' font-size='20'%3E${slide.title}%3C/text%3E%3C/svg%3E`;
+                };
+                
+                slideDiv.appendChild(img);
+                track.appendChild(slideDiv);
+            });
+            
+            // Generate indicators
             const indicatorsContainer = document.getElementById('indicators');
             slides.forEach((_, index) => {
                 const indicator = document.createElement('div');
@@ -218,7 +248,10 @@
                 indicator.onclick = () => goToSlide(index);
                 indicatorsContainer.appendChild(indicator);
             });
-            updateSlide();
+            
+            if (slides.length > 0) {
+                updateSlide();
+            }
         }
 
         function updateSlide() {
