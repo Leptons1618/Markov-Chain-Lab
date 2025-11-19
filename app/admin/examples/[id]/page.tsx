@@ -381,13 +381,6 @@ export default function EditExamplePage() {
                 />
               </div>
 
-              {/* Design Preview */}
-              {currentDesign && (
-                <div className="space-y-2">
-                  <Label>Design Preview</Label>
-                  <DesignPreview design={currentDesign} width={400} height={250} />
-                </div>
-              )}
 
               <div className="space-y-2">
                 <Label htmlFor="design-json">Design JSON (editable)</Label>

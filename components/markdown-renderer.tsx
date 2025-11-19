@@ -212,9 +212,16 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
         .replace(/<\/?[^>]+(>|$)/g, "")
         .replace(/[^\w\s-]/g, "")
         .replace(/\s+/g, "-")
+    const idCounts = new Map<string, number>()
     for (const ln of lines) {
       const m = ln.match(/^(#{1,6})\s+(.*)$/)
-      if (m) out.push({ level: m[1].length, text: m[2].trim(), id: slug(m[2].trim()) })
+      if (m) {
+        const baseId = slug(m[2].trim())
+        const count = idCounts.get(baseId) || 0
+        idCounts.set(baseId, count + 1)
+        const uniqueId = count > 0 ? `${baseId}-${count}` : baseId
+        out.push({ level: m[1].length, text: m[2].trim(), id: uniqueId })
+      }
     }
     return out
   }, [text])
@@ -293,7 +300,12 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
   }, [transformedText])
 
   // Custom components for ReactMarkdown (code, img, a, headings, paragraphs -> detect math placeholders)
+  const headingIdCounts = useRef<Map<string, number>>(new Map())
+  
   const customComponents = useMemo(() => {
+    // Reset counter for each render
+    headingIdCounts.current.clear()
+    
     const slugify = (s: string) =>
       s
         .toLowerCase()
@@ -302,7 +314,11 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
         .replace(/[^\w\s-]/g, "")
         .replace(/\s+/g, "-")
 
-    function headingWithAnchor(level: number, id: string, children: any) {
+    function headingWithAnchor(level: number, baseId: string, children: any) {
+      // Make IDs unique by tracking counts
+      const count = headingIdCounts.current.get(baseId) || 0
+      headingIdCounts.current.set(baseId, count + 1)
+      const uniqueId = count > 0 ? `${baseId}-${count}` : baseId
       const Tag = `h${level}` as React.ElementType
       // Map levels to explicit typography classes with visual hierarchy
       const sizeClass =
@@ -324,7 +340,7 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
       // @ts-ignore
       return (
         // @ts-ignore
-        <Tag id={id} className={`group scroll-mt-24 flex items-center justify-between gap-3 ${sizeClass} transition-colors hover:text-primary`}>
+        <Tag id={uniqueId} className={`group scroll-mt-24 flex items-center justify-between gap-3 ${sizeClass} transition-colors hover:text-primary`}>
           <span className="flex-1">{children}</span>
         </Tag>
       )
@@ -398,27 +414,33 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
       },
       h1: ({ children }: any) => {
         const text = extractText(children)
-        return headingWithAnchor(1, slugify(text), children)
+        const baseId = slugify(text)
+        return headingWithAnchor(1, baseId, children)
       },
       h2: ({ children }: any) => {
         const text = extractText(children)
-        return headingWithAnchor(2, slugify(text), children)
+        const baseId = slugify(text)
+        return headingWithAnchor(2, baseId, children)
       },
       h3: ({ children }: any) => {
         const text = extractText(children)
-        return headingWithAnchor(3, slugify(text), children)
+        const baseId = slugify(text)
+        return headingWithAnchor(3, baseId, children)
       },
       h4: ({ children }: any) => {
         const text = extractText(children)
-        return headingWithAnchor(4, slugify(text), children)
+        const baseId = slugify(text)
+        return headingWithAnchor(4, baseId, children)
       },
       h5: ({ children }: any) => {
         const text = extractText(children)
-        return headingWithAnchor(5, slugify(text), children)
+        const baseId = slugify(text)
+        return headingWithAnchor(5, baseId, children)
       },
       h6: ({ children }: any) => {
         const text = extractText(children)
-        return headingWithAnchor(6, slugify(text), children)
+        const baseId = slugify(text)
+        return headingWithAnchor(6, baseId, children)
       },
       p: ({ children, ...props }: any) => {
         const str = Array.isArray(children) ? children.map((c) => (typeof c === "string" ? c : "")).join("") : typeof children === "string" ? children : ""
@@ -672,6 +694,9 @@ export default function MarkdownRenderer({ content, hideToolbar = false }: { con
 const componentRegistry: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   FlipConvergence: () => import("@/components/demos/FlipConvergence"),
   FlipCard: () => import("@/components/demos/FlipCard"),
+  BayesianCalculator: () => import("@/components/demos/BayesianCalculator"),
+  PMFPDFExplorer: () => import("@/components/demos/PMFPDFExplorer"),
+  InteractiveVisualization: () => import("@/components/demos/InteractiveVisualization"),
 }
 
 // Lightweight placeholder to avoid heavy work offscreen

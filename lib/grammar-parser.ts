@@ -88,7 +88,9 @@ export function parseGrammar(text: string): ParseResult {
         if (/[A-Z]/.test(char)) {
           // Uppercase = variable
           if (currentSymbol) {
+            // Push previous terminal symbol
             symbols.push(currentSymbol)
+            terminals.add(currentSymbol)
             currentSymbol = ""
           }
           currentSymbol = char
@@ -108,13 +110,19 @@ export function parseGrammar(text: string): ParseResult {
           if (currentSymbol && /[A-Z]/.test(currentSymbol[0])) {
             // Previous was variable, push it
             symbols.push(currentSymbol)
+            variables.add(currentSymbol)
             currentSymbol = ""
           }
+          // Build multi-character terminal (e.g., "id", "+", "(")
           currentSymbol += char
-          terminals.add(char)
         } else if (/\s/.test(char)) {
           // Whitespace - end current symbol if exists
           if (currentSymbol) {
+            if (/[A-Z]/.test(currentSymbol[0])) {
+              variables.add(currentSymbol)
+            } else {
+              terminals.add(currentSymbol)
+            }
             symbols.push(currentSymbol)
             currentSymbol = ""
           }
@@ -126,9 +134,8 @@ export function parseGrammar(text: string): ParseResult {
         if (/[A-Z]/.test(currentSymbol[0])) {
           variables.add(currentSymbol)
         } else {
-          for (const char of currentSymbol) {
-            terminals.add(char)
-          }
+          // Add the entire terminal symbol, not individual characters
+          terminals.add(currentSymbol)
         }
         symbols.push(currentSymbol)
       }
@@ -222,25 +229,56 @@ export function grammarToChain(
   }
   
   if (isCFG) {
+    const errorLines = [
+      `This grammar is context-free (CFG), not regular. Regular grammars can only be converted to finite automata (DFA/NFA).`,
+      ``,
+      `CFG productions detected:`,
+      ...cfgProductions.slice(0, 5).map(p => `  • ${p}`),
+      ...(cfgProductions.length > 5 ? [`  ... and ${cfgProductions.length - 5} more`] : []),
+      ``,
+      `Why this is CFG:`,
+      `  • Variables appear in the middle of productions (not just at the end)`,
+      `  • Multiple variables can appear in a single production`,
+      `  • Examples: "E → E + T" (variable at start), "F → (E)" (variable in middle)`,
+      ``,
+      `To convert a CFG, you would need a Pushdown Automaton (PDA), which is not currently supported.`,
+      ``,
+      `For regular grammars, use the form:`,
+      `  Variable → terminal(s) + optional Variable (at end only)`,
+      `  Example: S → aA | bB | ε`
+    ]
+    
     return {
       chain: { states: [], transitions: [] },
-      errors: [
-        `This grammar is context-free (CFG), not regular. Regular grammars can only be converted to finite automata (DFA/NFA).`,
-        `CFG productions found: ${cfgProductions.slice(0, 3).join(", ")}${cfgProductions.length > 3 ? "..." : ""}`,
-        `To convert a CFG, you would need a Pushdown Automaton (PDA), which is not currently supported.`,
-        `Please use a regular grammar where each production has the form: Variable → terminal(s) + optional Variable (at end)`
-      ]
+      errors: errorLines.filter(line => line !== ``)
     }
   }
   
   const states: Array<{ id: string; name: string; x: number; y: number; color: string; isInitial?: boolean; isFinal?: boolean }> = []
   const transitions: Array<{ id: string; from: string; to: string; probability: number; label?: string }> = []
 
-  // Color palette for states
-  const colors = [
-    "#059669", "#10b981", "#d97706", "#be123c", "#ec4899",
-    "#3b82f6", "#8b5cf6", "#f59e0b", "#06b6d4", "#84cc16",
-  ]
+  // Get theme-aware color palette for states
+  const getThemeColors = (): string[] => {
+    if (typeof window === "undefined") {
+      return ["#059669", "#10b981", "#d97706", "#be123c", "#ec4899", "#3b82f6", "#8b5cf6", "#f59e0b", "#06b6d4", "#84cc16"]
+    }
+    const { getChartColors, getAccentColor } = require("@/lib/utils")
+    const chartColors = getChartColors()
+    return [
+      chartColors[0] || "#3b82f6",
+      getAccentColor() || "#10b981",
+      chartColors[2] || "#f59e0b",
+      chartColors[3] || "#ef4444",
+      chartColors[4] || "#ec4899",
+      chartColors[0] || "#3b82f6",
+      chartColors[1] || "#8b5cf6",
+      chartColors[2] || "#f59e0b",
+      "#06b6d4",
+      "#84cc16",
+    ]
+  }
+  
+  const colors = getThemeColors()
 
   // Map variables to state IDs
   const variableToStateId = new Map<string, string>()

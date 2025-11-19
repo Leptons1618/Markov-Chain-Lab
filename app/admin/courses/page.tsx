@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { FileUpload } from "@/components/ui/file-upload"
 import {
   Select,
   SelectContent,
@@ -38,7 +49,7 @@ export default function CoursesPage() {
   const [selectedCourseId, setSelectedCourseId] = useState<string>("")
   const [previewData, setPreviewData] = useState<any>(null)
   const [previewFile, setPreviewFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null)
   const { toast: showToast, success, error, info, warning } = useToast()
 
   // Fetch courses on mount
@@ -64,11 +75,16 @@ export default function CoursesPage() {
   )
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this course? This action cannot be undone.")) {
-      return
-    }
+    setDeleteDialogOpen(id)
+  }
 
+  const confirmDelete = async () => {
+    if (!deleteDialogOpen) return
+
+    const id = deleteDialogOpen
     setDeleting(id)
+    setDeleteDialogOpen(null)
+    
     try {
       const response = await fetch(`/api/admin/courses/${id}`, {
         method: "DELETE",
@@ -173,10 +189,7 @@ export default function CoursesPage() {
     }
   }
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
+  const handleFileSelect = async (file: File) => {
     if (!file.name.endsWith(".json")) {
       error("Please upload a JSON file")
       return
@@ -215,6 +228,11 @@ export default function CoursesPage() {
     }
   }
 
+  const handleFileRemove = () => {
+    setPreviewFile(null)
+    setPreviewData(null)
+  }
+
   const handleUpload = async () => {
     if (!previewFile) return
 
@@ -249,9 +267,6 @@ export default function CoursesPage() {
       setImportDialogOpen(false)
       setPreviewData(null)
       setPreviewFile(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
     } catch (err) {
       console.error("Import error:", err)
       error("Failed to import content")
@@ -402,6 +417,27 @@ export default function CoursesPage() {
             )}
           </div>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen !== null} onOpenChange={(open) => !open && setDeleteDialogOpen(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Course</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this course? This action cannot be undone. All lessons associated with this course will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Import Dialog */}
       <Dialog open={importDialogOpen} onOpenChange={(open) => {
         setImportDialogOpen(open)
@@ -410,9 +446,6 @@ export default function CoursesPage() {
           setPreviewFile(null)
           setImportType("lms")
           setSelectedCourseId("")
-          if (fileInputRef.current) {
-            fileInputRef.current.value = ""
-          }
         }
       }}>
         <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -440,9 +473,6 @@ export default function CoursesPage() {
                 setImportType(value)
                 setPreviewData(null)
                 setPreviewFile(null)
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = ""
-                }
               }}>
                 <SelectTrigger className="h-11">
                   <SelectValue />
@@ -504,16 +534,14 @@ export default function CoursesPage() {
                 <FileJson className="h-4 w-4" />
                 Select JSON File
               </label>
-              <div className="relative">
-                <Input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileSelect}
-                  disabled={importing || (importType === "lesson" && !selectedCourseId)}
-                  className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer disabled:opacity-50"
-                />
-              </div>
+              <FileUpload
+                accept=".json"
+                onFileSelect={handleFileSelect}
+                onFileRemove={handleFileRemove}
+                selectedFile={previewFile}
+                loading={importing}
+                disabled={importing || (importType === "lesson" && !selectedCourseId)}
+              />
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 {importType === "lms" && 'File must contain "courses" and "lessons" arrays'}
@@ -560,9 +588,6 @@ export default function CoursesPage() {
                     onClick={() => {
                       setPreviewData(null)
                       setPreviewFile(null)
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = ""
-                      }
                     }}
                     className="cursor-pointer hover:bg-destructive/10 hover:text-destructive shrink-0 self-start sm:self-center"
                   >
@@ -649,9 +674,6 @@ export default function CoursesPage() {
                 setPreviewFile(null)
                 setImportType("lms")
                 setSelectedCourseId("")
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = ""
-                }
               }}
               disabled={importing}
               className="w-full sm:w-auto"

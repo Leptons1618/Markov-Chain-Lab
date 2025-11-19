@@ -13,8 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Edit, Trash2, Plus, Loader2, Download, Upload, FileJson, Sparkles, RefreshCw } from "lucide-react"
+import { Edit, Trash2, Plus, Loader2, Download, Upload, FileJson, Sparkles, RefreshCw, Eye } from "lucide-react"
 import { FileUpload } from "@/components/ui/file-upload"
+import { DesignPreview } from "@/components/admin/design-preview"
 import Link from "next/link"
 import { useToast } from "@/lib/hooks/use-toast"
 
@@ -42,6 +43,9 @@ export default function ExamplesPage() {
   const [importing, setImporting] = useState(false)
   const [previewData, setPreviewData] = useState<any>(null)
   const [previewFile, setPreviewFile] = useState<File | null>(null)
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [previewExample, setPreviewExample] = useState<Example | null>(null)
+  const [loadingPreview, setLoadingPreview] = useState<string | null>(null)
   const { toast: showToast, success, error, info } = useToast()
 
   const handleFileRemove = () => {
@@ -447,6 +451,40 @@ export default function ExamplesPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0 sm:ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setLoadingPreview(example.id)
+                        try {
+                          const response = await fetch(`/api/admin/examples/${example.id}`)
+                          const data = await response.json()
+                          if (data.success) {
+                            setPreviewExample({ ...example, design: data.data.design })
+                            setPreviewModalOpen(true)
+                          } else {
+                            error("Failed to load example for preview")
+                          }
+                        } catch (err) {
+                          error("Failed to load example for preview")
+                        } finally {
+                          setLoadingPreview(null)
+                        }
+                      }}
+                      disabled={loadingPreview === example.id}
+                    >
+                      {loadingPreview === example.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                          <span className="hidden sm:inline">Loading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Preview</span>
+                        </>
+                      )}
+                    </Button>
                     <Link href={`/admin/examples/${example.id}`}>
                       <Button variant="outline" size="sm">
                         <Edit className="h-4 w-4 sm:mr-2" />
@@ -543,6 +581,71 @@ export default function ExamplesPage() {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Modal */}
+      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="break-words">
+              {previewExample?.title || "Preview Example"}
+            </DialogTitle>
+            <DialogDescription className="break-words">
+              {previewExample?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {previewExample?.design && (
+              <div className="flex justify-center">
+                <DesignPreview design={previewExample.design} width={600} height={400} />
+              </div>
+            )}
+            {previewExample && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={getDifficultyColor(previewExample.difficulty)}
+                  >
+                    {previewExample.difficulty}
+                  </Badge>
+                  <Badge variant="outline">{previewExample.category}</Badge>
+                  {previewExample.interactive_demo && (
+                    <Badge variant="secondary">Interactive</Badge>
+                  )}
+                  <Badge variant={previewExample.status === "published" ? "default" : "secondary"}>
+                    {previewExample.status}
+                  </Badge>
+                </div>
+                {previewExample.applications.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-1">Applications:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {previewExample.applications.map((app, idx) => (
+                        <Badge key={idx} variant="outline">
+                          {app}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewModalOpen(false)}>
+              Close
+            </Button>
+            {previewExample && (
+              <Link href={`/admin/examples/${previewExample.id}`}>
+                <Button>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </Link>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

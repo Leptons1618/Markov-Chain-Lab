@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTheme } from "next-themes"
 
 // Coin flip convergence demo
 // - Simulates Bernoulli(p) trials and shows running mean converging to p
@@ -44,6 +45,7 @@ export default function FlipConvergence({
   const [colorMode, setColorMode] = useState<"color" | "bw">("color")
   const flipTimeoutRef = useRef<number | null>(null)
   const isFlippingRef = useRef(false)
+  const { theme, resolvedTheme } = useTheme()
   
   // Refs to track current values for interval callbacks
   const nRef = useRef(0)
@@ -227,6 +229,29 @@ export default function FlipConvergence({
   const pHat = n > 0 ? heads / n : 0
   const chartData = useMemo(() => dataRef.current.slice(), [tick])
 
+  // Get theme-aware colors - use useMemo to recalculate on theme change
+  // MUST be called before any early returns to follow Rules of Hooks
+  const themeColors = useMemo(() => {
+    if (typeof window === "undefined") {
+      return {
+        primary: "#8b5cf6",
+        mutedForeground: "#6b7280",
+        foreground: "#1f2937",
+        border: "#374151",
+      }
+    }
+    const getThemeColor = (varName: string, fallback: string): string => {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+      return value || fallback
+    }
+    return {
+      primary: getThemeColor("--primary", "#8b5cf6"),
+      mutedForeground: getThemeColor("--muted-foreground", "#6b7280"),
+      foreground: getThemeColor("--foreground", "#1f2937"),
+      border: getThemeColor("--border", "#374151"),
+    }
+  }, [colorMode, theme, resolvedTheme]) // Recalculate when theme or color mode changes
+
   // Now safe to return early after all hooks have been called
   if (loadErr || simErr) {
     return (
@@ -250,10 +275,10 @@ export default function FlipConvergence({
 
   const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } = Recharts
 
-  const lineColor = colorMode === "color" ? "url(#colorGradient)" : "#1f2937"
+  const lineColor = colorMode === "color" ? "url(#colorGradient)" : themeColors.foreground
   const coinHeadsColor = colorMode === "color" ? "from-yellow-400 to-orange-500" : "from-gray-700 to-gray-900"
   const coinTailsColor = colorMode === "color" ? "from-gray-300 to-gray-500" : "from-gray-500 to-gray-700"
-  const refLineColor = colorMode === "color" ? "#8b5cf6" : "#6b7280"
+  const refLineColor = colorMode === "color" ? themeColors.primary : themeColors.mutedForeground
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
@@ -298,9 +323,9 @@ export default function FlipConvergence({
                       <stop offset="100%" style={{ stopColor: colorMode === "color" ? "#f59e0b" : "#4b5563", stopOpacity: 1 }} />
                     </radialGradient>
                   </defs>
-                  <circle cx="50" cy="50" r="48" fill="url(#goldGrad)" stroke={colorMode === "color" ? "#d97706" : "#374151"} strokeWidth="2"/>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke={colorMode === "color" ? "#92400e" : "#1f2937"} strokeWidth="1" opacity="0.3"/>
-                  <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize="32" fontWeight="bold" fill={colorMode === "color" ? "#92400e" : "#111827"}>H</text>
+                  <circle cx="50" cy="50" r="48" fill="url(#goldGrad)" stroke={colorMode === "color" ? "#d97706" : themeColors.border} strokeWidth="2"/>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke={colorMode === "color" ? "#92400e" : themeColors.mutedForeground} strokeWidth="1" opacity="0.3"/>
+                  <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize="32" fontWeight="bold" fill={colorMode === "color" ? "#92400e" : themeColors.foreground}>H</text>
                 </svg>
               ) : (
                 <svg className="w-24 h-24" viewBox="0 0 100 100">
@@ -310,9 +335,9 @@ export default function FlipConvergence({
                       <stop offset="100%" style={{ stopColor: colorMode === "color" ? "#9ca3af" : "#6b7280", stopOpacity: 1 }} />
                     </radialGradient>
                   </defs>
-                  <circle cx="50" cy="50" r="48" fill="url(#silverGrad)" stroke={colorMode === "color" ? "#6b7280" : "#374151"} strokeWidth="2"/>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke={colorMode === "color" ? "#4b5563" : "#1f2937"} strokeWidth="1" opacity="0.3"/>
-                  <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize="32" fontWeight="bold" fill={colorMode === "color" ? "#1f2937" : "#111827"}>T</text>
+                  <circle cx="50" cy="50" r="48" fill="url(#silverGrad)" stroke={colorMode === "color" ? "#6b7280" : themeColors.border} strokeWidth="2"/>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke={colorMode === "color" ? "#4b5563" : themeColors.mutedForeground} strokeWidth="1" opacity="0.3"/>
+                  <text x="50" y="50" textAnchor="middle" dominantBaseline="central" fontSize="32" fontWeight="bold" fill={colorMode === "color" ? "#1f2937" : themeColors.foreground}>T</text>
                 </svg>
               )}
             </div>

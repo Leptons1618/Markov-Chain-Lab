@@ -45,6 +45,8 @@ import {
   Layers,
   GitBranch,
   Network,
+  Square,
+  Type,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -67,6 +69,8 @@ import type { Grammar } from "@/lib/grammar"
 import { GrammarDisplay } from "@/components/grammar-display"
 import { GrammarEditor } from "@/components/grammar-editor"
 import { grammarToChain } from "@/lib/grammar-parser"
+import { getChartColors, getAccentColor, getDestructiveColor, getPrimaryColor } from "@/lib/utils"
+import { useTheme } from "next-themes"
 
 interface State {
   id: string
@@ -104,34 +108,55 @@ interface MarkovChain {
   transitions: Transition[]
 }
 
-const defaultColors = [
-  "#059669", // primary
-  "#10b981", // accent
-  "#d97706", // chart-3
-  "#be123c", // chart-4
-  "#ec4899", // chart-5
-  "#3b82f6", // blue
-  "#8b5cf6", // purple
-  "#f59e0b", // amber
-  "#06b6d4", // cyan
-  "#84cc16", // lime
-  "#f97316", // orange
-  "#ef4444", // red
-  "#14b8a6", // teal
-  "#a855f7", // violet
-]
+// Generate theme-aware colors dynamically - must be called within component to access theme
+const getDefaultColors = (): string[] => {
+  try {
+    const chartColors = getChartColors()
+    const accent = getAccentColor()
+    const destructive = getDestructiveColor()
+    return [
+      chartColors[0] || "#3b82f6", // chart-1 (primary)
+      accent || "#10b981", // accent
+      chartColors[2] || "#f59e0b", // chart-3
+      chartColors[3] || "#ef4444", // chart-4
+      chartColors[4] || "#ec4899", // chart-5
+      chartColors[0] || "#3b82f6", // blue (chart-1)
+      chartColors[1] || "#8b5cf6", // purple (chart-2)
+      chartColors[2] || "#f59e0b", // amber (chart-3)
+      "#06b6d4", // cyan
+      "#84cc16", // lime
+      "#f97316", // orange
+      destructive || "#ef4444", // red
+      "#14b8a6", // teal
+      chartColors[1] || "#8b5cf6", // violet (chart-2)
+    ]
+  } catch {
+    // Fallback for SSR
+    return ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#8b5cf6", "#f59e0b", "#06b6d4", "#84cc16", "#f97316", "#ef4444", "#14b8a6", "#8b5cf6"]
+  }
+}
 
-// Fixed colors for special states
-const INITIAL_STATE_COLOR = "#10b981" // green
-const FINAL_STATE_COLOR = "#ef4444" // red
+// Get theme-aware colors for special states
+const getInitialStateColor = (): string => {
+  return getAccentColor() || "#10b981"
+}
+
+const getFinalStateColor = (): string => {
+  return getDestructiveColor() || "#ef4444"
+}
 
 // Generate a unique color for a regular state based on index
-const generateStateColor = (index: number, isInitial: boolean, isFinal: boolean): string => {
-  if (isInitial) return INITIAL_STATE_COLOR
-  if (isFinal) return FINAL_STATE_COLOR
+// Note: This function should be called within a component context to access theme
+const generateStateColor = (index: number, isInitial: boolean, isFinal: boolean, themeColors?: { defaultColors: string[], initialColor: string, finalColor: string }): string => {
+  const initialColor = themeColors?.initialColor || getInitialStateColor()
+  const finalColor = themeColors?.finalColor || getFinalStateColor()
+  
+  if (isInitial) return initialColor
+  if (isFinal) return finalColor
   
   // Generate a color from the palette, skipping initial and final colors
-  const regularColors = defaultColors.filter(c => c !== INITIAL_STATE_COLOR && c !== FINAL_STATE_COLOR)
+  const defaultColors = themeColors?.defaultColors || getDefaultColors()
+  const regularColors = defaultColors.filter(c => c !== initialColor && c !== finalColor)
   return regularColors[index % regularColors.length]
 }
 
@@ -354,14 +379,27 @@ function SpeedDial({ value, onChange, min = 50, max = 1000, step = 50 }: { value
   )
 }
 
+import { Loader2 } from "lucide-react"
+
 function ToolsContent() {
+  const { theme, resolvedTheme } = useTheme()
   const searchParams = useSearchParams()
   const { user, isGuest } = useAuth()
   const { toast } = useToast()
+  
+  // Memoize theme-aware colors to recalculate when theme changes
+  const themeColors = useMemo(() => ({
+    defaultColors: getDefaultColors(),
+    initialColor: getInitialStateColor(),
+    finalColor: getFinalStateColor(),
+    primaryColor: getPrimaryColor(),
+  }), [theme, resolvedTheme])
+  
   const [chain, setChain] = useState<MarkovChain>({ states: [], transitions: [] })
   const [originalExampleDesign, setOriginalExampleDesign] = useState<MarkovChain | null>(null)
   const [selectedState, setSelectedState] = useState<string | null>(null)
   const [selectedTransition, setSelectedTransition] = useState<string | null>(null)
+  const [simulationMode, setSimulationMode] = useState<"simulation" | "text">("simulation")
   const [isSimulating, setIsSimulating] = useState(false)
   const [isAutoRunning, setIsAutoRunning] = useState(false)
   const [simulationStep, setSimulationStep] = useState(0)
@@ -414,6 +452,9 @@ function ToolsContent() {
   const [deleteDesignDialogOpen, setDeleteDesignDialogOpen] = useState(false)
   const [designToDelete, setDesignToDelete] = useState<SavedDesign | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [loadingDesigns, setLoadingDesigns] = useState(false)
+  const [savingDesign, setSavingDesign] = useState(false)
+  const [deletingDesign, setDeletingDesign] = useState<string | null>(null)
   const [pathHistoryLimit, setPathHistoryLimit] = useState<number | "all">(10)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({})
@@ -827,6 +868,7 @@ function ToolsContent() {
 
     // Load saved designs from localStorage and database
     const loadDesigns = async () => {
+      setLoadingDesigns(true)
       try {
         // Load from localStorage first (for guest users or fallback)
         const savedDesignsData = localStorage.getItem('markov-saved-designs')
@@ -852,6 +894,8 @@ function ToolsContent() {
         }
       } catch (err) {
         console.error("Failed to load designs:", err)
+      } finally {
+        setLoadingDesigns(false)
       }
     }
 
@@ -1058,11 +1102,11 @@ function ToolsContent() {
         name: `S${chain.states.length + 1}`,
         x: clampedX,
         y: clampedY,
-        color: generateStateColor(regularStateCount, false, false),
+        color: generateStateColor(regularStateCount, false, false, themeColors),
       }
       setChain((prev) => ({ ...prev, states: [...prev.states, newState] }))
     },
-    [chain.states],
+    [chain.states, themeColors],
   )
 
   const addTransition = useCallback(
@@ -1344,6 +1388,7 @@ function ToolsContent() {
       return
     }
 
+    setSavingDesign(true)
     try {
       const newDesign: SavedDesign = {
         id: `design-${Date.now()}`,
@@ -1373,6 +1418,10 @@ function ToolsContent() {
         }
       }
 
+      toast("success", "Design saved successfully!", {
+        title: "Saved",
+        duration: 3000,
+      })
       setHasUnsavedChanges(false)
       setSaveDialogOpen(false)
       setSaveName("")
@@ -1382,6 +1431,8 @@ function ToolsContent() {
         title: "Save Failed",
         duration: 4000,
       })
+    } finally {
+      setSavingDesign(false)
     }
   }, [saveName, chain, user, isGuest, toast])
 
@@ -1404,6 +1455,7 @@ function ToolsContent() {
   )
 
   const deleteDesign = useCallback(async (id: string) => {
+    setDeletingDesign(id)
     try {
       const savedDesignsData = localStorage.getItem('markov-saved-designs')
       if (savedDesignsData) {
@@ -1420,6 +1472,13 @@ function ToolsContent() {
             // Design is still deleted locally, so we continue
           }
         }
+        
+        toast("success", "Design deleted successfully!", {
+          title: "Deleted",
+          duration: 3000,
+        })
+        setDeleteDesignDialogOpen(false)
+        setDesignToDelete(null)
       }
     } catch (error) {
       console.error("Failed to delete design:", error)
@@ -1427,6 +1486,8 @@ function ToolsContent() {
         title: "Delete Failed",
         duration: 4000,
       })
+    } finally {
+      setDeletingDesign(null)
     }
   }, [user, isGuest, toast])
 
@@ -1680,8 +1741,9 @@ function ToolsContent() {
   }, [selectedState])
   
   // Sidebar Tabs component reused for desktop and mobile (memoized to prevent re-renders during drag)
-  const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze" | "grammar"; onChange: (val: "build" | "simulate" | "analyze" | "grammar") => void }) => (
-    <Tabs value={value} onValueChange={(v) => onChange(v as any)} className="w-full">
+  const SidebarTabs = memo(({ value, onChange }: { value: "build" | "simulate" | "analyze" | "grammar"; onChange: (val: "build" | "simulate" | "analyze" | "grammar") => void }) => {
+    return (
+      <Tabs value={value} onValueChange={(v) => onChange(v as any)} className="w-full">
       <TabsList className="grid w-full grid-cols-4 bg-muted/50 gap-1 p-1">
         <TabsTrigger value="build" className="data-[state=active]:bg-background transition-all duration-200 hover:cursor-pointer text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
           Build
@@ -1968,16 +2030,49 @@ function ToolsContent() {
       </TabsContent>
 
       <TabsContent value="simulate" className="space-y-4 mt-4">
-        {/* Simulation Controls - Only show for Markov chains */}
+        {/* Mode Selector - Vertical Sidebar */}
         {automatonType === "markov" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Simulation Controls</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Step through the chain manually or automatically. Tracks state visits and transition usage over time. Use this to understand how the chain behaves probabilistically.
-              </p>
-            </CardHeader>
-          <CardContent className="space-y-4">
+          <div className="flex gap-4">
+            {/* Vertical Sidebar Tabs */}
+            <div className="flex flex-col gap-2 w-16 shrink-0">
+              <button
+                onClick={() => setSimulationMode("simulation")}
+                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border-2 transition-all duration-200 ${
+                  simulationMode === "simulation"
+                    ? "bg-primary/10 border-primary text-primary shadow-sm"
+                    : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted hover:border-border"
+                }`}
+                title="Simulation Mode"
+              >
+                <Play className="h-5 w-5" />
+                <span className="text-xs font-medium">Sim</span>
+              </button>
+              <button
+                onClick={() => setSimulationMode("text")}
+                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border-2 transition-all duration-200 ${
+                  simulationMode === "text"
+                    ? "bg-primary/10 border-primary text-primary shadow-sm"
+                    : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted hover:border-border"
+                }`}
+                title="Text Generation Mode"
+              >
+                <Type className="h-5 w-5" />
+                <span className="text-xs font-medium">Text</span>
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 space-y-4">
+              {/* Simulation Controls */}
+              {simulationMode === "simulation" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Simulation Controls</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Step through the chain manually or automatically. Tracks state visits and transition usage over time. Use this to understand how the chain behaves probabilistically.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => { setActiveTab("simulate"); startSimulation() }} disabled={chain.states.length === 0 || isSimulating} size="sm" className="transition-all duration-150 flex-1 sm:flex-initial">
                 <Play className="mr-2 h-4 w-4" />
@@ -2026,78 +2121,358 @@ function ToolsContent() {
                 </div>
               </div>
             )}
-          </CardContent>
-          </Card>
-        )}
+                  </CardContent>
+                </Card>
+              )}
 
-        {isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && automatonType === "markov" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Metrics</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">State Visits</Label>
-                <div className="space-y-1.5">
-                  {Object.entries(simulationMetrics.stateVisits)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([stateId, count]) => {
-                      const state = chain.states.find((s) => s.id === stateId)
-                      const percentage = (((count as number) / (simulationStep + 1)) * 100).toFixed(1)
-                      return (
-                        <div key={stateId} className="flex items-center gap-2">
-                          <span className="text-sm font-medium w-12">{state?.name}</span>
-                          <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentage}%` }} />
+              {simulationMode === "simulation" && isSimulating && Object.keys(simulationMetrics.stateVisits).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Metrics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">State Visits</Label>
+                      <div className="space-y-1.5">
+                        {Object.entries(simulationMetrics.stateVisits)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([stateId, count]) => {
+                            const state = chain.states.find((s) => s.id === stateId)
+                            const percentage = (((count as number) / (simulationStep + 1)) * 100).toFixed(1)
+                            return (
+                              <div key={stateId} className="flex items-center gap-2">
+                                <span className="text-sm font-medium w-12">{state?.name}</span>
+                                <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentage}%` }} />
+                                </div>
+                                <span className="text-xs text-muted-foreground w-16 text-right">
+                                  {count as number} ({percentage}%)
+                                </span>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs text-muted-foreground">Recent Path</Label>
+                        <Select value={pathHistoryLimit.toString()} onValueChange={(value) => setPathHistoryLimit(value === "all" ? "all" : Number.parseInt(value))}>
+                          <SelectTrigger className="w-24 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">Last 5</SelectItem>
+                            <SelectItem value="10">Last 10</SelectItem>
+                            <SelectItem value="20">Last 20</SelectItem>
+                            <SelectItem value="all">All</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-1 flex-wrap text-xs">
+                        {(() => {
+                          // Always prefer currentPath if available (for real-time updates), otherwise use pathHistory
+                          const pathToDisplay = currentPath.length > 0 
+                            ? currentPath.map(p => p.stateId)
+                            : simulationMetrics.pathHistory
+                          const limitedPath = pathHistoryLimit === "all" ? pathToDisplay : pathToDisplay.slice(-pathHistoryLimit)
+                          return limitedPath.map((stateId, idx, arr) => {
+                            const state = chain.states.find((s) => s.id === stateId)
+                            const isCurrentStep = isSimulating && idx === arr.length - 1 && currentState === stateId
+                            return (
+                              <span key={idx} className="flex items-center gap-1">
+                                <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
+                                  {state?.name}
+                                </Badge>
+                                {idx < arr.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />}
+                              </span>
+                            )
+                          })
+                        })()}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Text Generation Controls */}
+              {simulationMode === "text" && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Text Generation</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Generate sequences by walking through the chain probabilistically. Shows the pattern of state transitions.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="text-length" className="text-sm">Length</Label>
+                      <Input
+                        id="text-length"
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={textGenerationLength}
+                        onChange={(e) => setTextGenerationLength(Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)))}
+                        className="w-full"
+                        disabled={isGeneratingText}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Mode</Label>
+                      <Select 
+                        value={textGenerationMode} 
+                        onValueChange={(value: "probabilistic" | "deterministic") => setTextGenerationMode(value)}
+                        disabled={automatonType === "markov" ? textGenerationMode === "deterministic" : false || isGeneratingText}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999]" position="popper">
+                          <SelectItem value="probabilistic">Probabilistic (Markov)</SelectItem>
+                          <SelectItem 
+                            value="deterministic"
+                            disabled={automatonType === "markov"}
+                          >
+                            Deterministic (DFA) {automatonType === "markov" && "(Requires DFA/NFA mode)"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {automatonType !== "markov" && (
+                        <p className="text-xs text-muted-foreground">{(automatonType === "dfa" ? "DFA" : "NFA")} mode: Using transition labels</p>
+                      )}
+                    </div>
+
+                    {/* Speed Control */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Animation Speed</Label>
+                        <span className="text-xs text-muted-foreground">{textGenerationSpeed}ms</span>
+                      </div>
+                      <SpeedDial
+                        value={textGenerationSpeed}
+                        onChange={setTextGenerationSpeed}
+                        min={50}
+                        max={1000}
+                        step={50}
+                      />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-border/50 pt-4 mt-2">
+                      {/* Control Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {!isGeneratingText ? (
+                          <Button
+                            onClick={async () => {
+                              if (chain.states.length === 0) return
+                              setIsGeneratingText(true)
+                              setIsPausedTextGeneration(false)
+                              textGenerationCancelRef.current = false
+                              textGenerationPauseRef.current = false
+                              setTextGenerationPath([])
+                              setHighlightedStateId(null)
+                              setHighlightedTransitionId(null)
+                              setGeneratedText("")
+                              
+                              try {
+                                // Find initial state
+                                const initialStates = chain.states.filter((s) => s.isInitial === true)
+                                let currentStateId = initialStates.length > 0 ? initialStates[0].id : chain.states[0].id
+                                
+                                const path: Array<{ stateId: string; char: string | null }> = []
+                                const generatedSequence: string[] = []
+                                
+                                // Highlight initial state
+                                setHighlightedStateId(currentStateId)
+                                path.push({ stateId: currentStateId, char: null })
+                                setTextGenerationPath([...path])
+                                const initialState = chain.states.find((s) => s.id === currentStateId)
+                                if (initialState) generatedSequence.push(initialState.name)
+                                
+                                // Wait with pause support
+                                const wait = async (ms: number) => {
+                                  const start = Date.now()
+                                  while (Date.now() - start < ms) {
+                                    if (textGenerationCancelRef.current) return
+                                    // Check pause state from ref to avoid stale closure
+                                    while (textGenerationPauseRef.current && !textGenerationCancelRef.current) {
+                                      await new Promise(resolve => setTimeout(resolve, 100))
+                                    }
+                                    if (textGenerationCancelRef.current) return
+                                    await new Promise(resolve => setTimeout(resolve, 50))
+                                  }
+                                }
+                                
+                                await wait(textGenerationSpeed)
+                                if (textGenerationCancelRef.current) return
+                                
+                                // Generate text with animations
+                                for (let i = 1; i < textGenerationLength; i++) {
+                                  if (textGenerationCancelRef.current) break
+                                  
+                                  const outgoingTransitions = chain.transitions.filter((t) => t.from === currentStateId)
+                                  if (outgoingTransitions.length === 0) break
+                                  
+                                  // Sample transition probabilistically
+                                  const random = Math.random()
+                                  let cumulative = 0
+                                  let selectedTransition: Transition | null = null
+                                  
+                                  for (const transition of outgoingTransitions) {
+                                    cumulative += transition.probability
+                                    if (random <= cumulative) {
+                                      selectedTransition = transition
+                                      break
+                                    }
+                                  }
+                                  
+                                  if (!selectedTransition) break
+                                  
+                                  // Animate transition
+                                  setHighlightedTransitionId(selectedTransition.id)
+                                  await wait(textGenerationSpeed / 2)
+                                  if (textGenerationCancelRef.current) break
+                                  
+                                  currentStateId = selectedTransition.to
+                                  setHighlightedStateId(currentStateId)
+                                  setHighlightedTransitionId(null)
+                                  
+                                  path.push({ stateId: currentStateId, char: null })
+                                  setTextGenerationPath([...path])
+                                  const nextState = chain.states.find((s) => s.id === currentStateId)
+                                  if (nextState) generatedSequence.push(nextState.name)
+                                  setGeneratedText(generatedSequence.join(" "))
+                                  
+                                  await wait(textGenerationSpeed)
+                                  if (textGenerationCancelRef.current) break
+                                }
+                                
+                                if (!textGenerationCancelRef.current) {
+                                  setGeneratedText(generatedSequence.join(" "))
+                                  
+                                  // Clear highlights after a delay
+                                  setTimeout(() => {
+                                    setHighlightedStateId(null)
+                                    setHighlightedTransitionId(null)
+                                    setTextGenerationPath([])
+                                  }, 1500)
+                                }
+                              } catch (error) {
+                                console.error("Error generating text:", error)
+                                setGeneratedText("Error: " + (error instanceof Error ? error.message : "Unknown error"))
+                              } finally {
+                                setIsGeneratingText(false)
+                                setIsPausedTextGeneration(false)
+                                textGenerationPauseRef.current = false
+                              }
+                            }}
+                            disabled={chain.states.length === 0}
+                            size="sm"
+                            className="transition-all duration-150 flex-1 sm:flex-initial"
+                          >
+                            <Play className="mr-2 h-4 w-4" />
+                            Generate Text
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              onClick={() => {
+                                const newPauseState = !isPausedTextGeneration
+                                setIsPausedTextGeneration(newPauseState)
+                                textGenerationPauseRef.current = newPauseState
+                              }}
+                              variant={isPausedTextGeneration ? "default" : "secondary"}
+                              size="sm"
+                              className="transition-all duration-150 flex-1 sm:flex-initial"
+                            >
+                              {isPausedTextGeneration ? (
+                                <>
+                                  <Play className="mr-2 h-4 w-4" />
+                                  Resume
+                                </>
+                              ) : (
+                                <>
+                                  <Pause className="mr-2 h-4 w-4" />
+                                  Pause
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                textGenerationCancelRef.current = true
+                                textGenerationPauseRef.current = false
+                                setIsGeneratingText(false)
+                                setIsPausedTextGeneration(false)
+                                setHighlightedStateId(null)
+                                setHighlightedTransitionId(null)
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="transition-all duration-150 bg-transparent flex-1 sm:flex-initial"
+                            >
+                              <Square className="mr-2 h-4 w-4" />
+                              Stop
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                    {(textGenerationPath.length > 0 || generatedText) && (
+                      <div className="space-y-2 border-t pt-3 mt-4">
+                        <Label className="text-xs text-muted-foreground">Generation Path</Label>
+                        {textGenerationPath.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap text-xs min-h-[2rem]">
+                            {textGenerationPath.map((step, idx) => {
+                              const state = chain.states.find((s) => s.id === step.stateId)
+                              const isCurrentStep = step.stateId === highlightedStateId
+                              return (
+                                <span key={idx} className="flex items-center gap-1">
+                                  <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
+                                    {state?.name}
+                                  </Badge>
+                                  {idx < textGenerationPath.length - 1 && (
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  )}
+                                </span>
+                              )
+                            })}
                           </div>
-                          <span className="text-xs text-muted-foreground w-16 text-right">
-                            {count as number} ({percentage}%)
-                          </span>
-                        </div>
-                      )
-                    })}
-                </div>
-              </div>
-
-              <div className="pt-2 border-t">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs text-muted-foreground">Recent Path</Label>
-                  <Select value={pathHistoryLimit.toString()} onValueChange={(value) => setPathHistoryLimit(value === "all" ? "all" : Number.parseInt(value))}>
-                    <SelectTrigger className="w-24 h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">Last 5</SelectItem>
-                      <SelectItem value="10">Last 10</SelectItem>
-                      <SelectItem value="20">Last 20</SelectItem>
-                      <SelectItem value="all">All</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-1 flex-wrap text-xs">
-                  {(() => {
-                    // Always prefer currentPath if available (for real-time updates), otherwise use pathHistory
-                    const pathToDisplay = currentPath.length > 0 
-                      ? currentPath.map(p => p.stateId)
-                      : simulationMetrics.pathHistory
-                    const limitedPath = pathHistoryLimit === "all" ? pathToDisplay : pathToDisplay.slice(-pathHistoryLimit)
-                    return limitedPath.map((stateId, idx, arr) => {
-                      const state = chain.states.find((s) => s.id === stateId)
-                      const isCurrentStep = isSimulating && idx === arr.length - 1 && currentState === stateId
-                      return (
-                        <span key={idx} className="flex items-center gap-1">
-                          <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
-                            {state?.name}
-                          </Badge>
-                          {idx < arr.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />}
-                        </span>
-                      )
-                    })
-                  })()}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                        )}
+                        {generatedText && (
+                          <>
+                            <Label className="text-xs text-muted-foreground">Generated Output</Label>
+                            <div className="p-3 bg-muted rounded-md text-sm font-mono break-words">
+                              {generatedText}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {generatedText.split(" ").length === 1 ? (
+                                <>This shows the sequence of states visited. For example, in the poetry analysis, "Vowel Consonant Vowel" means the pattern of letter types (vowel→consonant→vowel), not actual letters.</>
+                              ) : (
+                                <>This shows the sequence of states visited. Each word represents a state in the chain. The pattern shows how states transition probabilistically.</>
+                              )}
+                            </p>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedText)
+                          }}
+                          className="w-full"
+                        >
+                          Copy to Clipboard
+                        </Button>
+                      </div>
+                    )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Phase 1: String Acceptance Testing - Only show for DFA/NFA */}
@@ -2157,304 +2532,12 @@ function ToolsContent() {
                 </div>
               </div>
 
-            {/* Path Trace - Always visible during testing or when result exists */}
-            {(isTestingString && currentPath.length > 0) || (stringTestResult && (currentPath.length > 0 || stringTestResult.path.length > 0)) ? (
-              <div className="space-y-2 border-t pt-3 mt-3">
-                <Label className="text-xs text-muted-foreground">Path Trace</Label>
-                <div className="flex items-center gap-1 flex-wrap text-xs min-h-[2rem]">
-                  {(currentPath.length > 0 ? currentPath : stringTestResult?.path || []).map((step, idx) => {
-                    const state = chain.states.find((s) => s.id === step.stateId)
-                    const isCurrentStep = step.stateId === highlightedStateId
-                    return (
-                      <span key={idx} className="flex items-center gap-1">
-                        <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
-                          {state?.name}
-                        </Badge>
-                        {idx < (currentPath.length > 0 ? currentPath : stringTestResult?.path || []).length - 1 && step.char && (
-                          <>
-                            <span className={`font-medium ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`}>
-                              '{step.char}'
-                            </span>
-                            <ArrowRight className={`h-3 w-3 shrink-0 ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
-                          </>
-                        )}
-                      </span>
-                    )
-                  })}
-                  {currentChar && (
-                    <span className="flex items-center gap-1 ml-1">
-                      <span className="text-primary font-bold animate-pulse">'{currentChar}'</span>
-                      <ArrowRight className="h-3 w-3 text-primary animate-pulse shrink-0" />
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : null}
-
-            {stringTestResult && (
-              <div className="space-y-3 border-t pt-3">
-                <div className="flex items-center gap-2">
-                  {stringTestResult.accepted === true && (
-                    <>
-                      <Check className="h-5 w-5 text-green-500" />
-                      <Badge variant="default" className="bg-green-500">ACCEPTED</Badge>
-                    </>
-                  )}
-                  {stringTestResult.accepted === false && (
-                    <>
-                      <X className="h-5 w-5 text-red-500" />
-                      <Badge variant="destructive">REJECTED</Badge>
-                    </>
-                  )}
-                  {stringTestResult.error && (
-                    <span className="text-sm text-destructive">{stringTestResult.error}</span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className={`space-y-2 border-t ${(isTestingString && currentPath.length > 0) || (stringTestResult && (currentPath.length > 0 || stringTestResult.path.length > 0)) ? 'pt-6' : 'pt-3'}`}>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Animation Speed</Label>
-                <span className="text-xs text-muted-foreground">{stringTestSpeed}ms</span>
-              </div>
-              <SpeedDial
-                value={stringTestSpeed}
-                onChange={setStringTestSpeed}
-                min={50}
-                max={1000}
-                step={50}
-              />
-            </div>
-          </CardContent>
-        </Card>
-        )}
-
-        {/* Phase 2: Text Generation - Only show for Markov chains */}
-        {automatonType === "markov" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Text Generation</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Generate sequences by walking through the chain probabilistically. Shows the pattern of state transitions.
-              </p>
-            </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="text-length" className="text-sm">Length</Label>
-              <Input
-                id="text-length"
-                type="number"
-                min="1"
-                max="100"
-                value={textGenerationLength}
-                onChange={(e) => setTextGenerationLength(Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)))}
-                className="w-full"
-                disabled={isGeneratingText}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Mode</Label>
-              <Select 
-                value={textGenerationMode} 
-                onValueChange={(value: "probabilistic" | "deterministic") => setTextGenerationMode(value)}
-                disabled={automatonType === "markov" ? textGenerationMode === "deterministic" : false || isGeneratingText}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]" position="popper">
-                  <SelectItem value="probabilistic">Probabilistic (Markov)</SelectItem>
-                  <SelectItem 
-                    value="deterministic"
-                    disabled={automatonType === "markov"}
-                  >
-                    Deterministic (DFA) {automatonType === "markov" && "(Requires DFA/NFA mode)"}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {automatonType !== "markov" && (
-                <p className="text-xs text-muted-foreground">{(automatonType === "dfa" ? "DFA" : "NFA")} mode: Using transition labels</p>
-              )}
-            </div>
-
-            {/* Speed Control */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Animation Speed</Label>
-                <span className="text-xs text-muted-foreground">{textGenerationSpeed}ms</span>
-              </div>
-              <SpeedDial
-                value={textGenerationSpeed}
-                onChange={setTextGenerationSpeed}
-                min={50}
-                max={1000}
-                step={50}
-              />
-            </div>
-
-            {/* Control Buttons */}
-            <div className="flex gap-2">
-              {!isGeneratingText ? (
-                <Button
-                  onClick={async () => {
-                    if (chain.states.length === 0) return
-                    setIsGeneratingText(true)
-                    setIsPausedTextGeneration(false)
-                    textGenerationCancelRef.current = false
-                    textGenerationPauseRef.current = false
-                    setTextGenerationPath([])
-                    setHighlightedStateId(null)
-                    setHighlightedTransitionId(null)
-                    setGeneratedText("")
-                    
-                    try {
-                      // Find initial state
-                      const initialStates = chain.states.filter((s) => s.isInitial === true)
-                      let currentStateId = initialStates.length > 0 ? initialStates[0].id : chain.states[0].id
-                      
-                      const path: Array<{ stateId: string; char: string | null }> = []
-                      const generatedSequence: string[] = []
-                      
-                      // Highlight initial state
-                      setHighlightedStateId(currentStateId)
-                      path.push({ stateId: currentStateId, char: null })
-                      setTextGenerationPath([...path])
-                      const initialState = chain.states.find((s) => s.id === currentStateId)
-                      if (initialState) generatedSequence.push(initialState.name)
-                      
-                      // Wait with pause support
-                      const wait = async (ms: number) => {
-                        const start = Date.now()
-                        while (Date.now() - start < ms) {
-                          if (textGenerationCancelRef.current) return
-                          // Check pause state from ref to avoid stale closure
-                          while (textGenerationPauseRef.current && !textGenerationCancelRef.current) {
-                            await new Promise(resolve => setTimeout(resolve, 100))
-                          }
-                          if (textGenerationCancelRef.current) return
-                          await new Promise(resolve => setTimeout(resolve, 50))
-                        }
-                      }
-                      
-                      await wait(textGenerationSpeed)
-                      if (textGenerationCancelRef.current) return
-                      
-                      // Generate text with animations
-                      for (let i = 1; i < textGenerationLength; i++) {
-                        if (textGenerationCancelRef.current) break
-                        
-                        const outgoingTransitions = chain.transitions.filter((t) => t.from === currentStateId)
-                        if (outgoingTransitions.length === 0) break
-                        
-                        // Sample transition probabilistically
-                        const random = Math.random()
-                        let cumulative = 0
-                        let selectedTransition: Transition | null = null
-                        
-                        for (const transition of outgoingTransitions) {
-                          cumulative += transition.probability
-                          if (random <= cumulative) {
-                            selectedTransition = transition
-                            break
-                          }
-                        }
-                        
-                        if (!selectedTransition) break
-                        
-                        // Animate transition
-                        setHighlightedTransitionId(selectedTransition.id)
-                        await wait(textGenerationSpeed / 2)
-                        if (textGenerationCancelRef.current) break
-                        
-                        currentStateId = selectedTransition.to
-                        setHighlightedStateId(currentStateId)
-                        setHighlightedTransitionId(null)
-                        
-                        path.push({ stateId: currentStateId, char: null })
-                        setTextGenerationPath([...path])
-                        const nextState = chain.states.find((s) => s.id === currentStateId)
-                        if (nextState) generatedSequence.push(nextState.name)
-                        setGeneratedText(generatedSequence.join(" "))
-                        
-                        await wait(textGenerationSpeed)
-                        if (textGenerationCancelRef.current) break
-                      }
-                      
-                      if (!textGenerationCancelRef.current) {
-                        setGeneratedText(generatedSequence.join(" "))
-                        
-                        // Clear highlights after a delay
-                        setTimeout(() => {
-                          setHighlightedStateId(null)
-                          setHighlightedTransitionId(null)
-                          setTextGenerationPath([])
-                        }, 1500)
-                      }
-                    } catch (error) {
-                      console.error("Error generating text:", error)
-                      setGeneratedText("Error: " + (error instanceof Error ? error.message : "Unknown error"))
-                    } finally {
-                      setIsGeneratingText(false)
-                      setIsPausedTextGeneration(false)
-                      textGenerationPauseRef.current = false
-                    }
-                  }}
-                  disabled={chain.states.length === 0}
-                  className="flex-1"
-                >
-                  <Play className="mr-2 h-4 w-4" />
-                  Generate Text
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    onClick={() => {
-                      const newPauseState = !isPausedTextGeneration
-                      setIsPausedTextGeneration(newPauseState)
-                      textGenerationPauseRef.current = newPauseState
-                    }}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    {isPausedTextGeneration ? (
-                      <>
-                        <Play className="mr-2 h-4 w-4" />
-                        Resume
-                      </>
-                    ) : (
-                      <>
-                        <Pause className="mr-2 h-4 w-4" />
-                        Pause
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      textGenerationCancelRef.current = true
-                      textGenerationPauseRef.current = false
-                      setIsGeneratingText(false)
-                      setIsPausedTextGeneration(false)
-                      setHighlightedStateId(null)
-                      setHighlightedTransitionId(null)
-                    }}
-                    variant="destructive"
-                    className="flex-1"
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Stop
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {(textGenerationPath.length > 0 || generatedText) && (
-              <div className="space-y-2 border-t pt-3">
-                <Label className="text-xs text-muted-foreground">Generation Path</Label>
-                {textGenerationPath.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap text-xs">
-                    {textGenerationPath.map((step, idx) => {
+              {/* Path Trace - Always visible during testing or when result exists */}
+              {(isTestingString && currentPath.length > 0) || (stringTestResult && (currentPath.length > 0 || stringTestResult.path.length > 0)) ? (
+                <div className="space-y-2 border-t pt-3 mt-3">
+                  <Label className="text-xs text-muted-foreground">Path Trace</Label>
+                  <div className="flex items-center gap-1 flex-wrap text-xs min-h-[2rem]">
+                    {(currentPath.length > 0 ? currentPath : stringTestResult?.path || []).map((step, idx) => {
                       const state = chain.states.find((s) => s.id === step.stateId)
                       const isCurrentStep = step.stateId === highlightedStateId
                       return (
@@ -2462,43 +2545,64 @@ function ToolsContent() {
                           <Badge variant={isCurrentStep ? "default" : "outline"} className={`text-xs ${isCurrentStep ? "animate-pulse" : ""}`}>
                             {state?.name}
                           </Badge>
-                          {idx < textGenerationPath.length - 1 && (
-                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                          {idx < (currentPath.length > 0 ? currentPath : stringTestResult?.path || []).length - 1 && step.char && (
+                            <>
+                              <span className={`font-medium ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`}>
+                                '{step.char}'
+                              </span>
+                              <ArrowRight className={`h-3 w-3 shrink-0 ${currentChar === step.char ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                            </>
                           )}
                         </span>
                       )
                     })}
+                    {currentChar && (
+                      <span className="flex items-center gap-1 ml-1">
+                        <span className="text-primary font-bold animate-pulse">'{currentChar}'</span>
+                        <ArrowRight className="h-3 w-3 text-primary animate-pulse shrink-0" />
+                      </span>
+                    )}
                   </div>
-                )}
-                {generatedText && (
-                  <>
-                    <Label className="text-xs text-muted-foreground">Generated Output</Label>
-                    <div className="p-3 bg-muted rounded-md text-sm font-mono break-words">
-                      {generatedText}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {generatedText.split(" ").length === 1 ? (
-                        <>This shows the sequence of states visited. For example, in the poetry analysis, "Vowel Consonant Vowel" means the pattern of letter types (vowel→consonant→vowel), not actual letters.</>
-                      ) : (
-                        <>This shows the sequence of states visited. Each word represents a state in the chain. The pattern shows how states transition probabilistically.</>
-                      )}
-                    </p>
-                  </>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedText)
-                  }}
-                  className="w-full"
-                >
-                  Copy to Clipboard
-                </Button>
+                </div>
+              ) : null}
+
+              {stringTestResult && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="flex items-center gap-2">
+                    {stringTestResult.accepted === true && (
+                      <>
+                        <Check className="h-5 w-5 text-green-500" />
+                        <Badge variant="default" className="bg-green-500">ACCEPTED</Badge>
+                      </>
+                    )}
+                    {stringTestResult.accepted === false && (
+                      <>
+                        <X className="h-5 w-5 text-red-500" />
+                        <Badge variant="destructive">REJECTED</Badge>
+                      </>
+                    )}
+                    {stringTestResult.error && (
+                      <span className="text-sm text-destructive">{stringTestResult.error}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className={`space-y-2 border-t ${(isTestingString && currentPath.length > 0) || (stringTestResult && (currentPath.length > 0 || stringTestResult.path.length > 0)) ? 'pt-6' : 'pt-3'}`}>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Animation Speed</Label>
+                  <span className="text-xs text-muted-foreground">{stringTestSpeed}ms</span>
+                </div>
+                <SpeedDial
+                  value={stringTestSpeed}
+                  onChange={setStringTestSpeed}
+                  min={50}
+                  max={1000}
+                  step={50}
+                />
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         )}
       </TabsContent>
 
@@ -2810,12 +2914,11 @@ function ToolsContent() {
               
               if (result.errors.length > 0) {
                 // Show all errors for CFG detection (they're informative)
-                const errorMessage = result.errors.length > 1 
-                  ? result.errors.join("\n")
-                  : result.errors[0]
+                // Join errors with line breaks for better readability
+                const errorMessage = result.errors.join("\n")
                 toast("error", errorMessage, {
                   title: "Conversion Error",
-                  duration: 8000,
+                  duration: 12000, // Longer duration for CFG errors to read all messages
                 })
                 return
               }
@@ -2869,7 +2972,8 @@ function ToolsContent() {
         )}
       </TabsContent>
     </Tabs>
-  ))
+    )
+  })
 
   // Pointer-based interactions: pan, drag, pinch-zoom
   const onCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -3225,15 +3329,15 @@ function ToolsContent() {
                         <p className="font-semibold text-sm mb-2">Color Coding</p>
                         <div className="space-y-1.5 text-xs">
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full border-2" style={{ backgroundColor: '#10b98120', borderColor: '#10b981' }} />
-                            <span className="text-muted-foreground">Initial states (green)</span>
+                            <div className="w-3 h-3 rounded-full border-2" style={{ backgroundColor: `${getAccentColor()}20`, borderColor: getAccentColor() }} />
+                            <span className="text-muted-foreground">Initial states</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full border-4" style={{ backgroundColor: '#ef444420', borderColor: '#ef4444' }} />
-                            <span className="text-muted-foreground">Final states (red)</span>
+                            <div className="w-3 h-3 rounded-full border-4" style={{ backgroundColor: `${getDestructiveColor()}20`, borderColor: getDestructiveColor() }} />
+                            <span className="text-muted-foreground">Final states</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full border-2" style={{ backgroundColor: '#3b82f620', borderColor: '#3b82f6' }} />
+                            <div className="w-3 h-3 rounded-full border-2" style={{ backgroundColor: `${getPrimaryColor()}20`, borderColor: getPrimaryColor() }} />
                             <span className="text-muted-foreground">Regular states (unique colors)</span>
                           </div>
                         </div>
@@ -3634,26 +3738,27 @@ function ToolsContent() {
                         const labelWidth = labelText.length * 7 + 8
                         const labelHeight = 18
                         const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
-                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || '#3b82f6'
+                        const primaryColor = getPrimaryColor()
+                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || primaryColor
                         // Color code transition based on current character being processed or simulation
                         const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
                         const isSimulationTransition = simulationTransitionId === transition.id
-                        // Use explicit color values for SVG - CSS variables don't work well in SVG
-                        const transitionColor = isCurrentCharTransition ? '#3b82f6' : (isHighlighted || isSimulationTransition ? fromStateColor : '#3b82f6')
+                        // Use theme-aware colors for SVG
+                        const transitionColor = isCurrentCharTransition ? primaryColor : (isHighlighted || isSimulationTransition ? fromStateColor : primaryColor)
 
                         return (
-                          <g key={transition.id}>
+                          <g key={transition.id} style={{ zIndex: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? 15 : 1 }}>
                             <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="8" fill="none" opacity="0.95" />
                             <path
                               d={pathData}
                               className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
                               stroke={transitionColor}
-                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "5" : "3"}
+                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
                               fill="none"
                               markerEnd="url(#arrowhead)"
                               opacity="1"
                               style={{
-                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 12px ${transitionColor})` : undefined,
+                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
                                 transition: draggingStateId ? 'none' : 'all 0.05s linear',
                               }}
                         />
@@ -3663,11 +3768,12 @@ function ToolsContent() {
                           width={labelWidth}
                           height={labelHeight}
                           rx="4"
-                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-2 ring-primary' : ''}`}
-                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "2" : "1"}
+                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-1 ring-primary' : ''}`}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "1.5" : "1"}
                           filter="url(#label-shadow)"
                           style={{
                             transition: draggingStateId ? 'none' : 'all 0.1s linear',
+                            zIndex: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? 16 : 2,
                           }}
                         />
                         <text
@@ -3689,15 +3795,16 @@ function ToolsContent() {
                         const labelWidth = labelText.length * 7 + 8
                         const labelHeight = 18
                         const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
-                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || '#3b82f6'
+                        const primaryColor = getPrimaryColor()
+                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || primaryColor
                         // Color code transition based on current character being processed or simulation
                         const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
                         const isSimulationTransition = simulationTransitionId === transition.id
-                        // Use explicit color values for SVG - CSS variables don't work well in SVG
-                        const transitionColor = isCurrentCharTransition ? '#3b82f6' : (isHighlighted || isSimulationTransition ? fromStateColor : '#3b82f6')
+                        // Use theme-aware colors for SVG
+                        const transitionColor = isCurrentCharTransition ? primaryColor : (isHighlighted || isSimulationTransition ? fromStateColor : primaryColor)
 
                         return (
-                          <g key={transition.id}>
+                          <g key={transition.id} style={{ zIndex: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? 15 : 1 }}>
                             <line x1={fromX} y1={fromY} x2={toX} y2={toY} className="stroke-background dark:stroke-foreground/10" strokeWidth="7" opacity="0.95" />
                             <line
                               x1={fromX}
@@ -3706,11 +3813,11 @@ function ToolsContent() {
                               y2={toY}
                               className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
                               stroke={transitionColor}
-                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "5" : "3"}
+                              strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
                               markerEnd="url(#arrowhead)"
                               opacity="1"
                               style={{
-                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 12px ${transitionColor})` : undefined,
+                                filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
                                 transition: draggingStateId ? 'none' : 'all 0.05s linear',
                               }}
                         />
@@ -3720,11 +3827,12 @@ function ToolsContent() {
                           width={labelWidth}
                           height={labelHeight}
                           rx="4"
-                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-2 ring-primary' : ''}`}
-                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "2" : "1"}
+                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-1 ring-primary' : ''}`}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "1.5" : "1"}
                           filter="url(#label-shadow)"
                           style={{
                             transition: draggingStateId ? 'none' : 'all 0.1s linear',
+                            zIndex: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? 16 : 2,
                           }}
                         />
                         <text
@@ -3847,27 +3955,28 @@ function ToolsContent() {
                       const labelText = transition.label || transition.probability.toFixed(2)
                       const labelWidth = labelText.length * 7 + 8
                       const labelHeight = 18
-                      const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
-                      const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || '#3b82f6'
-                      // Color code transition based on current character being processed or simulation
-                      const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
-                      const isSimulationTransition = simulationTransitionId === transition.id
-                      // Use explicit color values for SVG - CSS variables don't work well in SVG
-                      const transitionColor = isCurrentCharTransition ? '#3b82f6' : (isHighlighted || isSimulationTransition ? fromStateColor : '#3b82f6')
+                        const isHighlighted = highlightedTransitionId === transition.id || simulationTransitionId === transition.id
+                        const primaryColor = themeColors.primaryColor
+                        const fromStateColor = chain.states.find(s => s.id === transition.from)?.color || primaryColor
+                        // Color code transition based on current character being processed or simulation
+                        const isCurrentCharTransition = currentChar && transition.label === currentChar && transition.from === highlightedStateId
+                        const isSimulationTransition = simulationTransitionId === transition.id
+                        // Use theme-aware colors for SVG
+                        const transitionColor = isCurrentCharTransition ? primaryColor : (isHighlighted || isSimulationTransition ? fromStateColor : primaryColor)
 
                     return (
-                      <g key={`self-loop-${transition.id}`} style={{ zIndex: 10 }}>
+                      <g key={`self-loop-${transition.id}`} style={{ zIndex: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? 15 : 10 }}>
                         <path d={pathData} className="stroke-background dark:stroke-foreground/10" strokeWidth="8" fill="none" opacity="0.95" />
                         <path
                           d={pathData}
                           className={`${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'animate-pulse' : ''}`}
                           stroke={transitionColor}
-                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "5" : "3"}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "4" : "3"}
                           fill="none"
                           markerEnd="url(#arrowhead)"
                           opacity="1"
                           style={{
-                            filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 12px ${transitionColor})` : undefined,
+                            filter: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? `drop-shadow(0 0 8px ${transitionColor})` : undefined,
                             transition: draggingStateId ? 'none' : 'all 0.05s linear',
                           }}
                         />
@@ -3877,11 +3986,12 @@ function ToolsContent() {
                           width={labelWidth}
                           height={labelHeight}
                           rx="4"
-                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-2 ring-primary' : ''}`}
-                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "2" : "1"}
+                          className={`fill-background stroke-border ${isHighlighted || isCurrentCharTransition || isSimulationTransition ? 'ring-1 ring-primary' : ''}`}
+                          strokeWidth={isHighlighted || isCurrentCharTransition || isSimulationTransition ? "1.5" : "1"}
                           filter="url(#label-shadow)"
                           style={{
                             transition: draggingStateId ? 'none' : 'all 0.1s linear',
+                            zIndex: (isHighlighted || isCurrentCharTransition || isSimulationTransition) ? 16 : 2,
                           }}
                         />
                         <text
@@ -3912,17 +4022,16 @@ function ToolsContent() {
                   <Popover.Trigger asChild>
                     <div
                       data-node-id={state.id}
-                      className={`
+                        className={`
                         absolute w-16 h-16 rounded-full border-2 flex items-center justify-center
                         text-sm font-medium cursor-pointer transition-all duration-300 transform -translate-x-8 -translate-y-8 select-none
-                        ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2" : ""}
-                        ${currentState === state.id ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
-                        ${highlightedStateId === state.id || currentState === state.id ? "ring-4 ring-primary ring-offset-2 scale-125 animate-pulse" : ""}
-                        ${currentState === state.id && !highlightedStateId ? "ring-2 ring-accent ring-offset-2 scale-110" : ""}
-                        ${draggingStateId === state.id ? "transition-none" : ""}
+                        ${selectedState === state.id ? "ring-2 ring-primary ring-offset-2 z-10" : ""}
+                        ${currentState === state.id && !highlightedStateId ? "ring-2 ring-accent ring-offset-2 scale-110 z-10" : ""}
+                        ${highlightedStateId === state.id || (currentState === state.id && highlightedStateId === state.id) ? "ring-4 ring-primary ring-offset-4 scale-110 animate-pulse z-20" : ""}
+                        ${draggingStateId === state.id ? "transition-none z-30" : ""}
                         ${state.isFinal ? "border-4" : ""}
                       `}
-                      style={{
+                        style={{
                         left: pos.x,
                         top: pos.y,
                         backgroundColor: (highlightedStateId === state.id || currentState === state.id) ? state.color + "60" : state.color + "20",
@@ -3930,13 +4039,14 @@ function ToolsContent() {
                         color: state.color,
                         willChange: draggingStateId === state.id ? 'transform' : 'auto',
                         boxShadow: (highlightedStateId === state.id || currentState === state.id)
-                          ? `0 0 20px ${state.color}CC, 0 0 0 3px ${state.color}60` 
+                          ? `0 0 20px ${state.color}CC, 0 0 0 2px ${state.color}60` 
                           : state.isInitial ? `0 0 0 3px ${state.color}40` : undefined,
                         transition: draggingStateId === state.id ? 'none' : 'all 0.05s linear',
                         touchAction: 'none', // Prevent default touch behaviors (scrolling, zooming) during drag
                         WebkitTouchCallout: 'none', // Prevent iOS callout menu
                         WebkitUserSelect: 'none', // Prevent text selection on iOS
                         userSelect: 'none',
+                        zIndex: highlightedStateId === state.id ? 20 : (currentState === state.id ? 10 : (selectedState === state.id ? 5 : 1)),
                       }}
                       onPointerDown={(e) => {
                         if (e.button !== 0 && e.pointerType !== 'touch') return
@@ -4182,7 +4292,7 @@ function ToolsContent() {
                                           ...s, 
                                           isInitial, 
                                           isFinal: isInitial ? false : s.isFinal,
-                                          color: generateStateColor(regularStateCount, isInitial, !!(s.isFinal && !isInitial))
+                                          color: generateStateColor(regularStateCount, isInitial, !!(s.isFinal && !isInitial), themeColors)
                                         }
                                       : s
                                   ),
@@ -4212,7 +4322,7 @@ function ToolsContent() {
                                           ...s, 
                                           isFinal, 
                                           isInitial: isFinal ? false : s.isInitial,
-                                          color: generateStateColor(regularStateCount, !!(s.isInitial && !isFinal), !!isFinal)
+                                          color: generateStateColor(regularStateCount, !!(s.isInitial && !isFinal), !!isFinal, themeColors)
                                         }
                                       : s
                                   ),
@@ -4318,7 +4428,16 @@ function ToolsContent() {
             <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveConfirm}>Save Design</Button>
+            <Button onClick={handleSaveConfirm} disabled={savingDesign}>
+              {savingDesign ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Design"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -4331,7 +4450,12 @@ function ToolsContent() {
             <DialogDescription>Load or delete your saved Markov chain designs.</DialogDescription>
           </DialogHeader>
           <div className="max-h-96 overflow-y-auto">
-            {savedDesigns.length === 0 ? (
+            {loadingDesigns ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">Loading designs...</p>
+              </div>
+            ) : savedDesigns.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No saved designs yet</p>
@@ -4363,8 +4487,13 @@ function ToolsContent() {
                               setDeleteDesignDialogOpen(true)
                             }}
                             className="transition-all duration-150"
+                            disabled={deletingDesign === design.id}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            {deletingDesign === design.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -4426,12 +4555,18 @@ function ToolsContent() {
               onClick={() => {
                 if (designToDelete) {
                   deleteDesign(designToDelete.id)
-                  setDeleteDesignDialogOpen(false)
-                  setDesignToDelete(null)
                 }
               }}
+              disabled={deletingDesign === designToDelete?.id}
             >
-              Delete
+              {deletingDesign === designToDelete?.id ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

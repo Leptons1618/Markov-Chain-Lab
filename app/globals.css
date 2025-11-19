@@ -308,7 +308,7 @@ pre[class*="font-mono"] {
   margin-left: 0;
 }
 
-/* Modern thin scrollbar styles */
+/* Modern thin scrollbar styles - Theme-aware */
 * {
   scrollbar-width: thin;
   scrollbar-color: oklch(0.7 0 0 / 0.3) transparent;
@@ -316,6 +316,10 @@ pre[class*="font-mono"] {
 
 .dark * {
   scrollbar-color: oklch(0.4 0 0 / 0.4) transparent;
+}
+
+.dracula-theme * {
+  scrollbar-color: oklch(0.5 0.02 280 / 0.4) transparent;
 }
 
 /* Webkit browsers (Chrome, Safari, Edge) */
@@ -345,8 +349,17 @@ pre[class*="font-mono"] {
   background: oklch(0.5 0 0 / 0.6);
 }
 
+.dracula-theme ::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0.02 280 / 0.4);
+}
+
+.dracula-theme ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.02 280 / 0.6);
+}
+
 /* Dracula Theme - Eye-soothing dark theme with classic Dracula colors */
-.dracula-theme {
+.dracula-theme,
+.dracula-theme.dark {
   --background: oklch(0.21 0.02 280);
   --foreground: oklch(0.97 0.008 160);
   --card: oklch(0.25 0.02 280);
@@ -371,4 +384,12 @@ pre[class*="font-mono"] {
   --chart-3: oklch(0.73 0.18 80);
   --chart-4: oklch(0.66 0.20 200);
   --chart-5: oklch(0.60 0.22 25);
+  --sidebar: oklch(0.23 0.02 280);
+  --sidebar-foreground: oklch(0.97 0.008 160);
+  --sidebar-primary: oklch(0.68 0.20 320);
+  --sidebar-primary-foreground: oklch(0.21 0.02 280);
+  --sidebar-accent: oklch(0.30 0.025 280);
+  --sidebar-accent-foreground: oklch(0.97 0.008 160);
+  --sidebar-border: oklch(0.32 0.025 280);
+  --sidebar-ring: oklch(0.68 0.20 320);
 }
